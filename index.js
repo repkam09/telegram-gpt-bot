@@ -26,6 +26,14 @@ async function init() {
         }
 
         const text = msg.text
+
+        // Only answer things that look like questions from group chats...
+        if (chatId < 0) {
+            if (!text.trim().endsWith('?')) {
+                return
+            }
+        }
+
         console.log("ChatId", chatId, "Message:", text)
         try {
             const response = await openai.createCompletion({
