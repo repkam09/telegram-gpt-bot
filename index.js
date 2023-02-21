@@ -27,26 +27,23 @@ async function init() {
 
         const text = msg.text
 
-        // Only answer things that look like questions from group chats...
-        if (chatId < 0) {
-            if (!text.trim().endsWith('?')) {
-                return
-            }
+        if (text.startsWith('/')) {
+            return
         }
 
         console.log("ChatId", chatId, "Message:", text)
         try {
-	    const prompt = `Elaborate on the following, providing a friendly and helpful answer, writing at a college educated level: ${text}`
-       	    console.log("ChatId", chatId, "Prompt:", prompt)
+            const prompt = `Elaborate on the following, providing a friendly and helpful answer, writing at a college educated level: ${text}`
+            console.log("ChatId", chatId, "Prompt:", prompt)
 
             const response = await openai.createCompletion({
-		model: "text-davinci-003",
-		prompt: prompt,
-		temperature: 0.7,
-		max_tokens: 512,
-		top_p: 1,
-		frequency_penalty: 0,
-  		presence_penalty: 0,
+                model: "text-davinci-003",
+                prompt: prompt,
+                temperature: 0.7,
+                max_tokens: 512,
+                top_p: 1,
+                frequency_penalty: 0,
+                presence_penalty: 0,
             });
 
             console.log("ChatId", chatId, "Response:", response.data.id)
