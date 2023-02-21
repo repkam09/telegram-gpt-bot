@@ -19,7 +19,7 @@ async function init() {
         // If a whitelist is provided check that the incoming chatId is in the list
         if (process.env.TELEGRAM_ID_WHITELIST) {
             const whitelist = process.env.TELEGRAM_ID_WHITELIST.trim().split(',')
-            if (!whitelist.includes(chatId)) {
+            if (!whitelist.includes(`${chatId}`)) {
                 bot.sendMessage(chatId, 'Error: You are not whitelisted to use this Bot instance. Your chatId is: ' + chatId);
                 return
             }
@@ -66,4 +66,7 @@ if (!process.env.TELEGRAM_BOT_KEY) {
     throw new Error("Missing TELEGRAM_BOT_KEY")
 }
 
+if (process.env.TELEGRAM_ID_WHITELIST) {
+    console.log("Whitelist:" + process.env.TELEGRAM_ID_WHITELIST)
+}
 init()
