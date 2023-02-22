@@ -94,8 +94,7 @@ async function init() {
                 const chatContext = chatContextMap.get(chatId)
                 const updatedChatContext = `${chatContext}
 ${firstName}: ${message}
-Hennos: ${result}
-`
+Hennos: ${result}`
 
                 chatContextMap.set(chatId, updatedChatContext)
             }
