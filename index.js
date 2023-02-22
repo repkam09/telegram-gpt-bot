@@ -65,6 +65,7 @@ async function init() {
             const whitelist = process.env.TELEGRAM_ID_WHITELIST.trim().split(',')
             if (!whitelist.includes(`${chatId}`)) {
                 bot.sendMessage(chatId, 'Error: You have not been whitelisted to use this bot. Your identifier is: ' + identifier);
+                console.log(identifier, "sent a message but is not whitelisted")
                 return
             }
         }
