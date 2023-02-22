@@ -81,8 +81,6 @@ async function init() {
         try {
             const prompt = buildPrompt(chatId, firstName, message)
 
-            console.log(prompt)
-
             const response = await openai.createCompletion(buildConfig(prompt));
             if (response.data && response.data.choices) {
 
