@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 
 const chatContextMap = new Map();
+const promptMap = new Map();
 
 function buildConfig(prompt) {
     return {
@@ -20,14 +21,29 @@ function buildConfig(prompt) {
 
 
 function buildPrompt(chatId, firstName, message) {
+    if (!promptMap.has(chatId)) {
+        promptMap.set(chatId, 'default')
+    }
+
     if (!chatContextMap.has(chatId)) {
 
-        const promptPrefix = `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. Here is a conversation between Hennos and the user named '${firstName}':
+        const mode = promptMap.get(chatId)
+        if (mode === 'default') {
+            const promptPrefix = `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. Here is a conversation between Hennos and the user named '${firstName}':
 ${firstName}: Tell me about yourself
 Hennos: I'm Hennos, your friendly chat assistant! I'm here to answer questions and help you find the information you need. I'm knowledgeable on a wide range of topics, so feel free to ask away!
 ${firstName}: What can you help with?
 Hennos: I'm knowledgeable about a wide range of topics and can provide you with helpful information and provide answers to your questions.`
-        chatContextMap.set(chatId, promptPrefix)
+            chatContextMap.set(chatId, promptPrefix)
+        }
+
+        if (mode === 'rpg') {
+            const promptPrefix = `You are a creative Dungon Master for a simple text based RPG game. The player, ${firstName}, will respond with their actions based on the situations that you describe.
+${firstName}: Start off by describing the magical world around us creating a simple starting hook such as being in a tavern or exploring the countryside or deep in a forest.
+Hennos: `
+            chatContextMap.set(chatId, promptPrefix)
+            return promptPrefix
+        }
     }
 
     const chatContext = chatContextMap.get(chatId)
@@ -35,6 +51,12 @@ Hennos: I'm knowledgeable about a wide range of topics and can provide you with 
     return `${chatContext}
 ${firstName}: ${message}
 Hennos: `
+}
+
+function resetMemory(chatId) {
+    if (chatContextMap.has(chatId)) {
+        chatContextMap.delete(chatId)
+    }
 }
 
 async function init() {
@@ -57,6 +79,40 @@ async function init() {
 
         // If the incoming text is empty or a command, ignore it for the moment
         if (message.startsWith('/')) {
+            switch (message) {
+                case "/reset": {
+                    resetMemory(chatId)
+                    bot.sendMessage(chatId, 'Memory has been reset');
+                    break
+                }
+
+                case "/start": {
+                    bot.sendMessage(chatId, 'Start chatting to get started!');
+                    break
+                }
+
+                case '/rpg': {
+                    resetMemory(chatId)
+                    bot.sendMessage(chatId, 'Memory has been reset and switched to RPG mode. Start by asking something like "What do I see around me?" .');
+                    promptMap.set(chatId, 'rpg')
+                    break;
+                }
+
+                case '/assistant': {
+                    resetMemory(chatId)
+                    bot.sendMessage(chatId, 'Memory has been reset and switched to default assistant mode. Get started by asking a question.');
+                    promptMap.set(chatId, 'default')
+                    break
+                }
+
+                default: {
+                    bot.sendMessage(chatId, `Unknown command:  ${message}. Try the following: 
+- /reset: Clears the bot memory to start a whole new conversation
+- /rpg: Switch to a text RPG mode where you can roleplay an adventure
+- /assistant: Switch to assistant mode for general question and answer capibilities`);
+                    break;
+                }
+            }
             return
         }
 
@@ -102,10 +158,7 @@ Hennos: ${result}`
             bot.sendMessage(chatId, 'Error: ' + err.message);
 
             // Clean up the chat context when something goes wrong, just in case...
-            if (chatContextMap.has(chatId)) {
-                chatContextMap.delete(chatId)
-            }
-
+            resetMemory(chatId)
             console.log("ChatId", chatId, "Response Error:", err.message)
             console.log(err)
         }
