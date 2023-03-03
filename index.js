@@ -5,59 +5,6 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 
 const chatContextMap = new Map();
-const promptMap = new Map();
-
-function buildConfig(prompt) {
-    return {
-        model: "text-davinci-003",
-        prompt: prompt,
-        temperature: 0.7,
-        max_tokens: 512,
-        top_p: 1,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-    }
-}
-
-
-function buildPrompt(chatId, firstName, message) {
-    if (!promptMap.has(chatId)) {
-        promptMap.set(chatId, 'default')
-    }
-
-    if (!chatContextMap.has(chatId)) {
-
-        const mode = promptMap.get(chatId)
-        if (mode === 'default') {
-            const promptPrefix = `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. Here is a conversation between Hennos and the user named '${firstName}':
-${firstName}: Tell me about yourself
-Hennos: I'm Hennos, your friendly chat assistant! I'm here to answer questions and help you find the information you need. I'm knowledgeable on a wide range of topics, so feel free to ask away!
-${firstName}: What can you help with?
-Hennos: I'm knowledgeable about a wide range of topics and can provide you with helpful information and provide answers to your questions.`
-            chatContextMap.set(chatId, promptPrefix)
-        }
-
-        if (mode === 'rpg') {
-            const promptPrefix = `You are a creative Dungon Master for a simple text based RPG game. The player, ${firstName}, will respond with their actions based on the situations that you describe.
-${firstName}: Start off by describing the magical world around us creating a simple starting hook such as being in a tavern or exploring the countryside or deep in a forest.
-Hennos: `
-            chatContextMap.set(chatId, promptPrefix)
-            return promptPrefix
-        }
-    }
-
-    const chatContext = chatContextMap.get(chatId)
-
-    return `${chatContext}
-${firstName}: ${message}
-Hennos: `
-}
-
-function resetMemory(chatId) {
-    if (chatContextMap.has(chatId)) {
-        chatContextMap.delete(chatId)
-    }
-}
 
 async function init() {
     const configuration = new Configuration({
@@ -91,25 +38,7 @@ async function init() {
                     break
                 }
 
-                case '/rpg': {
-                    resetMemory(chatId)
-                    bot.sendMessage(chatId, 'Memory has been reset and switched to RPG mode. Start by asking something like "What do I see around me?" .');
-                    promptMap.set(chatId, 'rpg')
-                    break;
-                }
-
-                case '/assistant': {
-                    resetMemory(chatId)
-                    bot.sendMessage(chatId, 'Memory has been reset and switched to default assistant mode. Get started by asking a question.');
-                    promptMap.set(chatId, 'default')
-                    break
-                }
-
                 default: {
-                    bot.sendMessage(chatId, `Unknown command:  ${message}. Try the following: 
-- /reset: Clears the bot memory to start a whole new conversation
-- /rpg: Switch to a text RPG mode where you can roleplay an adventure
-- /assistant: Switch to assistant mode for general question and answer capibilities`);
                     break;
                 }
             }
@@ -130,41 +59,85 @@ async function init() {
             }
         }
 
-        // Log the incoming request
-        console.log(identifier, ":", message)
+        // Create the message array to prompt the chat completion
+        const messages = buildMessageArray(chatId, firstName, message)
 
         // Ask OpenAI for the text completion and return the results to Telegram
+        let response = null
         try {
-            const prompt = buildPrompt(chatId, firstName, message)
-
-            const response = await openai.createCompletion(buildConfig(prompt));
-            if (response.data && response.data.choices) {
-
-                // Extract the bot response 
-                const result = response.data.choices[0].text
-
-                // Send the response to the user
-                bot.sendMessage(chatId, result);
-
-                // Update our existing chat context with the result of this completion
-                const chatContext = chatContextMap.get(chatId)
-                const updatedChatContext = `${chatContext}
-${firstName}: ${message}
-Hennos: ${result}`
-
-                chatContextMap.set(chatId, updatedChatContext)
-            }
+            response = await openai.createChatCompletion({
+                model: "gpt-3.5-turbo",
+                messages: messages,
+            });
         } catch (err) {
             bot.sendMessage(chatId, 'Error: ' + err.message);
 
             // Clean up the chat context when something goes wrong, just in case...
             resetMemory(chatId)
-            console.log("ChatId", chatId, "Response Error:", err.message)
-            console.log(err)
+            console.log("ChatId", chatId, "CreateChatCompletion Error:", err.message)
+            return
+        }
+
+        if (response && response.data && response.data.choices) {
+            // Extract the bot response 
+            const result = response.data.choices[0].message
+
+            try {
+                // Send the response to the user
+                bot.sendMessage(chatId, result.content, { parse_mode: "Markdown" });
+
+                // Update our existing chat context with the result of this completion
+                updateChatContext(chatId, result.role, result.content)
+            } catch (err) {
+                bot.sendMessage(chatId, 'Error: ' + err.message);
+
+                // Clean up the chat context when something goes wrong, just in case...
+                resetMemory(chatId)
+                console.log("ChatId", chatId, "Telegram Response Error:", err.message)
+                return
+            }
         }
     });
 }
 
+function updateChatContext(chatId, role, content) {
+    const currentChatContext = chatContextMap.get(chatId)
+
+    if (currentChatContext.length > 10) {
+        // Remove the oldest user message from memory
+        currentChatContext.shift()
+        // Remove the oldest assistant message from memory
+        currentChatContext.shift()
+    }
+
+    currentChatContext.push({ role, content })
+    chatContextMap.set(chatId, currentChatContext)
+
+    try {
+        console.log(chatId, role, content.split('\n')[0])
+    } catch (err) {
+        // ignore this
+    }
+}
+
+function buildMessageArray(chatId, firstName, nextUserMessage) {
+    if (!chatContextMap.has(chatId)) {
+        chatContextMap.set(chatId, [])
+    }
+
+    updateChatContext(chatId, "user", nextUserMessage)
+
+    return [
+        { role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are assisting a user named '${firstName}'. You should respond in paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` },
+        ...chatContextMap.get(chatId),
+    ]
+}
+
+function resetMemory(chatId) {
+    if (chatContextMap.has(chatId)) {
+        chatContextMap.delete(chatId)
+    }
+}
 
 // Check for configuration values at startup
 if (!process.env.OPENAI_API_ORG) {
