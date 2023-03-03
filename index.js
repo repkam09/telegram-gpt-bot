@@ -24,24 +24,22 @@ async function init() {
             return
         }
 
+        // Add a command to reset the bots internal chat context memory
+        if (message === "/reset") {
+            resetMemory(chatId)
+            bot.sendMessage(chatId, 'Memory has been reset');
+            return
+        }
+
+        // Add some simple help text info
+        if (message === "/start" || message === "/help" || message === "/about") {
+            bot.sendMessage(chatId, 'Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!', { parse_mode: 'Markdown' });
+            return
+        }
+
         // If the incoming text is empty or a command, ignore it for the moment
         if (message.startsWith('/')) {
-            switch (message) {
-                case "/reset": {
-                    resetMemory(chatId)
-                    bot.sendMessage(chatId, 'Memory has been reset');
-                    break
-                }
-
-                case "/start": {
-                    bot.sendMessage(chatId, 'Start chatting to get started!');
-                    break
-                }
-
-                default: {
-                    break;
-                }
-            }
+            bot.sendMessage(chatId, 'Unknown command.');
             return
         }
 
@@ -53,7 +51,7 @@ async function init() {
         if (process.env.TELEGRAM_ID_WHITELIST) {
             const whitelist = process.env.TELEGRAM_ID_WHITELIST.trim().split(',')
             if (!whitelist.includes(`${chatId}`)) {
-                bot.sendMessage(chatId, 'Error: You have not been whitelisted to use this bot. Your identifier is: ' + identifier);
+                bot.sendMessage(chatId, 'Sorry, you have not been whitelisted to use this bot. Please request access and provide your identifier: ' + identifier);
                 console.log(identifier, "sent a message but is not whitelisted")
                 return
             }
