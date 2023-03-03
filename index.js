@@ -134,8 +134,18 @@ function buildMessageArray(chatId, firstName, nextUserMessage) {
 
     updateChatContext(chatId, "user", nextUserMessage)
 
+    const prompt = [{ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You are assisting a user named '${firstName}'. You should respond in paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` }]
+
+    // Provide admin level users with extra information they can ask about
+    if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
+        const keys = Array.from(chatContextMap.keys()).join(',')
+        prompt.push({
+            role: "system", content: `Here is some additional information about the environment and user sessions. Current User Id: ${chatId}, Active User Sessions: ${keys}, User Whitelist: ${process.env.TELEGRAM_ID_WHITELIST || 'empty'}`
+        })
+    }
+
     return [
-        { role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are assisting a user named '${firstName}'. You should respond in paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` },
+        ...prompt,
         ...chatContextMap.get(chatId),
     ]
 }
