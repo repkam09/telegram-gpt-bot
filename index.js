@@ -21,6 +21,7 @@ async function init() {
         const message = msg.text
 
         if (!message) {
+            bot.sendMessage(chatId, 'Sorry, I don\'t know what to do with that');
             return
         }
 
@@ -35,6 +36,14 @@ async function init() {
         if (message === "/start" || message === "/help" || message === "/about") {
             bot.sendMessage(chatId, 'Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!', { parse_mode: 'Markdown' });
             return
+        }
+
+        if (message === "/debug") {
+            if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
+                const keys = Array.from(chatContextMap.keys()).join(',')
+                bot.sendMessage(chatId, `Active Sessions: ${keys}`);
+                return
+            }
         }
 
         // If the incoming text is empty or a command, ignore it for the moment
@@ -152,6 +161,10 @@ if (!process.env.TELEGRAM_BOT_KEY) {
 
 if (process.env.TELEGRAM_ID_WHITELIST) {
     console.log("Whitelist Enabled: " + process.env.TELEGRAM_ID_WHITELIST)
+}
+
+if (process.env.TELEGRAM_BOT_ADMIN) {
+    console.log("Bot Admin: " + process.env.TELEGRAM_BOT_ADMIN)
 }
 
 // Start the bot and listeners
