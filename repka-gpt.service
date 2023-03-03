@@ -1,0 +1,20 @@
+[Unit]
+Description=repka-gpt service
+
+[Service]
+ExecStart=/usr/bin/node /home/mark/services/telegram-gpt-bot/index.js
+# Required on some systems
+WorkingDirectory=/home/mark/services/telegram-gpt-bot/
+Restart=always
+# Restart service after 10 seconds if node service crashes
+RestartSec=10
+# Output to syslog
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=repka-gpt
+User=mark
+Group=mark
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
