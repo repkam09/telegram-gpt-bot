@@ -16,33 +16,47 @@ async function init() {
 
     const bot = new TelegramBot(process.env.TELEGRAM_BOT_KEY, { polling: true });
 
+    const prefix = process.env.TELEGRAM_GROUP_PREFIX + " ";
+
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
-        const message = msg.text
+        let message = msg.text;
 
         if (!message) {
-            bot.sendMessage(chatId, 'Sorry, I don\'t know what to do with that');
             return
         }
 
-        // Add a command to reset the bots internal chat context memory
-        if (message === "/reset") {
-            resetMemory(chatId)
-            bot.sendMessage(chatId, 'Memory has been reset');
-            return
-        }
-
-        // Add some simple help text info
-        if (message === "/start" || message === "/help" || message === "/about") {
-            bot.sendMessage(chatId, 'Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!', { parse_mode: 'Markdown' });
-            return
-        }
-
-        if (message === "/debug") {
-            if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
-                const keys = Array.from(chatContextMap.keys()).join(',')
-                bot.sendMessage(chatId, `Active Sessions: ${keys}`);
+        if (msg.chat.type !== "private") {
+            // If this is not a private chat, make sure that the user @'d the bot with a question directly
+            if (!message.startsWith(prefix)) {
                 return
+            }
+
+            // If the user did @ the bot, strip out that @ prefix before sending the message
+            message = message.replace(prefix, "")
+        }
+
+        // Only respond to special commands from within private chats
+        if (msg.chat.type === "private") {
+            // Add a command to reset the bots internal chat context memory
+            if (message === "/reset") {
+                resetMemory(chatId)
+                bot.sendMessage(chatId, 'Memory has been reset');
+                return
+            }
+
+            // Add some simple help text info
+            if (message === "/start" || message === "/help" || message === "/about") {
+                bot.sendMessage(chatId, 'Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!', { parse_mode: 'Markdown' });
+                return
+            }
+
+            if (message === "/debug") {
+                if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
+                    const keys = Array.from(chatContextMap.keys()).join(',')
+                    bot.sendMessage(chatId, `Active Sessions: ${keys}`);
+                    return
+                }
             }
         }
 
@@ -53,7 +67,7 @@ async function init() {
         }
 
         // Pull out some identifiers for helpful logging
-        const firstName = msg.chat.first_name || "Telegram User"
+        const firstName = msg.chat.first_name || "User"
         const identifier = `${firstName} (${chatId})`
 
         // If a whitelist is provided check that the incoming chatId is in the list
@@ -167,6 +181,10 @@ if (!process.env.OPENAI_API_KEY) {
 
 if (!process.env.TELEGRAM_BOT_KEY) {
     throw new Error("Missing TELEGRAM_BOT_KEY")
+}
+
+if (!process.env.TELEGRAM_GROUP_PREFIX) {
+    throw new Error("Missing TELEGRAM_GROUP_PREFIX")
 }
 
 if (process.env.TELEGRAM_ID_WHITELIST) {
