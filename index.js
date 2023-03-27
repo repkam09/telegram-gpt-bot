@@ -153,14 +153,15 @@ function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessage) {
 
     updateChatContext(chatId, "user", nextUserMessage, firstName)
 
-    const prompt = []
+    const prompt = [{ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` }]
 
     if (!isGroupChat) {
-        prompt.push({ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You are assisting a user named '${firstName}'. You should respond in paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` })
+        prompt.push({ role: "system", content: `You are currently assisting a user named '${firstName}' in a one-on-one private chat session.` })
     }
 
     if (isGroupChat) {
-        prompt.push({ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` })
+        prompt.push({ role: "system", content: `You are currently assisting users within a group chat setting. The latest request is from a user named '${firstName}'.`})
+
     }
 
     // Provide admin level users with extra information they can ask about
