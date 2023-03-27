@@ -20,6 +20,7 @@ async function init() {
 
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
+
         let message = msg.text;
         let isGroupChat = false;
 
@@ -69,8 +70,10 @@ async function init() {
         }
 
         // Pull out some identifiers for helpful logging
-        const firstName = msg.chat.first_name || "User"
-        const identifier = `${firstName} (${chatId})`
+        const firstName = msg.from.first_name || "User"
+        const userId = msg.from.id || 'unknown'
+
+        const identifier = `${firstName} (${userId}) [${chatId}]`
 
         // If a whitelist is provided check that the incoming chatId is in the list
         if (process.env.TELEGRAM_ID_WHITELIST) {
@@ -110,7 +113,7 @@ async function init() {
                 bot.sendMessage(chatId, result.content, { parse_mode: "Markdown" });
 
                 // Update our existing chat context with the result of this completion
-                updateChatContext(chatId, result.role, result.content)
+                updateChatContext(chatId, result.role, result.content, result.role)
             } catch (err) {
                 bot.sendMessage(chatId, 'Error: ' + err.message);
 
@@ -123,7 +126,7 @@ async function init() {
     });
 }
 
-function updateChatContext(chatId, role, content) {
+function updateChatContext(chatId, role, content, name) {
     const currentChatContext = chatContextMap.get(chatId)
 
     if (currentChatContext.length > 10) {
@@ -137,7 +140,7 @@ function updateChatContext(chatId, role, content) {
     chatContextMap.set(chatId, currentChatContext)
 
     try {
-        console.log(chatId, role, content.split('\n')[0])
+        console.log(name, chatId, role, content.split('\n')[0])
     } catch (err) {
         // ignore this
     }
@@ -148,7 +151,7 @@ function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessage) {
         chatContextMap.set(chatId, [])
     }
 
-    updateChatContext(chatId, "user", nextUserMessage)
+    updateChatContext(chatId, "user", nextUserMessage, firstName)
 
     const prompt = []
 
