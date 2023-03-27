@@ -21,6 +21,7 @@ async function init() {
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         let message = msg.text;
+        let isGroupChat = false;
 
         if (!message) {
             return
@@ -34,6 +35,7 @@ async function init() {
 
             // If the user did @ the bot, strip out that @ prefix before sending the message
             message = message.replace(prefix, "")
+            isGroupChat = true;
         }
 
         // Only respond to special commands from within private chats
@@ -81,13 +83,13 @@ async function init() {
         }
 
         // Create the message array to prompt the chat completion
-        const messages = buildMessageArray(chatId, firstName, message)
+        const messages = buildMessageArray(chatId, isGroupChat, firstName, message)
 
         // Ask OpenAI for the text completion and return the results to Telegram
         let response = null
         try {
             response = await openai.createChatCompletion({
-                model: "gpt-3.5-turbo",
+                model: process.env.OPENAI_API_LLM,
                 messages: messages,
             });
         } catch (err) {
@@ -141,14 +143,22 @@ function updateChatContext(chatId, role, content) {
     }
 }
 
-function buildMessageArray(chatId, firstName, nextUserMessage) {
+function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessage) {
     if (!chatContextMap.has(chatId)) {
         chatContextMap.set(chatId, [])
     }
 
     updateChatContext(chatId, "user", nextUserMessage)
 
-    const prompt = [{ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You are assisting a user named '${firstName}'. You should respond in paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` }]
+    const prompt = []
+
+    if (!isGroupChat) {
+        prompt.push({ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You are assisting a user named '${firstName}'. You should respond in paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` })
+    }
+
+    if (isGroupChat) {
+        prompt.push({ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` })
+    }
 
     // Provide admin level users with extra information they can ask about
     if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
@@ -185,6 +195,10 @@ if (!process.env.TELEGRAM_BOT_KEY) {
 
 if (!process.env.TELEGRAM_GROUP_PREFIX) {
     throw new Error("Missing TELEGRAM_GROUP_PREFIX")
+}
+
+if (!process.env.OPENAI_API_LLM) {
+    throw new Error("Missing OPENAI_API_LLM")
 }
 
 if (process.env.TELEGRAM_ID_WHITELIST) {
