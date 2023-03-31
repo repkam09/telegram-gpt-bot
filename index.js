@@ -81,13 +81,13 @@ async function init() {
                     }
 
                     try {
-                        const chatId = parseInt(parts[1])
+                        const chatIdParam = parseInt(parts[1])
 
                         if (!knownModels.includes(parts[2])) {
                             return await sendMessageWrapper(bot, chatId, `Unknown LLM ${parts[2]}, valid options are: ${knownModels.join(', ')}`);
                         }
 
-                        chatIdToLLMMap.set(chatId, parts[2])
+                        chatIdToLLMMap.set(chatIdParam, parts[2])
                         return await sendMessageWrapper(bot, chatId, `Chat ${parts[1]} will now use LLM ${parts[2]}`);
                     } catch (err) {
                         return await sendMessageWrapper(bot, chatId, `Error: ${err.message} \n ${err}`);
