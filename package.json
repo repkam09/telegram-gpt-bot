@@ -2,10 +2,11 @@
   "name": "telegram-gpt-bot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "hennos.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node hennos.js"
   },
   "author": "Mark Repka",
   "license": "MIT",
