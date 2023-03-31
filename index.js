@@ -74,22 +74,24 @@ async function init() {
             }
 
             if (message.startsWith('/configure')) {
-                const parts = message.split(" ");
-                if (parts.length !== 3) {
-                    return await sendMessageWrapper(bot, chatId, `Syntax Error`);
-                }
-
-                try {
-                    const chatId = parseInt(parts[1])
-
-                    if (!knownModels.includes(parts[2])) {
-                        return await sendMessageWrapper(bot, chatId, `Unknown LLM ${parts[2]}, valid options are: ${knownModels.join(', ')}`);
+                if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
+                    const parts = message.split(" ");
+                    if (parts.length !== 3) {
+                        return await sendMessageWrapper(bot, chatId, `Syntax Error`);
                     }
 
-                    chatIdToLLMMap.set(chatId, parts[2])
-                    return await sendMessageWrapper(bot, chatId, `Chat ${parts[1]} will now use LLM ${parts[2]}`);
-                } catch (err) {
-                    return await sendMessageWrapper(bot, chatId, `Error: ${err.message} \n ${err}`);
+                    try {
+                        const chatId = parseInt(parts[1])
+
+                        if (!knownModels.includes(parts[2])) {
+                            return await sendMessageWrapper(bot, chatId, `Unknown LLM ${parts[2]}, valid options are: ${knownModels.join(', ')}`);
+                        }
+
+                        chatIdToLLMMap.set(chatId, parts[2])
+                        return await sendMessageWrapper(bot, chatId, `Chat ${parts[1]} will now use LLM ${parts[2]}`);
+                    } catch (err) {
+                        return await sendMessageWrapper(bot, chatId, `Error: ${err.message} \n ${err}`);
+                    }
                 }
             }
         }
