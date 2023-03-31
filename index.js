@@ -5,6 +5,8 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 
 const chatContextMap = new Map();
+const userIdToNameMap = new Map();
+const chatIdToLLMMap = new Map();
 
 async function init() {
     const configuration = new Configuration({
@@ -13,6 +15,9 @@ async function init() {
     });
 
     const openai = new OpenAIApi(configuration);
+
+    const models = await openai.listModels()
+    const knownModels = models.data.data.map((model) => model.id)
 
     const bot = new TelegramBot(process.env.TELEGRAM_BOT_KEY, { polling: true });
 
@@ -56,9 +61,35 @@ async function init() {
 
             if (message === "/debug") {
                 if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
-                    const keys = Array.from(chatContextMap.keys()).join(',')
-                    await sendMessageWrapper(bot, chatId, `Active Sessions: ${keys}`);
+                    const chatkeys = Array.from(chatContextMap.keys()).join(',')
+                    await sendMessageWrapper(bot, chatId, `Active Sessions: ${chatkeys}`);
+
+                    const userKeys = Array.from(userIdToNameMap.keys()).map((key) => {
+                        return `ID ${key} belongs to user ${userIdToNameMap.get(key)}`
+                    }).join('\n')
+
+                    await sendMessageWrapper(bot, chatId, `Known Users:\n ${userKeys}`);
                     return
+                }
+            }
+
+            if (message.startsWith('/configure')) {
+                const parts = message.split(" ");
+                if (parts.length !== 3) {
+                    return await sendMessageWrapper(bot, chatId, `Syntax Error`);
+                }
+
+                try {
+                    const chatId = parseInt(parts[1])
+
+                    if (!knownModels.includes(parts[2])) {
+                        return await sendMessageWrapper(bot, chatId, `Unknown LLM ${parts[2]}, valid options are: ${knownModels.join(', ')}`);
+                    }
+
+                    chatIdToLLMMap.set(chatId, parts[2])
+                    return await sendMessageWrapper(bot, chatId, `Chat ${parts[1]} will now use LLM ${parts[2]}`);
+                } catch (err) {
+                    return await sendMessageWrapper(bot, chatId, `Error: ${err.message} \n ${err}`);
                 }
             }
         }
@@ -72,6 +103,10 @@ async function init() {
         // Pull out some identifiers for helpful logging
         const firstName = msg.from.first_name || "User"
         const userId = msg.from.id || 'unknown'
+
+        if (!userIdToNameMap.has(userId)) {
+            userIdToNameMap.set(userId, firstName)
+        }
 
         const identifier = `${firstName} (${userId}) [${chatId}]`
 
@@ -90,9 +125,14 @@ async function init() {
 
         // Ask OpenAI for the text completion and return the results to Telegram
         let response = null
+        let model = process.env.OPENAI_API_LLM
         try {
+            if (chatIdToLLMMap.has(chatId)) {
+                model = chatIdToLLMMap.get(chatId)
+            }
+
             response = await openai.createChatCompletion({
-                model: process.env.OPENAI_API_LLM,
+                model: model,
                 messages: messages,
             });
         } catch (err) {
@@ -233,6 +273,7 @@ if (!process.env.TELEGRAM_GROUP_PREFIX) {
 if (!process.env.OPENAI_API_LLM) {
     throw new Error("Missing OPENAI_API_LLM")
 }
+console.log("Default LLM: " + process.env.OPENAI_API_LLM)
 
 if (process.env.TELEGRAM_ID_WHITELIST) {
     console.log("Whitelist Enabled: " + process.env.TELEGRAM_ID_WHITELIST)
