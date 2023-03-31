@@ -160,8 +160,7 @@ function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessage) {
     }
 
     if (isGroupChat) {
-        prompt.push({ role: "system", content: `You are currently assisting users within a group chat setting. The latest request is from a user named '${firstName}'.`})
-
+        prompt.push({ role: "system", content: `You are currently assisting users within a group chat setting.` })
     }
 
     // Provide admin level users with extra information they can ask about
