@@ -44,20 +44,20 @@ async function init() {
             // Add a command to reset the bots internal chat context memory
             if (message === "/reset") {
                 resetMemory(chatId)
-                bot.sendMessage(chatId, 'Memory has been reset');
+                await sendMessageWrapper(bot, chatId, 'Memory has been reset');
                 return
             }
 
             // Add some simple help text info
             if (message === "/start" || message === "/help" || message === "/about") {
-                bot.sendMessage(chatId, 'Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!', { parse_mode: 'Markdown' });
+                await sendMessageWrapper(bot, chatId, 'Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!', { parse_mode: 'Markdown' });
                 return
             }
 
             if (message === "/debug") {
                 if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
                     const keys = Array.from(chatContextMap.keys()).join(',')
-                    bot.sendMessage(chatId, `Active Sessions: ${keys}`);
+                    await sendMessageWrapper(bot, chatId, `Active Sessions: ${keys}`);
                     return
                 }
             }
@@ -65,7 +65,7 @@ async function init() {
 
         // If the incoming text is empty or a command, ignore it for the moment
         if (message.startsWith('/')) {
-            bot.sendMessage(chatId, 'Unknown command.');
+            await sendMessageWrapper(bot, chatId, 'Unknown command.');
             return
         }
 
@@ -79,7 +79,7 @@ async function init() {
         if (process.env.TELEGRAM_ID_WHITELIST) {
             const whitelist = process.env.TELEGRAM_ID_WHITELIST.trim().split(',')
             if (!whitelist.includes(`${chatId}`)) {
-                bot.sendMessage(chatId, 'Sorry, you have not been whitelisted to use this bot. Please request access and provide your identifier: ' + identifier);
+                await sendMessageWrapper(bot, chatId, 'Sorry, you have not been whitelisted to use this bot. Please request access and provide your identifier: ' + identifier);
                 console.log(identifier, "sent a message but is not whitelisted")
                 return
             }
@@ -96,7 +96,7 @@ async function init() {
                 messages: messages,
             });
         } catch (err) {
-            bot.sendMessage(chatId, 'Error: ' + err.message);
+            await sendMessageWrapper(bot, chatId, 'Error: ' + err.message);
 
             // Clean up the chat context when something goes wrong, just in case...
             resetMemory(chatId)
@@ -109,13 +109,13 @@ async function init() {
             const result = response.data.choices[0].message
 
             try {
-                // Send the response to the user
-                bot.sendMessage(chatId, result.content, { parse_mode: "Markdown" });
+                // Send the response to the user, making sure to split the message if needed
+                await sendMessageWrapper(bot, chatId, result.content, { parse_mode: "Markdown" });
 
                 // Update our existing chat context with the result of this completion
                 updateChatContext(chatId, result.role, result.content, result.role)
             } catch (err) {
-                bot.sendMessage(chatId, 'Error: ' + err.message);
+                await sendMessageWrapper(bot, chatId, 'Error: ' + err.message);
 
                 // Clean up the chat context when something goes wrong, just in case...
                 resetMemory(chatId)
@@ -124,6 +124,36 @@ async function init() {
             }
         }
     });
+}
+
+async function sendMessageWrapper(bot, chatId, content, options = {}) {
+    if (!content) {
+        throw new Error('Message content is undefined')
+    }
+
+    if (!content.length) {
+        throw new Error('Message content does not have a length property')
+    }
+
+    if (content.length < 4096) {
+        return await bot.sendMessage(chatId, content, options)
+    }
+
+    const chunks = chunkSubstr(content, 4096)
+    for (let i = 0; i < chunks.length; i++) {
+        await bot.sendMessage(chatId, chunks[i], options)
+    }
+}
+
+function chunkSubstr(str, size) {
+    const numChunks = Math.ceil(str.length / size)
+    const chunks = new Array(numChunks)
+
+    for (let i = 0, o = 0; i < numChunks; ++i, o += size) {
+        chunks[i] = str.substr(o, size)
+    }
+
+    return chunks
 }
 
 function updateChatContext(chatId, role, content, name) {
