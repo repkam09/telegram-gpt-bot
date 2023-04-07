@@ -61,14 +61,17 @@ async function init() {
 
             if (message === "/debug") {
                 if (process.env.TELEGRAM_BOT_ADMIN && process.env.TELEGRAM_BOT_ADMIN === `${chatId}`) {
-                    const chatkeys = Array.from(chatContextMap.keys()).join(',')
-                    await sendMessageWrapper(bot, chatId, `Active Sessions: ${chatkeys}`);
+                    const userKeys = Array.from(userIdToNameMap.keys()).map((key) => userIdToNameMap.get(key))
+                    if (userKeys.length > 0) {
+                        await sendMessageWrapper(bot, chatId, userKeys.join('\n'));
+                    } else {
+                        await sendMessageWrapper(bot, chatId, "There are no active user sessions");
+                    }
 
-                    const userKeys = Array.from(userIdToNameMap.keys()).map((key) => {
-                        return `ID ${key} belongs to user ${userIdToNameMap.get(key)}`
-                    }).join('\n')
-
-                    await sendMessageWrapper(bot, chatId, `Known Users:\n ${userKeys}`);
+                    const chatkeys = Array.from(chatContextMap.keys()).filter((chatId) => !userIdToNameMap.has(chatId))
+                    if (chatkeys.length > 0) {
+                        await sendMessageWrapper(bot, chatId, `There are also several IDs that do not correspond to user chats. These are usually Group Chats: \n${chatkeys.join(", ")}`);
+                    }
                     return
                 }
             }
@@ -103,11 +106,13 @@ async function init() {
         }
 
         // Pull out some identifiers for helpful logging
-        const firstName = msg.from.first_name || "User"
-        const userId = msg.from.id || 'unknown'
+        const firstName = msg.from.first_name || "undefined"
+        const lastName = msg.from.last_name || "undefined"
+        const username = msg.from.username || 'undefined'
+        const userId = msg.from.id || 'undefined'
 
         if (!userIdToNameMap.has(userId)) {
-            userIdToNameMap.set(userId, firstName)
+            userIdToNameMap.set(userId, `${firstName} ${lastName} [${username}] [${userId}]`)
         }
 
         const identifier = `${firstName} (${userId}) [${chatId}]`
