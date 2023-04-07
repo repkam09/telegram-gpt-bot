@@ -208,7 +208,7 @@ function updateChatContext(chatId, role, content, name) {
         currentChatContext.shift()
     }
 
-    currentChatContext.push({ role, content })
+    currentChatContext.push({ role, content, name })
     chatContextMap.set(chatId, currentChatContext)
 
     try {
