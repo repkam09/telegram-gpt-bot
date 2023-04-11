@@ -158,17 +158,26 @@ async function init() {
             try {
                 // Send the response to the user, making sure to split the message if needed
                 await sendMessageWrapper(bot, chatId, result.content, { parse_mode: "Markdown" });
+            } catch (err1) {
+                console.log("ChatId", chatId, "Telegram Response Error:", err1.message, "Failed x1")
 
-                // Update our existing chat context with the result of this completion
-                updateChatContext(chatId, result.role, result.content, result.role)
-            } catch (err) {
-                await sendMessageWrapper(bot, chatId, 'Error: ' + err.message);
+                try {
+                    // Send the response to the user, making sure to split the message if needed
+                    // If this failed once, remove the Markdown parser and try again
+                    await sendMessageWrapper(bot, chatId, result.content, { });
+                } catch (err2) {
+                    await sendMessageWrapper(bot, chatId, 'Error: ' + err2.message);
 
-                // Clean up the chat context when something goes wrong, just in case...
-                resetMemory(chatId)
-                console.log("ChatId", chatId, "Telegram Response Error:", err.message)
-                return
+                    // Clean up the chat context when something goes wrong, just in case...
+                    resetMemory(chatId)
+                    console.log("ChatId", chatId, "Telegram Response Error:", err2.message, "Failed x2")
+                    return
+                }
             }
+                // Update our existing chat context with the result of this completion
+
+            updateChatContext(chatId, result.role, result.content, result.role)
+
         }
     });
 }
