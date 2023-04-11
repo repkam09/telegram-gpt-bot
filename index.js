@@ -21,7 +21,108 @@ async function init() {
 
     const bot = new TelegramBot(process.env.TELEGRAM_BOT_KEY, { polling: true });
 
-    const prefix = process.env.TELEGRAM_GROUP_PREFIX + " ";
+    const prefix = process.env.TELEGRAM_GROUP_PREFIX + "";
+
+    bot.on('photo', async (msg) => {
+        const chatId = msg.chat.id;
+        let message = msg.caption || "";
+        let isGroupChat = false;
+
+        if (msg.chat.type !== "private") {
+            // If this is not a private chat, make sure that the user @'d the bot with a question directly
+            if (!message.startsWith(prefix)) {
+                console.log("Ignoring file because the caption did not contain the bot prefix")
+                return
+            }
+
+            // If the user did @ the bot, strip out that @ prefix before sending the message
+            message = message.replace(prefix, "").trim()
+            isGroupChat = true;
+        }
+
+        // Pull out some identifiers for helpful logging
+        const firstName = msg.from.first_name || "undefined"
+        const lastName = msg.from.last_name || "undefined"
+        const username = msg.from.username || 'undefined'
+        const userId = msg.from.id || 'undefined'
+
+        if (!userIdToNameMap.has(userId)) {
+            userIdToNameMap.set(userId, `${firstName} ${lastName} [${username}] [${userId}]`)
+        }
+
+        const identifier = `${firstName} (${userId}) [${chatId}]`
+
+        console.log(identifier, "starting a variant_image request")
+        const response = await openai.createImageVariation({
+            image: null,
+            n: 1,
+            size: "1024x1024",
+            responseFormat: "url"
+        });
+
+        console.log(identifier, "finished a variant_image request")
+        return bot.sendPhoto(chatId, response.data.data[0].url, { reply_to_message_id: msg.message_id, caption: "Sure! Here is your image of" + message });
+
+        return await sendMessageWrapper(bot, chatId, `Photo Message`, { reply_to_message_id: msg.message_id });
+    })
+
+    bot.on('document', async (msg) => {
+        const chatId = msg.chat.id;
+        let message = msg.caption;
+        let isGroupChat = false;
+
+        if (msg.chat.type !== "private") {
+            // If this is not a private chat, make sure that the user @'d the bot with a question directly
+            if (!message.startsWith(prefix)) {
+                console.log("Ignoring file because the caption did not contain the bot prefix")
+                return
+            }
+
+            // If the user did @ the bot, strip out that @ prefix before sending the message
+            message = message.replace(prefix, "").trim()
+            isGroupChat = true;
+        }
+
+        // Pull out some identifiers for helpful logging
+        const firstName = msg.from.first_name || "undefined"
+        const lastName = msg.from.last_name || "undefined"
+        const username = msg.from.username || 'undefined'
+        const userId = msg.from.id || 'undefined'
+
+        if (!userIdToNameMap.has(userId)) {
+            userIdToNameMap.set(userId, `${firstName} ${lastName} [${username}] [${userId}]`)
+        }
+
+        const identifier = `${firstName} (${userId}) [${chatId}]`
+
+        if (msg.document.mime_type) {
+            switch (msg.document.mime_type) {
+                case "text/plain": {
+                    return await sendMessageWrapper(bot, chatId, `This seems to be a text file`, { reply_to_message_id: msg.message_id });
+                }
+
+                case "application/pdf": {
+                    return await sendMessageWrapper(bot, chatId, `This seems to be a pdf file`, { reply_to_message_id: msg.message_id });
+                }
+
+                case "image/jpeg":
+                case "image/jpg": {
+                    return await sendMessageWrapper(bot, chatId, `This seems to be a jpeg image file`, { reply_to_message_id: msg.message_id });
+                }
+
+                case "image/png": {
+                    return await sendMessageWrapper(bot, chatId, `This seems to be a png image file`, { reply_to_message_id: msg.message_id });
+                }
+
+                default: {
+                    return await sendMessageWrapper(bot, chatId, `This seems to be a ${msg.document.mime_type} file, which I don't know how to handle.`, { reply_to_message_id: msg.message_id });
+                }
+            }
+        }
+
+
+        return await sendMessageWrapper(bot, chatId, `Document ${identifier}: ${msg.caption || ''} ${msg.document.mime_type}`, { reply_to_message_id: msg.message_id });
+    })
 
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
@@ -40,7 +141,7 @@ async function init() {
             }
 
             // If the user did @ the bot, strip out that @ prefix before sending the message
-            message = message.replace(prefix, "")
+            message = message.replace(prefix, "").trim()
             isGroupChat = true;
         }
 
@@ -127,6 +228,20 @@ async function init() {
             }
         }
 
+        if (message.startsWith('Create an image of')) {
+            message = message.replace("Create an image of", "")
+
+            console.log(identifier, "starting a create_image request for:", message)
+            const response = await openai.createImage({
+                prompt: message,
+                n: 1,
+                size: "1024x1024",
+            });
+
+            console.log(identifier, "finished a create_image request for:", message)
+            return bot.sendPhoto(chatId, response.data.data[0].url, { reply_to_message_id: msg.message_id, caption: "Sure! Here is your image of" + message });
+        }
+
         // Create the message array to prompt the chat completion
         const messages = buildMessageArray(chatId, isGroupChat, firstName, message)
 
@@ -164,7 +279,7 @@ async function init() {
                 try {
                     // Send the response to the user, making sure to split the message if needed
                     // If this failed once, remove the Markdown parser and try again
-                    await sendMessageWrapper(bot, chatId, result.content, { });
+                    await sendMessageWrapper(bot, chatId, result.content, {});
                 } catch (err2) {
                     await sendMessageWrapper(bot, chatId, 'Error: ' + err2.message);
 
@@ -174,7 +289,7 @@ async function init() {
                     return
                 }
             }
-                // Update our existing chat context with the result of this completion
+            // Update our existing chat context with the result of this completion
 
             updateChatContext(chatId, result.role, result.content, result.role)
 
@@ -182,6 +297,14 @@ async function init() {
     });
 }
 
+/**
+ * 
+ * @param {TelegramBot} bot 
+ * @param {number} chatId 
+ * @param {string} content 
+ * @param {TelegramBot.SendMessageOptions | undefined} options 
+ * @returns 
+ */
 async function sendMessageWrapper(bot, chatId, content, options = {}) {
     if (!content) {
         throw new Error('Message content is undefined')
