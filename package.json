@@ -10,7 +10,9 @@
   "author": "Mark Repka",
   "license": "MIT",
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "dotenv": "^16.0.3",
+    "fluent-ffmpeg": "^2.1.2",
     "node-telegram-bot-api": "^0.61.0",
     "openai": "^3.2.1"
   },

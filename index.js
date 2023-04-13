@@ -1,12 +1,69 @@
+
 import { Configuration, OpenAIApi } from "openai";
+import os from "node:os"
 import TelegramBot from 'node-telegram-bot-api'
 import * as dotenv from 'dotenv'
+import installer from '@ffmpeg-installer/ffmpeg'
+import ffmpeg from "fluent-ffmpeg"
+import { createReadStream, createWriteStream } from "node:fs"
 
 dotenv.config()
+ffmpeg.setFfmpegPath(installer.path)
 
 const chatContextMap = new Map();
 const userIdToNameMap = new Map();
 const chatIdToLLMMap = new Map();
+
+async function convertVoiceFile(path) {
+    return new Promise((resolve, reject) => {
+        const outPath = path + '.mp3'
+        ffmpeg()
+            .input(path)
+            .audioQuality(96)
+            .toFormat("mp3")
+            .on('error', error => reject(error))
+            .on('exit', () => reject())
+            .on('close', () => reject())
+            .on('end', () => resolve(outPath))
+            .pipe(createWriteStream(outPath), { end: true });
+    })
+}
+
+
+async function handleVoiceMemo(openai, identifier, oggfile) {
+    console.log(identifier, "starting a voice request")
+
+    const mp3file = await convertVoiceFile(oggfile)
+    const fileStream = createReadStream(mp3file)
+    try {
+        const whisper = await openai.createTranscription(fileStream, 'whisper-1')
+        console.log(identifier, "finishing a voice request")
+
+        const question = whisper.data.text
+        console.log(identifier, "starting a chat completion request")
+        console.log(identifier, "transcribed query: ", question)
+
+        const response = await openai.createChatCompletion({
+
+            model: 'gpt-4',
+            messages: [
+                { role: 'system', content: 'You are a helpful assistant responding to a transcribed voice message from a user' },
+                { role: 'user', content: question }
+            ],
+        });
+
+
+        const answer = response.data.choices[0].message.content
+        console.log(identifier, "generated answer: ", answer)
+        console.log(identifier, "finishing a chat completion request")
+
+
+        return `Question: ${question}\n\nAnswer: ${answer}`
+    } catch (err) {
+        return `Unable to handle message: ${err.message}`
+    }
+}
+
 
 async function init() {
     const configuration = new Configuration({
@@ -22,6 +79,35 @@ async function init() {
     const bot = new TelegramBot(process.env.TELEGRAM_BOT_KEY, { polling: true });
 
     const prefix = process.env.TELEGRAM_GROUP_PREFIX + "";
+
+    bot.on('voice', async (msg) => {
+        const chatId = msg.chat.id;
+        let message = msg.caption || "";
+        let isGroupChat = false;
+
+        if (msg.chat.type !== "private") {
+            isGroupChat = true;
+        }
+
+        // Pull out some identifiers for helpful logging
+        const firstName = msg.from.first_name || "undefined"
+        const lastName = msg.from.last_name || "undefined"
+        const username = msg.from.username || 'undefined'
+        const userId = msg.from.id || 'undefined'
+
+        if (!userIdToNameMap.has(userId)) {
+            userIdToNameMap.set(userId, `${firstName} ${lastName} [${username}] [${userId}]`)
+        }
+
+        const identifier = `${firstName} (${userId}) [${chatId}]`
+        if (!msg.voice.file_id) {
+            return await sendMessageWrapper(bot, chatId, ` Invalid: Voice Message`, { reply_to_message_id: msg.message_id });
+        }
+
+        const oggfile = await bot.downloadFile(msg.voice.file_id, os.tmpdir())
+        const response = await handleVoiceMemo(openai, identifier, oggfile)
+        return await sendMessageWrapper(bot, chatId, response, { reply_to_message_id: msg.message_id })
+    })
 
     bot.on('photo', async (msg) => {
         const chatId = msg.chat.id;
@@ -41,9 +127,13 @@ async function init() {
         }
 
         // Pull out some identifiers for helpful logging
+
         const firstName = msg.from.first_name || "undefined"
+
         const lastName = msg.from.last_name || "undefined"
+
         const username = msg.from.username || 'undefined'
+
         const userId = msg.from.id || 'undefined'
 
         if (!userIdToNameMap.has(userId)) {
@@ -56,37 +146,44 @@ async function init() {
         const response = await openai.createImageVariation({
             image: null,
             n: 1,
+
             size: "1024x1024",
             responseFormat: "url"
         });
 
         console.log(identifier, "finished a variant_image request")
-        return bot.sendPhoto(chatId, response.data.data[0].url, { reply_to_message_id: msg.message_id, caption: "Sure! Here is your image of" + message });
 
-        return await sendMessageWrapper(bot, chatId, `Photo Message`, { reply_to_message_id: msg.message_id });
+        return bot.sendPhoto(chatId, response.data.data[0].url, { reply_to_message_id: msg.message_id, caption: "Sure! Here is your image of" + message });
     })
 
     bot.on('document', async (msg) => {
         const chatId = msg.chat.id;
         let message = msg.caption;
+
         let isGroupChat = false;
 
         if (msg.chat.type !== "private") {
             // If this is not a private chat, make sure that the user @'d the bot with a question directly
+
             if (!message.startsWith(prefix)) {
                 console.log("Ignoring file because the caption did not contain the bot prefix")
                 return
             }
 
             // If the user did @ the bot, strip out that @ prefix before sending the message
+
             message = message.replace(prefix, "").trim()
             isGroupChat = true;
         }
 
         // Pull out some identifiers for helpful logging
+
         const firstName = msg.from.first_name || "undefined"
+
         const lastName = msg.from.last_name || "undefined"
+
         const username = msg.from.username || 'undefined'
+
         const userId = msg.from.id || 'undefined'
 
         if (!userIdToNameMap.has(userId)) {
@@ -95,7 +192,9 @@ async function init() {
 
         const identifier = `${firstName} (${userId}) [${chatId}]`
 
+
         if (msg.document.mime_type) {
+
             switch (msg.document.mime_type) {
                 case "text/plain": {
                     return await sendMessageWrapper(bot, chatId, `This seems to be a text file`, { reply_to_message_id: msg.message_id });
@@ -115,10 +214,12 @@ async function init() {
                 }
 
                 default: {
+
                     return await sendMessageWrapper(bot, chatId, `This seems to be a ${msg.document.mime_type} file, which I don't know how to handle.`, { reply_to_message_id: msg.message_id });
                 }
             }
         }
+
 
 
         return await sendMessageWrapper(bot, chatId, `Document ${identifier}: ${msg.caption || ''} ${msg.document.mime_type}`, { reply_to_message_id: msg.message_id });
@@ -207,9 +308,13 @@ async function init() {
         }
 
         // Pull out some identifiers for helpful logging
+
         const firstName = msg.from.first_name || "undefined"
+
         const lastName = msg.from.last_name || "undefined"
+
         const username = msg.from.username || 'undefined'
+
         const userId = msg.from.id || 'undefined'
 
         if (!userIdToNameMap.has(userId)) {
@@ -239,6 +344,7 @@ async function init() {
             });
 
             console.log(identifier, "finished a create_image request for:", message)
+
             return bot.sendPhoto(chatId, response.data.data[0].url, { reply_to_message_id: msg.message_id, caption: "Sure! Here is your image of" + message });
         }
 
@@ -254,6 +360,7 @@ async function init() {
             }
 
             response = await openai.createChatCompletion({
+
                 model: model,
                 messages: messages,
             });
@@ -272,6 +379,7 @@ async function init() {
 
             try {
                 // Send the response to the user, making sure to split the message if needed
+
                 await sendMessageWrapper(bot, chatId, result.content, { parse_mode: "Markdown" });
             } catch (err1) {
                 console.log("ChatId", chatId, "Telegram Response Error:", err1.message, "Failed x1")
@@ -279,6 +387,7 @@ async function init() {
                 try {
                     // Send the response to the user, making sure to split the message if needed
                     // If this failed once, remove the Markdown parser and try again
+
                     await sendMessageWrapper(bot, chatId, result.content, {});
                 } catch (err2) {
                     await sendMessageWrapper(bot, chatId, 'Error: ' + err2.message);
@@ -290,6 +399,7 @@ async function init() {
                 }
             }
             // Update our existing chat context with the result of this completion
+
 
             updateChatContext(chatId, result.role, result.content, result.role)
 
