@@ -23,7 +23,71 @@ async function init() {
 
     const prefix = process.env.TELEGRAM_GROUP_PREFIX + " ";
 
-    bot.on('message', async (msg) => {
+    bot.on('location', async (msg) => {
+        const chatId = msg.chat.id
+        if (msg.chat.type !== "private") {
+            return
+        }
+
+        if (!msg.from) {
+            return
+        }
+
+        updateChatContext(chatId, 'user', `Here is my location as of '${new Date().toUTCString()}': lat=${msg.location.latitude}, lon=${msg.location.longitude}`, msg.from.first_name)
+        await sendMessageWrapper(bot, chatId, `Success! Your provided location will be taken into account, if relevant, in future messages.\n\n Information: ${JSON.stringify(msg.location)}.`);
+    })
+
+    bot.on('document', async (msg) => {
+        const chatId = msg.chat.id
+        if (msg.chat.type !== "private") {
+            return
+        }
+
+        await sendMessageWrapper(bot, chatId, `Error: Documents and Files are not yet supported.\n\n Information: ${JSON.stringify(msg.document)}`);
+    })
+
+    bot.on('contact', async (msg) => {
+        const chatId = msg.chat.id
+        if (msg.chat.type !== "private") {
+            return
+        }
+
+        if (!msg.from) {
+            return
+        }
+
+        updateChatContext(chatId, 'user', `Here is the contact information for '${msg.contact.first_name}'. Phone Number: ${msg.contact.phone_number}`, msg.from.first_name)
+        await sendMessageWrapper(bot, chatId, `I have received the information for your provided contact '${msg.contact.first_name}'`);
+    })
+
+    bot.on('photo', async (msg) => {
+        const chatId = msg.chat.id
+        if (msg.chat.type !== "private") {
+            return
+        }
+
+        await sendMessageWrapper(bot, chatId, `Error: Images are not yet supported.\n\n Information: ${JSON.stringify(msg.photo)}`);
+    })
+
+    bot.on('audio', async (msg) => {
+        const chatId = msg.chat.id
+        if (msg.chat.type !== "private") {
+            return
+        }
+
+        await sendMessageWrapper(bot, chatId, `Error: Audio messages are not yet supported.\n\n Information: ${JSON.stringify(msg.audio)}`);
+    })
+
+    bot.on('voice', async (msg) => {
+        const chatId = msg.chat.id
+        if (msg.chat.type !== "private") {
+            return
+        }
+
+        await sendMessageWrapper(bot, chatId, `Error: Voice recordings are not yet supported.\n\n Information: ${JSON.stringify(msg.voice)}`);
+    })
+
+    bot.on('text', async (msg) => {
         const chatId = msg.chat.id;
 
         let message = msg.text;
@@ -110,25 +174,26 @@ async function init() {
         const lastName = msg.from.last_name || "undefined"
         const username = msg.from.username || 'undefined'
         const userId = msg.from.id || 'undefined'
+        const groupName = msg.chat.title || 'undefined'
+
+        const identifier = `${firstName} ${lastName} [${username}] [${userId}]`
 
         if (!userIdToNameMap.has(userId)) {
-            userIdToNameMap.set(userId, `${firstName} ${lastName} [${username}] [${userId}]`)
+            userIdToNameMap.set(userId, identifier)
         }
-
-        const identifier = `${firstName} (${userId}) [${chatId}]`
 
         // If a whitelist is provided check that the incoming chatId is in the list
         if (process.env.TELEGRAM_ID_WHITELIST) {
             const whitelist = process.env.TELEGRAM_ID_WHITELIST.trim().split(',')
             if (!whitelist.includes(`${chatId}`)) {
                 await sendMessageWrapper(bot, chatId, 'Sorry, you have not been whitelisted to use this bot. Please request access and provide your identifier: ' + identifier);
-                console.log(identifier, "sent a message but is not whitelisted")
+                console.log(`${identifier} {${chatId}}`, "sent a message but is not whitelisted")
                 return
             }
         }
 
         // Create the message array to prompt the chat completion
-        const messages = buildMessageArray(chatId, isGroupChat, firstName, message)
+        const messages = buildMessageArray(chatId, isGroupChat, firstName, message, groupName)
 
         // Ask OpenAI for the text completion and return the results to Telegram
         let response = null
@@ -147,7 +212,7 @@ async function init() {
 
             // Clean up the chat context when something goes wrong, just in case...
             resetMemory(chatId)
-            console.log("ChatId", chatId, "CreateChatCompletion Error:", err.message)
+            console.log("ChatId", chatId, "CreateChatCompletion Error:", err.message, '\n', err)
             return
         }
 
@@ -164,7 +229,7 @@ async function init() {
                 try {
                     // Send the response to the user, making sure to split the message if needed
                     // If this failed once, remove the Markdown parser and try again
-                    await sendMessageWrapper(bot, chatId, result.content, { });
+                    await sendMessageWrapper(bot, chatId, result.content, {});
                 } catch (err2) {
                     await sendMessageWrapper(bot, chatId, 'Error: ' + err2.message);
 
@@ -174,10 +239,8 @@ async function init() {
                     return
                 }
             }
-                // Update our existing chat context with the result of this completion
-
+            // Update our existing chat context with the result of this completion
             updateChatContext(chatId, result.role, result.content, result.role)
-
         }
     });
 }
@@ -213,6 +276,10 @@ function chunkSubstr(str, size) {
 }
 
 function updateChatContext(chatId, role, content, name) {
+    if (!chatContextMap.has(chatId)) {
+        chatContextMap.set(chatId, [])
+    }
+
     const currentChatContext = chatContextMap.get(chatId)
 
     if (currentChatContext.length > 10) {
@@ -232,21 +299,19 @@ function updateChatContext(chatId, role, content, name) {
     }
 }
 
-function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessage) {
-    if (!chatContextMap.has(chatId)) {
-        chatContextMap.set(chatId, [])
-    }
-
+function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessage, groupName) {
     updateChatContext(chatId, "user", nextUserMessage, firstName)
 
     const prompt = [{ role: "system", content: `You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.` }]
 
+    prompt.push({ role: "system", content: `The current Date and Time is ${new Date().toUTCString()}.` })
+    
     if (!isGroupChat) {
         prompt.push({ role: "system", content: `You are currently assisting a user named '${firstName}' in a one-on-one private chat session.` })
     }
 
     if (isGroupChat) {
-        prompt.push({ role: "system", content: `You are currently assisting users within a group chat setting.` })
+        prompt.push({ role: "system", content: `You are currently assisting users within a group chat setting. The group chat is called '${groupName}'.` })
     }
 
     // Provide admin level users with extra information they can ask about
