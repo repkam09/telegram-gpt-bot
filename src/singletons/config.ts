@@ -1,9 +1,7 @@
-// @ts-check
-
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { Logger } from "../singletons/logger";
+import { Logger } from "./logger";
 
 
 export class Config {

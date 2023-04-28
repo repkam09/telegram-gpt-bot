@@ -1,16 +1,10 @@
-// @ts-check
-
 import { Configuration, OpenAIApi } from "openai";
 import { Config } from "./config";
 
 export class OpenAI { 
-    static _instance;
-    static _models;
+    static _instance: OpenAIApi;
+    static _models: string[];
 
-    /**
-     * 
-     * @returns {OpenAIApi} OpenAI API Instance
-     */
     static instance() {
         if (!OpenAI._instance) {
             const configuration = new Configuration({
@@ -24,10 +18,6 @@ export class OpenAI {
         return OpenAI._instance;
     }
 
-    /**
-     * 
-     * @returns {Promise<string[]>} OpenAI Model names
-     */
     static async models() {
         if (!OpenAI._models) {
             const models = await OpenAI.instance().listModels();

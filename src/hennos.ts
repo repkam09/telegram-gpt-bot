@@ -1,4 +1,3 @@
-// @ts-check
 import { Config } from "./singletons/config";
 import * as handlers from "./handlers";
 import { BotInstance } from "./singletons/telegram";

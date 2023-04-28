@@ -1,5 +1,3 @@
-// @ts-check
-
 export class ChatMemory {
     static _chat_context_map = new Map();
     static _id_to_name = new Map();

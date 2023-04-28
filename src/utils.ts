@@ -1,11 +1,9 @@
-// @ts-check
-
 import { Config } from "./singletons/config";
 import { BotInstance } from "./singletons/telegram";
 import {ChatMemory} from "./singletons/memory";
 import { Logger } from "./singletons/logger";
 
-export async function sendMessageWrapper(chatId, content, options = {}) {
+export async function sendMessageWrapper(chatId: number, content: string, options = {}) {
     if (!content) {
         throw new Error("Message content is undefined");
     }
@@ -24,7 +22,7 @@ export async function sendMessageWrapper(chatId, content, options = {}) {
     }
 }
 
-function chunkSubstr(str, size) {
+function chunkSubstr(str: string, size: number) {
     const numChunks = Math.ceil(str.length / size);
     const chunks = new Array(numChunks);
 
@@ -35,7 +33,7 @@ function chunkSubstr(str, size) {
     return chunks;
 }
 
-export function updateChatContext(chatId, role, content, name) {
+export function updateChatContext(chatId: number, role: string, content: string, name: string) {
     if (!ChatMemory.Context.has(chatId)) {
         ChatMemory.Context.set(chatId, []);
     }
@@ -59,7 +57,7 @@ export function updateChatContext(chatId, role, content, name) {
     }
 }
 
-export function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessage, groupName) {
+export function buildMessageArray(chatId: number, isGroupChat: boolean, firstName: string, nextUserMessage: string, groupName: string) {
     updateChatContext(chatId, "user", nextUserMessage, firstName);
 
     const prompt = [{ role: "system", content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable." }];
@@ -90,7 +88,7 @@ export function buildMessageArray(chatId, isGroupChat, firstName, nextUserMessag
     return result;
 }
 
-export function resetMemory(chatId) {
+export function resetMemory(chatId: number) {
     if (ChatMemory.Context.has(chatId)) {
         ChatMemory.Context.delete(chatId);
     }

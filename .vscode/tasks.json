@@ -1,0 +1,12 @@
+{
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "tsc",
+			"detail": "npm-run-all clean lint:fix tsc"
+		}
+	]
+}

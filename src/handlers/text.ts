@@ -1,21 +1,20 @@
-import { BotInstance } from "./singletons/telegram";
+import { BotInstance } from "../singletons/telegram";
 import { Logger } from "../singletons/logger";
-import { Config } from "./singletons/config";
-import { ChatMemory } from "./singletons/memory";
-import { OpenAI } from "./singletons/openai";
-import { sendMessageWrapper, updateChatContext, resetMemory, buildMessageArray } from "./utils";
+import { Config } from "../singletons/config";
+import { ChatMemory } from "../singletons/memory";
+import { OpenAI } from "../singletons/openai";
+import { sendMessageWrapper, updateChatContext, resetMemory, buildMessageArray } from "../utils";
 
 export function listen() {
-    Logger.info("Ataching Audio Message Listener");
+    Logger.info("Ataching Text Message Listener");
     BotInstance.instance().on("text", async (msg) => {
         const chatId = msg.chat.id;
+        if (!msg.from || !msg.text) {
+            return;
+        }
 
         let message = msg.text;
         let isGroupChat = false;
-
-        if (!message) {
-            return;
-        }
 
         if (msg.chat.type !== "private") {
         // If this is not a private chat, make sure that the user @'d the bot with a question directly
@@ -77,8 +76,9 @@ export function listen() {
 
                         ChatMemory.IdToLLM.set(chatIdParam, parts[2]);
                         return await sendMessageWrapper(chatId, `Chat ${parts[1]} will now use LLM ${parts[2]}`);
-                    } catch (err) {
-                        return await sendMessageWrapper(chatId, `Error: ${err.message} \n ${err}`);
+                    } catch (err: unknown) {
+                        const error = err as Error;
+                        return await sendMessageWrapper(chatId, `Error: ${error.message} \n ${error}`);
                     }
                 }
             }
@@ -128,12 +128,13 @@ export function listen() {
                 model: model,
                 messages: messages,
             });
-        } catch (err) {
-            await sendMessageWrapper(chatId, "Error: " + err.message);
+        } catch (err: unknown) {
+            const error = err as Error;
+            await sendMessageWrapper(chatId, "Error: " + error.message);
 
             // Clean up the chat context when something goes wrong, just in case...
             resetMemory(chatId);
-            Logger.info("ChatId", chatId, "CreateChatCompletion Error:", err.message, "\n", err);
+            Logger.info("ChatId", chatId, "CreateChatCompletion Error:", error.message, "\n", error);
             return;
         }
 
@@ -144,19 +145,21 @@ export function listen() {
             try {
             // Send the response to the user, making sure to split the message if needed
                 await sendMessageWrapper(chatId, result.content, { parse_mode: "Markdown" });
-            } catch (err1) {
-                Logger.info("ChatId", chatId, "Telegram Response Error:", err1.message, "Failed x1");
+            } catch (err1: unknown) {
+                const error1 = err1 as Error;
+                Logger.info("ChatId", chatId, "Telegram Response Error:", error1.message, "Failed x1");
 
                 try {
                 // Send the response to the user, making sure to split the message if needed
                 // If this failed once, remove the Markdown parser and try again
                     await sendMessageWrapper(chatId, result.content, {});
                 } catch (err2) {
-                    await sendMessageWrapper(chatId, "Error: " + err2.message);
+                    const error2 = err2 as Error;
+                    await sendMessageWrapper(chatId, "Error: " + error2.message);
 
                     // Clean up the chat context when something goes wrong, just in case...
                     resetMemory(chatId);
-                    Logger.info("ChatId", chatId, "Telegram Response Error:", err2.message, "Failed x2");
+                    Logger.info("ChatId", chatId, "Telegram Response Error:", error2.message, "Failed x2");
                     return;
                 }
             }
