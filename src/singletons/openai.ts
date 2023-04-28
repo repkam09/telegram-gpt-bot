@@ -5,7 +5,7 @@ export class OpenAI {
     static _instance: OpenAIApi;
     static _models: string[];
 
-    static instance() {
+    static instance(): OpenAIApi {
         if (!OpenAI._instance) {
             const configuration = new Configuration({
                 organization: Config.OPENAI_API_ORG,

@@ -15,11 +15,26 @@ export class Config {
         Logger.info(`TELEGRAM_BOT_ADMIN is configured as ${Config.TELEGRAM_BOT_ADMIN}`);
         Logger.info(`TELEGRAM_ID_WHITELIST is configured as ${Config.TELEGRAM_ID_WHITELIST}`);
 
-        Logger.info(`USE_PERSISTANT_CACHE is configured as ${Config.USE_PERSISTANT_CACHE}`);
+        Logger.info(`USE_PERSISTANT_CACHE is configured as ${JSON.stringify(Config.USE_PERSISTANT_CACHE)}`);
+
+        Logger.info(`HENNOS_MAX_MESSAGE_MEMORY is configured as ${JSON.stringify(Config.HENNOS_MAX_MESSAGE_MEMORY)}`);
 
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
     }
 
+    static get HENNOS_MAX_MESSAGE_MEMORY(): number {
+        if (!process.env.HENNOS_MAX_MESSAGE_MEMORY) {
+            return 10;
+        }
+
+        const limit = parseInt(process.env.HENNOS_MAX_MESSAGE_MEMORY);
+
+        if (Number.isNaN(limit)) {
+            throw new Error("Invalid HENNOS_MAX_MESSAGE_MEMORY value");
+        }
+
+        return limit;
+    }
 
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
@@ -29,7 +44,7 @@ export class Config {
         return process.env.HENNOS_DEVELOPMENT_MODE === "true";
     }
 
-    static get USE_PERSISTANT_CACHE(): boolean {
+    static get USE_PERSISTANT_CACHE(): false | { host: string, port: number } {
         if (!process.env.HENNOS_REDIS_HOST) {
             return false;
         }
@@ -38,7 +53,14 @@ export class Config {
             return false;
         }
 
-        return true;
+        const host = process.env.HENNOS_REDIS_HOST.trim();
+        const port = parseInt(process.env.HENNOS_REDIS_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid HENNOS_REDIS_PORT value");
+        }
+
+        return { host, port };
     }
 
     static get OPENAI_API_ORG(): string {
@@ -73,6 +95,11 @@ export class Config {
         return process.env.TELEGRAM_GROUP_PREFIX + " ";
     }
 
+    /**
+     * This value will return the Telegram chatId of the Admin user
+     * 
+     * If one was not configured the value will be -1
+     */
     static get TELEGRAM_BOT_ADMIN(): number {
         if (!process.env.TELEGRAM_BOT_ADMIN) {
             return -1;

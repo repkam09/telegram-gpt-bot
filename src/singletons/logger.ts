@@ -12,4 +12,8 @@ export class Logger {
     static error(message?: any, ...optionalParams: any[]): void  {
         console.error(message, ...optionalParams);
     }
+
+    static debug(message: string): void {
+        console.info("DEBUG:", message);
+    }
 }
