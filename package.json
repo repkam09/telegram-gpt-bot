@@ -5,13 +5,11 @@
   "main": "src/hennos.js",
   "scripts": {
     "clean": "rimraf ./build",
-    "build": "npm-run-all clean lint:fix tsc",
-    "tsc": "tsc",
-    "start": "node build/index.js",
-    "dev": "nodemon src -e ts,json --exec 'ts-node src'",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint ./src/**/*.ts",
-    "lint:fix": "eslint --fix ./src/**/*.ts"
+    "build": "npm-run-all clean lint tsc:emit",
+    "validate": "npm-run-all lint tsc:noemit",
+    "tsc:emit": "tsc",
+    "tsc:noemit": "tsc --noEmit",
+    "lint": "eslint --fix ."
   },
   "author": "Mark Repka",
   "license": "MIT",
