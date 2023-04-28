@@ -73,7 +73,7 @@ export function buildMessageArray(chatId: number, isGroupChat: boolean, firstNam
     }
 
     // Provide admin level users with extra information they can ask about
-    if (Config.TELEGRAM_BOT_ADMIN && Config.TELEGRAM_BOT_ADMIN === `${chatId}`) {
+    if (Config.TELEGRAM_BOT_ADMIN === chatId) {
         const keys = Array.from(ChatMemory.Context.keys()).join(",");
         prompt.push({
             role: "system", content: `Here is some additional information about the environment and user sessions. Current User Id: ${chatId}, Active User Sessions: ${keys}, User Whitelist: ${Config.TELEGRAM_ID_WHITELIST || "empty"}`

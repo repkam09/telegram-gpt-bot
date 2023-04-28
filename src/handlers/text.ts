@@ -43,7 +43,7 @@ export function listen() {
             }
 
             if (message === "/debug") {
-                if (Config.TELEGRAM_BOT_ADMIN && Config.TELEGRAM_BOT_ADMIN === `${chatId}`) {
+                if (Config.TELEGRAM_BOT_ADMIN === chatId) {
                     const userKeys = Array.from(ChatMemory.IdToName.keys()).map((key) => ChatMemory.IdToName.get(key));
                     if (userKeys.length > 0) {
                         await sendMessageWrapper(chatId, userKeys.join("\n"));
@@ -60,7 +60,7 @@ export function listen() {
             }
 
             if (message.startsWith("/configure")) {
-                if (Config.TELEGRAM_BOT_ADMIN && Config.TELEGRAM_BOT_ADMIN === `${chatId}`) {
+                if (Config.TELEGRAM_BOT_ADMIN === chatId) {
                     const parts = message.split(" ");
                     if (parts.length !== 3) {
                         return await sendMessageWrapper(chatId, "Syntax Error");
@@ -105,8 +105,8 @@ export function listen() {
 
         // If a whitelist is provided check that the incoming chatId is in the list
         if (Config.TELEGRAM_ID_WHITELIST) {
-            const whitelist = Config.TELEGRAM_ID_WHITELIST.trim().split(",");
-            if (!whitelist.includes(`${chatId}`)) {
+            const whitelist = Config.TELEGRAM_ID_WHITELIST;
+            if (!whitelist.includes(chatId)) {
                 await sendMessageWrapper(chatId, "Sorry, you have not been whitelisted to use this bot. Please request access and provide your identifier: " + identifier);
                 Logger.info(`${identifier} {${chatId}}`, "sent a message but is not whitelisted");
                 return;
