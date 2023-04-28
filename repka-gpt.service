@@ -2,7 +2,7 @@
 Description=repka-gpt service
 
 [Service]
-ExecStart=/usr/bin/node /home/mark/services/telegram-gpt-bot/index.js
+ExecStart=/usr/bin/node /home/mark/services/telegram-gpt-bot/src/hennos.js
 # Required on some systems
 WorkingDirectory=/home/mark/services/telegram-gpt-bot/
 Restart=always

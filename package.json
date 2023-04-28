@@ -2,10 +2,13 @@
   "name": "telegram-gpt-bot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/hennos.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/hennos.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix ."
   },
   "author": "Mark Repka",
   "license": "MIT",
@@ -15,6 +18,7 @@
     "openai": "^3.2.1"
   },
   "devDependencies": {
-    "@types/node-telegram-bot-api": "^0.61.6"
+    "@types/node-telegram-bot-api": "^0.61.6",
+    "eslint": "^8.39.0"
   }
 }
