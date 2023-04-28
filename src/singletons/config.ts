@@ -14,6 +14,31 @@ export class Config {
 
         Logger.info(`TELEGRAM_BOT_ADMIN is configured as ${Config.TELEGRAM_BOT_ADMIN}`);
         Logger.info(`TELEGRAM_ID_WHITELIST is configured as ${Config.TELEGRAM_ID_WHITELIST}`);
+
+        Logger.info(`USE_PERSISTANT_CACHE is configured as ${Config.USE_PERSISTANT_CACHE}`);
+
+        Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
+    }
+
+
+    static get HENNOS_DEVELOPMENT_MODE(): boolean {
+        if (!process.env.HENNOS_DEVELOPMENT_MODE) {
+            return false;
+        }
+
+        return process.env.HENNOS_DEVELOPMENT_MODE === "true";
+    }
+
+    static get USE_PERSISTANT_CACHE(): boolean {
+        if (!process.env.HENNOS_REDIS_HOST) {
+            return false;
+        }
+
+        if (!process.env.HENNOS_REDIS_PORT) {
+            return false;
+        }
+
+        return true;
     }
 
     static get OPENAI_API_ORG(): string {
