@@ -34,13 +34,17 @@ export class RedisCache {
         return true;
     }
 
-    public static async get<T>(key: string): Promise<T> {
-        let content: string;
+    public static async get<T>(key: string): Promise<T | undefined> {
+        let content: string | undefined | null;
         if (this._local_cache.has(`${this.KEY_PREFIX}_${key}`)) {
-            content = this._local_cache.get(`${this.KEY_PREFIX}_${key}`) as string;
+            content = this._local_cache.get(`${this.KEY_PREFIX}_${key}`);
             this._local_cache.delete(`${this.KEY_PREFIX}_${key}`);
         } else {
-            content = await this._redisInstance.get(`${this.KEY_PREFIX}_${key}`) as string;
+            content = await this._redisInstance.get(`${this.KEY_PREFIX}_${key}`);
+        }
+
+        if (!content) {
+            return undefined;
         }
 
         return JSON.parse(content) as T;

@@ -5,9 +5,8 @@ import { OpenAI } from "./singletons/openai";
 import { sendAdminMessage } from "./utils";
 import { RedisCache } from "./singletons/redis";
 
-
 async function start() {
-// Check that all the right environment variables are set
+    // Check that all the right environment variables are set
     Config.validate();
 
     if (Config.USE_PERSISTANT_CACHE) {

@@ -1,12 +1,12 @@
 import { ChatCompletionRequestMessage } from "openai";
 import { Config } from "./config";
-import {RedisCache} from "./redis";
+import { RedisCache } from "./redis";
 
 export class ChatMemory {
     private static _chat_context_map = new Map<number, ChatCompletionRequestMessage[]>();
     private static _id_to_name = new Map<number, string>();
     private static _id_to_llm = new Map<number, string>();
-    
+
     public static async hasContext(key: number): Promise<boolean> {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._chat_context_map.has(key);
@@ -21,7 +21,8 @@ export class ChatMemory {
             const result = this._chat_context_map.get(key) as ChatCompletionRequestMessage[];
             return Promise.resolve(result);
         }
-        return RedisCache.get<ChatCompletionRequestMessage[]>(`context_${key}`);
+        const result = await RedisCache.get<ChatCompletionRequestMessage[]>(`context_${key}`);
+        return result || [];
     }
 
     static async deleteContext(key: number): Promise<void> {
@@ -47,7 +48,7 @@ export class ChatMemory {
         return [];
     }
 
-    static async hasName(key: number): Promise<boolean>{
+    static async hasName(key: number): Promise<boolean> {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.has(key);
         }
@@ -58,7 +59,10 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.get(key) as string;
         }
-        const result = await RedisCache.get<{name: string}>(`name_${key}`);
+        const result = await RedisCache.get<{ name: string }>(`name_${key}`);
+        if (!result) {
+            return "unknown";
+        }
         return result.name;
     }
 
@@ -73,10 +77,10 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.set(key, value);
         }
-        return RedisCache.set(`name_${key}`, JSON.stringify({name: value}));
+        return RedisCache.set(`name_${key}`, JSON.stringify({ name: value }));
     }
 
-    static async hasLLM(key: number): Promise<boolean>{
+    static async hasLLM(key: number): Promise<boolean> {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_llm.has(key);
         }
@@ -85,16 +89,22 @@ export class ChatMemory {
 
     static async getLLM(key: number): Promise<string> {
         if (!Config.USE_PERSISTANT_CACHE) {
-            return this._id_to_llm.get(key) as string;
+            return this._id_to_llm.get(key) || Config.OPENAI_API_LLM;
         }
-        const result = await RedisCache.get<{llm: string}>(`llm_${key}`);
-        return result.llm;    }
+
+        const result = await RedisCache.get<{ llm: string }>(`llm_${key}`);
+        if (!result) {
+            return Config.OPENAI_API_LLM;
+        }
+
+        return result.llm;
+    }
 
     static async setLLM(key: number, value: string) {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_llm.set(key, value);
         }
-        return RedisCache.set(`llm_${key}`, JSON.stringify({llm: value}));
+        return RedisCache.set(`llm_${key}`, JSON.stringify({ llm: value }));
     }
 
 }
