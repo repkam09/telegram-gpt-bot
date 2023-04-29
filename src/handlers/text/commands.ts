@@ -1,9 +1,9 @@
 import TelegramBot from "node-telegram-bot-api";
-import { Config } from "../../singletons/config";
 import { resetMemory, sendMessageWrapper } from "../../utils";
 import { OpenAI } from "../../singletons/openai";
 import { ChatMemory } from "../../singletons/memory";
 import { Logger } from "../../singletons/logger";
+import { isAdmin } from "./common";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -27,10 +27,6 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
     }
 
     return sendMessageWrapper(msg.chat.id, "Unknown Command");
-}
-
-function isAdmin(chatId: number): boolean {
-    return Config.TELEGRAM_BOT_ADMIN === chatId;
 }
 
 async function handleConfigureLLMCommand(msg: MessageWithText) {

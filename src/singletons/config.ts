@@ -36,6 +36,14 @@ export class Config {
         return limit;
     }
 
+    static get GOOGLE_API_KEY(): false | string {
+        if (!process.env.GOOGLE_API_KEY) {
+            return false;
+        }
+
+        return process.env.GOOGLE_API_KEY;
+    }
+
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
             return false;
