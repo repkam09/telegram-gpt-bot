@@ -4,6 +4,7 @@ import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendMessageWrapper, sendAdminMessage } from "../../utils";
 import { ChatCompletionRequestMessage } from "openai";
 import { updateChatContext, processChatCompletion } from "./common";
+import { Logger } from "../../singletons/logger";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -14,6 +15,8 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     if (!msg.text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
         return;
     }
+
+    Logger.trace("text_group", msg);
 
     // If the user did @ the bot, strip out that @ prefix before sending the message
     msg.text = msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, "");

@@ -3,8 +3,11 @@ import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
 import { processChatCompletion, updateChatContext } from "./common";
 import { ChatCompletionRequestMessage } from "openai";
+import { Logger } from "../../singletons/logger";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
+    Logger.trace("text_private", msg);
+
     const chatId = msg.chat.id;
     if (!msg.from || !msg.text) {
         return;

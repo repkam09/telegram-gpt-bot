@@ -3,6 +3,7 @@ import { Config } from "../../singletons/config";
 import { resetMemory, sendMessageWrapper } from "../../utils";
 import { OpenAI } from "../../singletons/openai";
 import { ChatMemory } from "../../singletons/memory";
+import { Logger } from "../../singletons/logger";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -10,6 +11,8 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
     if (!msg.from || !msg.text) {
         return;
     }
+
+    Logger.trace("text_command", msg);
 
     if (msg.text === "/reset") {
         return handleResetCommand(msg as MessageWithText);
