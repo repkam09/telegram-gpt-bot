@@ -9,12 +9,12 @@ export function listen() {
 }
 
 async function handleAudio(msg: TelegramBot.Message) {
-    Logger.trace("audio", msg);
-
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.audio) {
         return;
     }
+
+    Logger.trace("audio", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {

@@ -10,12 +10,12 @@ export function listen() {
 }
 
 async function handleContact(msg: TelegramBot.Message) {
-    Logger.trace("contact", msg);
-
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.contact) {
         return;
     }
+
+    Logger.trace("contact", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {

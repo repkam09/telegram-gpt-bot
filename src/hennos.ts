@@ -26,6 +26,7 @@ async function start() {
     handlers.photos();
     handlers.text();
     handlers.voice();
+    handlers.sticker();
 }
 
 // Kick off the async function

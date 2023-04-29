@@ -8,13 +8,13 @@ export function listen() {
     BotInstance.instance().on("document", handleDocument);
 }
 
-async function handleDocument(msg: TelegramBot.Message) {
-    Logger.trace("document", msg);
-    
+async function handleDocument(msg: TelegramBot.Message) {    
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.document) {
         return;
     }
+
+    Logger.trace("document", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {

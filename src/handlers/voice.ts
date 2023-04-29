@@ -19,12 +19,12 @@ export function listen() {
 }
 
 async function handleVoice(msg: TelegramBot.Message) {
-    Logger.trace("voice", msg);
-
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.voice) {
         return;
     }
+
+    Logger.trace("voice", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {

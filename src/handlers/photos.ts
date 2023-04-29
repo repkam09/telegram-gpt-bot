@@ -9,12 +9,12 @@ export function listen() {
 }
 
 async function handlePhoto(msg: TelegramBot.Message) {
-    Logger.trace("photo", msg);
-
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.photo) {
         return;
     }
+
+    Logger.trace("photo", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {

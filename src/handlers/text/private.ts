@@ -6,12 +6,12 @@ import { ChatCompletionRequestMessage } from "openai";
 import { Logger } from "../../singletons/logger";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
-    Logger.trace("text_private", msg);
-
     const chatId = msg.chat.id;
     if (!msg.from || !msg.text) {
         return;
     }
+
+    Logger.trace("text_private", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {

@@ -10,12 +10,12 @@ export function listen() {
 }
 
 async function handleLocation(msg: TelegramBot.Message) {
-    Logger.trace("location", msg);
-
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.location) {
         return;
     }
+
+    Logger.trace("location", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {
