@@ -11,7 +11,6 @@ import { OpenAI } from "../singletons/openai";
 import { processChatCompletion, updateChatContext } from "./text/common";
 import { buildPrompt } from "./text/private";
 import { ChatMemory } from "../singletons/memory";
-import { Config } from "../singletons/config";
 
 ffmpeg.setFfmpegPath(installer.path);
 
@@ -68,10 +67,6 @@ async function handleVoice(msg: TelegramBot.Message) {
 }
 
 async function processTranscription(path: string): Promise<string> {
-    if (Config.HENNOS_DEVELOPMENT_MODE) {
-        return "HENNOS DEVELOPMENT MODE";
-    }
-
     const stream = createReadStream(path);
 
     // @ts-expect-error Bad Typing on Library

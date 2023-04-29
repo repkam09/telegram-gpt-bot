@@ -2,7 +2,6 @@ import { Config } from "./singletons/config";
 import * as handlers from "./handlers";
 import { BotInstance } from "./singletons/telegram";
 import { OpenAI } from "./singletons/openai";
-import { sendAdminMessage } from "./utils";
 import { RedisCache } from "./singletons/redis";
 
 async function start() {
@@ -18,8 +17,6 @@ async function start() {
 
     // Create a Telegram Bot Instance
     BotInstance.instance();
-
-    await sendAdminMessage("Hennos Initializd");
 
     // Attach the Telegram message handlers
     handlers.audio();

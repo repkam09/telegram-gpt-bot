@@ -6,10 +6,6 @@ import { OpenAI } from "../../singletons/openai";
 import { getVideoInfo } from "../../providers/youtube";
 
 export async function processChatCompletion(chatId: number, messages: ChatCompletionRequestMessage[]): Promise<string> {
-    if (Config.HENNOS_DEVELOPMENT_MODE) {
-        return "HENNOS DEVELOPMENT MODE";
-    }
-
     const model = await ChatMemory.getLLM(chatId);
     try {
         const response = await OpenAI.instance().createChatCompletion({
@@ -57,7 +53,7 @@ export function isAdmin(chatId: number): boolean {
     return Config.TELEGRAM_BOT_ADMIN === chatId;
 }
 
-export async function processUserTextInput(_chatId: number, text: string): Promise<string> {
+export async function processUserTextInput(chatId: number, text: string): Promise<string> {
     try {
         text = text.trim();
 
@@ -68,7 +64,7 @@ export async function processUserTextInput(_chatId: number, text: string): Promi
             ]);
 
             if (youtube) {
-                return getVideoInfo(youtube[1]);
+                return getVideoInfo(chatId, youtube[1]);
             }
         }
     } catch (err) {
@@ -77,7 +73,11 @@ export async function processUserTextInput(_chatId: number, text: string): Promi
     return text;
 }
 
-function match(text: string, regex: RegExp[]): RegExpExecArray | null {
+function match(text: string, regex: RegExp | RegExp[]): RegExpExecArray | null {
+    if (!Array.isArray(regex)) {
+        return regex.exec(text);
+    }
+
     for (let i = 0; i < regex.length - 1; i++) {
         const match = regex[i].exec(text);
         if (match) {

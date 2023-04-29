@@ -22,6 +22,10 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
         return handleStartCommand(msg as MessageWithText);
     }
 
+    if (msg.text === "/models") {
+        return handleListModelsCommand(msg as MessageWithText);
+    }
+
     if (msg.text.startsWith("/configure")) {
         return handleConfigureLLMCommand(msg as MessageWithText);
     }
@@ -57,6 +61,11 @@ async function handleConfigureLLMCommand(msg: MessageWithText) {
 
 async function handleStartCommand(msg: MessageWithText) {
     await sendMessageWrapper(msg.chat.id, "Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!", { parse_mode: "Markdown" });
+}
+
+async function handleListModelsCommand(msg: MessageWithText) {
+    const models = await OpenAI.models();
+    await sendMessageWrapper(msg.chat.id, models.join(", "));
 }
 
 async function handleResetCommand(msg: MessageWithText) {
