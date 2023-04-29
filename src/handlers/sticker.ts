@@ -24,7 +24,7 @@ async function handleSticker(msg: TelegramBot.Message) {
 
     try {
         const stickerPath = await BotInstance.instance().downloadFile(msg.sticker.file_id, os.tmpdir());
-        await BotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id }, { contentType: "image/webp" });
+        await BotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
     } catch (err) {
         Logger.error(err);
     }
