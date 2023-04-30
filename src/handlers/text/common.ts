@@ -48,6 +48,10 @@ export async function updateChatContext(chatId: number, role: ChatCompletionRequ
     return currentChatContext;
 }
 
+export async function getChatContext(chatId: number): Promise<ChatCompletionRequestMessage[]> {
+    const currentChatContext = await ChatMemory.getContext(chatId);
+    return currentChatContext;
+}
 
 export function isAdmin(chatId: number): boolean {
     return Config.TELEGRAM_BOT_ADMIN === chatId;

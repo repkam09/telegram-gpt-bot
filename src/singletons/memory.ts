@@ -19,7 +19,7 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
 
             const result = this._chat_context_map.get(key) as ChatCompletionRequestMessage[];
-            return Promise.resolve(result);
+            return Promise.resolve(result || []);
         }
         const result = await RedisCache.get<ChatCompletionRequestMessage[]>(`context_${key}`);
         return result || [];
