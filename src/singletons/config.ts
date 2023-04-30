@@ -11,15 +11,15 @@ export class Config {
 
         Logger.info(`TELEGRAM_BOT_KEY is configured as ${Config.TELEGRAM_BOT_KEY ? "[HIDDEN]" : "error"}`);
         Logger.info(`TELEGRAM_GROUP_PREFIX is configured as ${Config.TELEGRAM_GROUP_PREFIX}`);
-
         Logger.info(`TELEGRAM_BOT_ADMIN is configured as ${Config.TELEGRAM_BOT_ADMIN}`);
         Logger.info(`TELEGRAM_ID_WHITELIST is configured as ${Config.TELEGRAM_ID_WHITELIST}`);
 
-        Logger.info(`USE_PERSISTANT_CACHE is configured as ${JSON.stringify(Config.USE_PERSISTANT_CACHE)}`);
-
         Logger.info(`HENNOS_MAX_MESSAGE_MEMORY is configured as ${JSON.stringify(Config.HENNOS_MAX_MESSAGE_MEMORY)}`);
-
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
+        Logger.info(`HENNOS_EXTERNAL_REQUEST_KEY is configured as ${Config.HENNOS_EXTERNAL_REQUEST_KEY}`);
+        Logger.info(`HENNOS_EXTERNAL_REQUEST_PORT is configured as ${Config.HENNOS_EXTERNAL_REQUEST_PORT}`);
+
+        Logger.info(`USE_PERSISTANT_CACHE is configured as ${JSON.stringify(Config.USE_PERSISTANT_CACHE)}`);
     }
 
     static get HENNOS_MAX_MESSAGE_MEMORY(): number {
@@ -34,6 +34,28 @@ export class Config {
         }
 
         return limit;
+    }
+
+    static get HENNOS_EXTERNAL_REQUEST_KEY(): string | false {
+        if (!process.env.HENNOS_EXTERNAL_REQUEST_KEY) {
+            return false;
+        }
+
+        return process.env.HENNOS_EXTERNAL_REQUEST_KEY;
+    }
+
+    static get HENNOS_EXTERNAL_REQUEST_PORT(): number {
+        if (!process.env.HENNOS_EXTERNAL_REQUEST_PORT) {
+            return 16006;
+        }
+
+        const port = parseInt(process.env.HENNOS_EXTERNAL_REQUEST_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid HENNOS_EXTERNAL_REQUEST_PORT value");
+        }
+
+        return port;
     }
 
     static get GOOGLE_API_KEY(): false | string {

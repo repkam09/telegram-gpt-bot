@@ -27,6 +27,7 @@ async function start() {
     handlers.text();
     handlers.voice();
     handlers.sticker();
+    handlers.api();
 }
 
 // Kick off the async function
