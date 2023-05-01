@@ -14,12 +14,27 @@ export async function sendMessageWrapper(chatId: number, content: string, option
     }
 
     if (content.length < 4096) {
-        return await BotInstance.instance().sendMessage(chatId, content, options);
+        return sendTelegramMessageWithRetry(chatId, content, options);
     }
 
     const chunks = chunkSubstr(content, 4096);
     for (let i = 0; i < chunks.length; i++) {
-        await BotInstance.instance().sendMessage(chatId, chunks[i], options);
+        return sendTelegramMessageWithRetry(chatId, chunks[i], options);
+    }
+}
+
+async function sendTelegramMessageWithRetry(chatId: number, content: string, options: TelegramBot.SendMessageOptions) {
+    const bot = BotInstance.instance();
+    try {
+        await bot.sendMessage(chatId, content, { ...options, parse_mode: "Markdown" });
+    } catch (err1: unknown) {
+        try {
+            await bot.sendMessage(chatId, content, { ...options, parse_mode: undefined });
+        } catch (err2: unknown) {
+            const error1 = err1 as Error;
+            const error2 = err2 as Error;
+            Logger.error(`Failed 2x to send Telegram message. Err1=${error1.message}, Err2=${error2.message}`)
+        }
     }
 }
 

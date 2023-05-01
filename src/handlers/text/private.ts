@@ -34,7 +34,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     ]);
 
     await updateChatContext(chatId, "assistant", response);
-    await sendMessageWrapper(chatId, response, { parse_mode: "Markdown" });
+    await sendMessageWrapper(chatId, response);
 }
 
 export function buildPrompt(name: string,): ChatCompletionRequestMessage[] {

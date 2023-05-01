@@ -45,7 +45,7 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     ]);
 
     await updateChatContext(chatId, "assistant", response);
-    await sendMessageWrapper(chatId, response, { parse_mode: "Markdown", reply_to_message_id: msg.message_id });
+    await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
 }
 
 function buildPrompt(title: string,): ChatCompletionRequestMessage[] {

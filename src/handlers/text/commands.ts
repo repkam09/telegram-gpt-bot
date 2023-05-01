@@ -60,7 +60,7 @@ async function handleConfigureLLMCommand(msg: MessageWithText) {
 }
 
 async function handleStartCommand(msg: MessageWithText) {
-    await sendMessageWrapper(msg.chat.id, "Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!", { parse_mode: "Markdown" });
+    await sendMessageWrapper(msg.chat.id, "Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!");
 }
 
 async function handleListModelsCommand(msg: MessageWithText) {

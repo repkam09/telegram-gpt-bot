@@ -44,7 +44,7 @@ async function handleVoice(msg: TelegramBot.Message) {
     try {
         const whisper = await processTranscription(mp3FilePath);
 
-        await sendMessageWrapper(chatId, `\`\`\`\n${whisper}\n\`\`\``, { parse_mode: "Markdown", reply_to_message_id: msg.message_id });
+        await sendMessageWrapper(chatId, `\`\`\`\n${whisper}\n\`\`\``, { reply_to_message_id: msg.message_id });
 
         const prompt = buildPrompt(first_name);
         const context = await updateChatContext(chatId, "user", whisper);
@@ -55,7 +55,7 @@ async function handleVoice(msg: TelegramBot.Message) {
         ]);
 
         await updateChatContext(chatId, "assistant", response);
-        await sendMessageWrapper(chatId, response, { parse_mode: "Markdown", reply_to_message_id: msg.message_id });
+        await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error("Error processing voice message: ", error.message, error);
