@@ -1,9 +1,10 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContext } from "./common";
+import { determineUserIntent, processChatCompletion, processImageGeneration, processUserTextInput, updateChatContext } from "./common";
 import { ChatCompletionRequestMessage } from "openai";
 import { Logger } from "../../singletons/logger";
+import { BotInstance } from "../../singletons/telegram";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -24,17 +25,28 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
         return;
     }
 
-    const prompt = buildPrompt(first_name);
-    const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContext(chatId, "user", message);
+    // Determine what type of response we should send to the user...
+    const type = await determineUserIntent(chatId, msg.text);
 
-    const response = await processChatCompletion(chatId, [
-        ...prompt,
-        ...context
-    ]);
+    if (type === "TEXT") {
+        const prompt = buildPrompt(first_name);
+        const message = await processUserTextInput(chatId, msg.text);
+        const context = await updateChatContext(chatId, "user", message);
+    
+        const response = await processChatCompletion(chatId, [
+            ...prompt,
+            ...context
+        ]);
+    
+        await updateChatContext(chatId, "assistant", response);
+        await sendMessageWrapper(chatId, response);        
+    }
 
-    await updateChatContext(chatId, "assistant", response);
-    await sendMessageWrapper(chatId, response);
+    if (type === "IMAGE") {
+        const url = await processImageGeneration(chatId, msg.text);
+        const bot = BotInstance.instance();
+        bot.sendPhoto(chatId, url, {reply_to_message_id: msg.message_id});
+    }
 }
 
 export function buildPrompt(name: string,): ChatCompletionRequestMessage[] {

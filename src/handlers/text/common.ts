@@ -1,4 +1,4 @@
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from "openai";
+import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum, CreateCompletionRequestPrompt } from "openai";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { ChatMemory } from "../../singletons/memory";
@@ -26,6 +26,29 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
     } catch (err: unknown) {
         Logger.error("ChatId", chatId, "CreateChatCompletion Error:", (err as Error).message, "\n", err as Error);
         return "Sorry, I was unable to process your message";
+    }
+}
+
+export async function processImageGeneration(chatId: number, prompt: string): Promise<string> {
+    try {
+        const response = await OpenAI.instance().createImage({
+            prompt,
+            n: 1,
+            size: "1024x1024"
+        });
+
+        if (!response || !response.data || !response.data.data) {
+            throw new Error("Unexpected createImage Result: Bad Response Data Shape");
+        }
+
+        const { url } = response.data.data[0];
+        if (!url) {
+            throw new Error("Unexpected createImage Result: Bad Response Data, Missing URL");
+        }
+        return url;
+    } catch (err: unknown) {
+        Logger.error("ChatId", chatId, "createImage Error:", (err as Error).message, "\n", err as Error);
+        throw new Error("Unexpected createImage Result: Error");
     }
 }
 
@@ -75,6 +98,69 @@ export async function processUserTextInput(chatId: number, text: string): Promis
         return text;
     }
     return text;
+}
+
+export async function determineUserIntent(chatId: number, message: string): Promise<"TEXT" | "IMAGE"> {
+    const context: CreateCompletionRequestPrompt = 
+`You are a classifiation tool that determines what type of output a user wants based on their input. Respond with 'IMAGE' or 'TEXT'.
+
+User: Create an image of a fish in space
+Assistant: IMAGE
+User: Draw a picture of a tree
+Assistant: IMAGE
+User: What is the capital of France?
+Assistant: TEXT
+User: Write an example of how to make a POST request in JavaScript
+Assistant: TEXT
+User: Create a dank meme
+Assistant: IMAGE
+User: Show me a cat
+Assistant: IMAGE
+User: Draw a picture of a cell phone
+Assistant: IMAGE
+User: What is Linux?
+Assistant: TEXT
+User: Can you create a picture of a dog?
+Assistant: IMAGE
+User: ${message}
+Assistant:`;
+
+    try {
+        const response = await OpenAI.instance().createCompletion({
+            model: "davinci",
+            prompt: context,
+            max_tokens: 2,
+            best_of: 1,
+            temperature: 1
+        });
+
+        if (!response || !response.data || !response.data.choices) {
+            throw new Error("Unexpected createChatCompletion Result: Bad Response Data Choices");
+        }
+
+        let { text } = response.data.choices[0];
+        if (!text) {
+            Logger.error("ChatId", chatId, "Unexpected createCompletion Result: Bad Message Content", "\n");
+            return "TEXT";
+        }
+
+        text = text.trim();
+
+        if (text === "IMAGE") {
+            return text;
+        }
+
+        if (text === "TEXT") {
+            return text;
+        }
+
+        Logger.error("ChatId", chatId, "Unexpected createCompletion Result: Bad Message Content", "\n");
+        return "TEXT";
+    } catch (err: unknown) {
+        Logger.error("ChatId", chatId, "CreateChatCompletion Error:", (err as Error).message, "\n", err as Error);
+        return "TEXT";
+    }
+
 }
 
 function match(text: string, regex: RegExp | RegExp[]): RegExpExecArray | null {

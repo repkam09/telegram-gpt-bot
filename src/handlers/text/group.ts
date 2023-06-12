@@ -3,8 +3,9 @@ import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendMessageWrapper, sendAdminMessage } from "../../utils";
 import { ChatCompletionRequestMessage } from "openai";
-import { updateChatContext, processChatCompletion, processUserTextInput } from "./common";
+import { updateChatContext, processChatCompletion, processUserTextInput, determineUserIntent, processImageGeneration } from "./common";
 import { Logger } from "../../singletons/logger";
+import { BotInstance } from "../../singletons/telegram";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -35,17 +36,28 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
         return;
     }
 
-    const prompt = buildPrompt(title || "Group Chat");
-    const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContext(chatId, "user", message);
+    // Determine what type of response we should send to the user...
+    const type = await determineUserIntent(chatId, msg.text);
 
-    const response = await processChatCompletion(chatId, [
-        ...prompt,
-        ...context
-    ]);
+    if (type === "TEXT") {
+        const prompt = buildPrompt(title || "Group Chat");
+        const message = await processUserTextInput(chatId, msg.text);
+        const context = await updateChatContext(chatId, "user", message);
 
-    await updateChatContext(chatId, "assistant", response);
-    await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
+        const response = await processChatCompletion(chatId, [
+            ...prompt,
+            ...context
+        ]);
+
+        await updateChatContext(chatId, "assistant", response);
+        await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
+    }
+
+    if (type === "IMAGE") {
+        const url = await processImageGeneration(chatId, msg.text);
+        const bot = BotInstance.instance();
+        bot.sendPhoto(chatId, url, {reply_to_message_id: msg.message_id});
+    }
 }
 
 function buildPrompt(title: string,): ChatCompletionRequestMessage[] {

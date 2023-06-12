@@ -33,7 +33,7 @@ async function sendTelegramMessageWithRetry(chatId: number, content: string, opt
         } catch (err2: unknown) {
             const error1 = err1 as Error;
             const error2 = err2 as Error;
-            Logger.error(`Failed 2x to send Telegram message. Err1=${error1.message}, Err2=${error2.message}`)
+            Logger.error(`Failed 2x to send Telegram message. Err1=${error1.message}, Err2=${error2.message}`);
         }
     }
 }
