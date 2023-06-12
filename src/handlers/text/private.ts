@@ -29,10 +29,6 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     // Determine what type of response we should send to the user...
     const type = Classifier.determineUserIntent(chatId, msg.text);
 
-    if (type) {
-        return await sendMessageWrapper(chatId, type);
-    }
-
     if (type === "TEXT") {
         const prompt = buildPrompt(first_name);
         const message = await processUserTextInput(chatId, msg.text);
