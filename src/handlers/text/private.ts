@@ -43,9 +43,16 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     if (type === "IMAGE") {
+        if (msg.text.length > 1000) {
+            return await sendMessageWrapper(chatId, "Sorry, I ran into an error while trying to create your image. Try a shorter request.", { reply_to_message_id: msg.message_id });
+        }
+
         const url = await processImageGeneration(chatId, msg.text);
-        const bot = BotInstance.instance();
-        bot.sendPhoto(chatId, url, {reply_to_message_id: msg.message_id});
+        if (!url) {
+            return await sendMessageWrapper(chatId, "Sorry, I ran into an error while trying to create your image. It might be restricted by [OpenAI content guidelines.](https://labs.openai.com/policies/content-policy)", { reply_to_message_id: msg.message_id, parse_mode: "MarkdownV2"}); 
+        }
+
+        BotInstance.instance().sendPhoto(chatId, url, {reply_to_message_id: msg.message_id});
     }
 }
 

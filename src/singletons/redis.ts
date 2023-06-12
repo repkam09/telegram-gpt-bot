@@ -22,25 +22,25 @@ export class RedisCache {
         Logger.info("Redis Connected");
     }
 
-    public static async has(key: string): Promise<boolean> {
-        const result = await this._redisInstance.get(`${this.KEY_PREFIX}_${key}`);
+    public static async has(type: string, key: string): Promise<boolean> {
+        const result = await this._redisInstance.get(`${this.KEY_PREFIX}:${key}:${type}`);
         if (!result) {
             return false;
         }
 
         // Because of the way Redis seems to work, to check if a key exists we have to get it...
         // Because we usually check and then fetch, cache the result locally so we dont do another round trip
-        this._local_cache.set(`${this.KEY_PREFIX}_${key}`, result);
+        this._local_cache.set(`${this.KEY_PREFIX}:${key}:${type}`, result);
         return true;
     }
 
-    public static async get<T>(key: string): Promise<T | undefined> {
+    public static async get<T>(type: string, key: string): Promise<T | undefined> {
         let content: string | undefined | null;
-        if (this._local_cache.has(`${this.KEY_PREFIX}_${key}`)) {
-            content = this._local_cache.get(`${this.KEY_PREFIX}_${key}`);
-            this._local_cache.delete(`${this.KEY_PREFIX}_${key}`);
+        if (this._local_cache.has(`${this.KEY_PREFIX}:${key}:${type}`)) {
+            content = this._local_cache.get(`${this.KEY_PREFIX}:${key}:${type}`);
+            this._local_cache.delete(`${this.KEY_PREFIX}:${key}:${type}`);
         } else {
-            content = await this._redisInstance.get(`${this.KEY_PREFIX}_${key}`);
+            content = await this._redisInstance.get(`${this.KEY_PREFIX}:${key}:${type}`);
         }
 
         if (!content) {
@@ -50,11 +50,11 @@ export class RedisCache {
         return JSON.parse(content) as T;
     }
 
-    public static async set(key: string, value: string) {
-        await this._redisInstance.set(`${this.KEY_PREFIX}_${key}`, value);
+    public static async set(type: string, key: string, value: string) {
+        await this._redisInstance.set(`${this.KEY_PREFIX}:${key}:${type}`, value);
     }
 
-    public static async delete(key: string) {
-        await this._redisInstance.del(`${this.KEY_PREFIX}_${key}`);
+    public static async delete(type: string, key: string) {
+        await this._redisInstance.del(`${this.KEY_PREFIX}:${key}:${type}`);
     }
 }

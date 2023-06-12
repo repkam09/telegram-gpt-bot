@@ -10,7 +10,8 @@
     "tsc:emit": "tsc",
     "tsc:noemit": "tsc --noEmit",
     "lint": "eslint --fix .",
-    "start": "node ./build/hennos.js"
+    "start": "node ./build/hennos.js",
+    "redis": "docker run -p 127.0.0.1:6379:6379 -d redis"
   },
   "author": "Mark Repka",
   "license": "MIT",

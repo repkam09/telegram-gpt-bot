@@ -12,7 +12,7 @@ export class ChatMemory {
             return this._chat_context_map.has(key);
         }
 
-        return RedisCache.has(`context_${key}`);
+        return RedisCache.has("context", `${key}`);
     }
 
     static async getContext(key: number): Promise<ChatCompletionRequestMessage[]> {
@@ -21,7 +21,7 @@ export class ChatMemory {
             const result = this._chat_context_map.get(key) as ChatCompletionRequestMessage[];
             return Promise.resolve(result || []);
         }
-        const result = await RedisCache.get<ChatCompletionRequestMessage[]>(`context_${key}`);
+        const result = await RedisCache.get<ChatCompletionRequestMessage[]>("context",`${key}`);
         return result || [];
     }
 
@@ -30,7 +30,7 @@ export class ChatMemory {
             this._chat_context_map.delete(key);
             return;
         }
-        return RedisCache.delete(`context_${key}`);
+        return RedisCache.delete("context",`${key}`);
     }
 
     static async setContext(key: number, value: ChatCompletionRequestMessage[]): Promise<void> {
@@ -38,7 +38,7 @@ export class ChatMemory {
             this._chat_context_map.set(key, value);
             return;
         }
-        return RedisCache.set(`context_${key}`, JSON.stringify(value));
+        return RedisCache.set("context",`${key}`, JSON.stringify(value));
     }
 
     static async getContextKeys(): Promise<number[]> {
@@ -52,14 +52,14 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.has(key);
         }
-        return RedisCache.has(`name_${key}`);
+        return RedisCache.has("name",`${key}`);
     }
 
     static async getName(key: number): Promise<string> {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.get(key) as string;
         }
-        const result = await RedisCache.get<{ name: string }>(`name_${key}`);
+        const result = await RedisCache.get<{ name: string }>("name",`${key}`);
         if (!result) {
             return "unknown";
         }
@@ -77,14 +77,14 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.set(key, value);
         }
-        return RedisCache.set(`name_${key}`, JSON.stringify({ name: value }));
+        return RedisCache.set("name",`${key}`, JSON.stringify({ name: value }));
     }
 
     static async hasLLM(key: number): Promise<boolean> {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_llm.has(key);
         }
-        return RedisCache.has(`llm_${key}`);
+        return RedisCache.has("llm",`${key}`);
     }
 
     static async getLLM(key: number): Promise<string> {
@@ -92,7 +92,7 @@ export class ChatMemory {
             return this._id_to_llm.get(key) || Config.OPENAI_API_LLM;
         }
 
-        const result = await RedisCache.get<{ llm: string }>(`llm_${key}`);
+        const result = await RedisCache.get<{ llm: string }>("llm",`${key}`);
         if (!result) {
             return Config.OPENAI_API_LLM;
         }
@@ -104,7 +104,7 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_llm.set(key, value);
         }
-        return RedisCache.set(`llm_${key}`, JSON.stringify({ llm: value }));
+        return RedisCache.set("llm",`${key}`, JSON.stringify({ llm: value }));
     }
 
 }

@@ -1,4 +1,4 @@
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum, CreateCompletionRequestPrompt } from "openai";
+import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum, CreateCompletionRequest, CreateCompletionRequestPrompt, CreateImageRequest } from "openai";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { ChatMemory } from "../../singletons/memory";
@@ -29,26 +29,31 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
     }
 }
 
-export async function processImageGeneration(chatId: number, prompt: string): Promise<string> {
+export async function processImageGeneration(chatId: number, prompt: string): Promise<string | undefined> {
+    const options: CreateImageRequest= {
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        response_format: "url"
+    };
     try {
-        const response = await OpenAI.instance().createImage({
-            prompt,
-            n: 1,
-            size: "1024x1024"
-        });
+        const response = await OpenAI.instance().createImage(options);
 
         if (!response || !response.data || !response.data.data) {
-            throw new Error("Unexpected createImage Result: Bad Response Data Shape");
+            Logger.error("ChatId", chatId, "createImage returned invalid response shape, missing data");
+            return undefined;
         }
 
         const { url } = response.data.data[0];
         if (!url) {
-            throw new Error("Unexpected createImage Result: Bad Response Data, Missing URL");
+            Logger.error("ChatId", chatId, "createImage returned invalid response shape, missing url");
+            return undefined;
         }
+
         return url;
     } catch (err: unknown) {
-        Logger.error("ChatId", chatId, "createImage Error:", (err as Error).message, "\n", err as Error);
-        throw new Error("Unexpected createImage Result: Error");
+        Logger.error("ChatId", chatId, "createImage", options, "Error:", (err as Error).message, (err as Error).stack);
+        return undefined;
     }
 }
 
@@ -126,13 +131,15 @@ User: ${message}
 Assistant:`;
 
     try {
-        const response = await OpenAI.instance().createCompletion({
+        const options: CreateCompletionRequest = {
             model: "davinci",
             prompt: context,
             max_tokens: 2,
             best_of: 1,
             temperature: 1
-        });
+        };
+
+        const response = await OpenAI.instance().createCompletion(options);
 
         if (!response || !response.data || !response.data.choices) {
             throw new Error("Unexpected createChatCompletion Result: Bad Response Data Choices");
@@ -140,7 +147,7 @@ Assistant:`;
 
         let { text } = response.data.choices[0];
         if (!text) {
-            Logger.error("ChatId", chatId, "Unexpected createCompletion Result: Bad Message Content", "\n");
+            Logger.error("ChatId", chatId, "Unexpected createCompletion Result: Bad Message Content", "\n", "options:", JSON.stringify(options));
             return "TEXT";
         }
 
@@ -154,7 +161,7 @@ Assistant:`;
             return text;
         }
 
-        Logger.error("ChatId", chatId, "Unexpected createCompletion Result: Bad Message Content", "\n");
+        Logger.error("ChatId", chatId, "Unexpected createCompletion Result: Bad Message Content", "\n", "options", JSON.stringify(options));
         return "TEXT";
     } catch (err: unknown) {
         Logger.error("ChatId", chatId, "CreateChatCompletion Error:", (err as Error).message, "\n", err as Error);
