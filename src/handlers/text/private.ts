@@ -1,10 +1,11 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
-import { determineUserIntent, processChatCompletion, processImageGeneration, processUserTextInput, updateChatContext } from "./common";
+import { processChatCompletion, processImageGeneration, processUserTextInput, updateChatContext } from "./common";
 import { ChatCompletionRequestMessage } from "openai";
 import { Logger } from "../../singletons/logger";
 import { BotInstance } from "../../singletons/telegram";
+import { Classifier } from "../../singletons/classifier";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -26,7 +27,11 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     // Determine what type of response we should send to the user...
-    const type = await determineUserIntent(chatId, msg.text);
+    const type = Classifier.determineUserIntent(chatId, msg.text);
+
+    if (type) {
+        return await sendMessageWrapper(chatId, type);
+    }
 
     if (type === "TEXT") {
         const prompt = buildPrompt(first_name);

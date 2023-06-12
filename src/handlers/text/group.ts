@@ -3,9 +3,10 @@ import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendMessageWrapper, sendAdminMessage } from "../../utils";
 import { ChatCompletionRequestMessage } from "openai";
-import { updateChatContext, processChatCompletion, processUserTextInput, determineUserIntent, processImageGeneration } from "./common";
+import { updateChatContext, processChatCompletion, processUserTextInput, processImageGeneration } from "./common";
 import { Logger } from "../../singletons/logger";
 import { BotInstance } from "../../singletons/telegram";
+import { Classifier } from "../../singletons/classifier";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -37,7 +38,7 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     }
 
     // Determine what type of response we should send to the user...
-    const type = await determineUserIntent(chatId, msg.text);
+    const type = Classifier.determineUserIntent(chatId, msg.text);
 
     if (type === "TEXT") {
         const prompt = buildPrompt(title || "Group Chat");
