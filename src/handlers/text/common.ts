@@ -46,8 +46,6 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
             throw new Error("Unexpected createChatCompletion Result: Bad Message Content Role");
         }
 
-        Logger.debug(JSON.stringify(message));
-
         if (message.function_call) {
             return {
                 type: "function",

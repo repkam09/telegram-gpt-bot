@@ -3,7 +3,6 @@ import * as handlers from "./handlers";
 import { BotInstance } from "./singletons/telegram";
 import { OpenAI } from "./singletons/openai";
 import { RedisCache } from "./singletons/redis";
-import { Classifier } from "./singletons/classifier";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -12,9 +11,6 @@ async function start() {
     if (Config.USE_PERSISTANT_CACHE) {
         await RedisCache.init();
     }
-
-    // Create the Classifier Instance
-    Classifier.instance();
 
     // Create an OpenAI Instance
     OpenAI.instance();
