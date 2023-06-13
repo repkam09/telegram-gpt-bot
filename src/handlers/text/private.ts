@@ -4,6 +4,7 @@ import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils
 import { processChatCompletion, processUserTextInput, updateChatContext } from "./common";
 import { ChatCompletionRequestMessage } from "openai";
 import { Logger } from "../../singletons/logger";
+import { handleFunctionCall } from "../../providers/functions";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -31,12 +32,26 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const response = await processChatCompletion(chatId, [
         ...prompt,
         ...context
-    ], { functions: false });
+    ], { functions: true });
     
     if (response.type === "content") {
         await updateChatContext(chatId, "assistant", response.data);
         await sendMessageWrapper(chatId, response.data);
         return;   
+    }
+
+    if (response.type === "function") {
+        const fn_context = await handleFunctionCall(chatId, response.data);
+        const sub_context = await updateChatContext(chatId, "system", fn_context);
+
+        const sub_response = await processChatCompletion(chatId, [
+            ...prompt,
+            ...sub_context
+        ], { functions: false });
+        
+        await updateChatContext(chatId, "assistant", sub_response.data as string);
+        await sendMessageWrapper(chatId, sub_response.data as string);
+        return;
     }
 }
 

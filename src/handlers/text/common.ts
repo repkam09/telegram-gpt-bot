@@ -1,53 +1,10 @@
-import { ChatCompletionFunctions, ChatCompletionRequestMessage, ChatCompletionRequestMessageFunctionCall, ChatCompletionRequestMessageRoleEnum, CreateChatCompletionRequest, CreateImageRequest } from "openai";
+import { ChatCompletionRequestMessage, ChatCompletionRequestMessageFunctionCall, ChatCompletionRequestMessageRoleEnum, CreateChatCompletionRequest, CreateImageRequest } from "openai";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { ChatMemory } from "../../singletons/memory";
 import { OpenAI } from "../../singletons/openai";
 import { getVideoInfo } from "../../providers/youtube";
-
-function buildFunctionsArray(): ChatCompletionFunctions[] {
-    return [
-        {
-            "name": "get_current_weather",
-            "description": "Get the current weather in a given location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city and state, e.g. San Francisco, CA"
-                    },
-                    "unit": {
-                        "type": "string",
-                        "enum": [
-                            "celsius",
-                            "fahrenheit"
-                        ]
-                    }
-                },
-                "required": [
-                    "location"
-                ]
-            }
-        },
-        {
-            "name": "generate_image",
-            "description": "Generate an image based on the users input",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "prompt": {
-                        "type": "string",
-                        "description": "The prompt to feed into DALL-E"
-                    }
-                },
-                "required": [
-                    "prompt"
-                ]
-            }
-        }
-    ];
-}
+import { buildFunctionsArray } from "../../providers/functions";
 
 type ProcessChatCompletionResponse = ProcessChatCompletionTextResponse | ProcessChatCompletionFunctionResponse
 
@@ -74,8 +31,8 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
         };
 
         if (settings.functions) {
-            options.function_call ="auto";
-            options.functions =buildFunctionsArray();
+            options.function_call = "auto";
+            options.functions = buildFunctionsArray();
         }
 
         const response = await OpenAI.instance().createChatCompletion(options);

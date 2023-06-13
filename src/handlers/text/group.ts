@@ -3,10 +3,9 @@ import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendMessageWrapper, sendAdminMessage } from "../../utils";
 import { ChatCompletionRequestMessage } from "openai";
-import { updateChatContext, processChatCompletion, processUserTextInput, processImageGeneration } from "./common";
+import { updateChatContext, processChatCompletion, processUserTextInput } from "./common";
 import { Logger } from "../../singletons/logger";
-import { BotInstance } from "../../singletons/telegram";
-import { Classifier } from "../../singletons/classifier";
+import { handleFunctionCall } from "../../providers/functions";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -37,37 +36,33 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
         return;
     }
 
-    // Determine what type of response we should send to the user...
-    const type = Classifier.determineUserIntent(chatId, msg.text);
+    const prompt = buildPrompt(title || "Group Chat");
+    const message = await processUserTextInput(chatId, msg.text);
+    const context = await updateChatContext(chatId, "user", message);
 
-    if (type === "TEXT") {
-        const prompt = buildPrompt(title || "Group Chat");
-        const message = await processUserTextInput(chatId, msg.text);
-        const context = await updateChatContext(chatId, "user", message);
+    const response = await processChatCompletion(chatId, [
+        ...prompt,
+        ...context
+    ], { functions: true });
 
-        const response = await processChatCompletion(chatId, [
-            ...prompt,
-            ...context
-        ], { functions: false });
-
-        if (response.type === "content") {
-            await updateChatContext(chatId, "assistant", response.data);
-            await sendMessageWrapper(chatId, response.data, { reply_to_message_id: msg.message_id });
-            return;
-        }
+    if (response.type === "content") {
+        await updateChatContext(chatId, "assistant", response.data);
+        await sendMessageWrapper(chatId, response.data, { reply_to_message_id: msg.message_id });
+        return;
     }
 
-    if (type === "IMAGE") {
-        if (msg.text.length > 1000) {
-            return await sendMessageWrapper(chatId, "Sorry, I ran into an error while trying to create your image. Try a shorter request.", { reply_to_message_id: msg.message_id });
-        }
+    if (response.type === "function") {
+        const fn_context = await handleFunctionCall(chatId, response.data);
+        const sub_context = await updateChatContext(chatId, "system", fn_context);
 
-        const url = await processImageGeneration(chatId, msg.text);
-        if (!url) {
-            return await sendMessageWrapper(chatId, "Sorry, I ran into an error while trying to create your image. It might be restricted by [OpenAI content guidelines.](https://labs.openai.com/policies/content-policy)", { reply_to_message_id: msg.message_id, parse_mode: "MarkdownV2" }); 
-        }
-
-        BotInstance.instance().sendPhoto(chatId, url, {reply_to_message_id: msg.message_id});
+        const sub_response = await processChatCompletion(chatId, [
+            ...prompt,
+            ...sub_context
+        ], { functions: false });
+        
+        await updateChatContext(chatId, "assistant", sub_response.data as string);
+        await sendMessageWrapper(chatId, sub_response.data as string, { reply_to_message_id: msg.message_id });
+        return;
     }
 }
 
