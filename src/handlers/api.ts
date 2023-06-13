@@ -101,9 +101,9 @@ function ChatMiddleware(): Middleware {
         const response = await processChatCompletion(msg.chat.id, [
             ...prompt,
             ...context
-        ]);
+        ], {functions: false});
 
-        const result = await updateChatContext(msg.chat.id, "assistant", response);
+        const result = await updateChatContext(msg.chat.id, "assistant", response.data as string);
 
         ctx.status = 200;
         ctx.body = { error: false, data: result };

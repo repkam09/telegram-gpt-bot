@@ -52,10 +52,14 @@ async function handleVoice(msg: TelegramBot.Message) {
         const response = await processChatCompletion(chatId, [
             ...prompt,
             ...context
-        ]);
+        ], { functions: false });
 
-        await updateChatContext(chatId, "assistant", response);
-        await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
+        if (response.type === "content") {
+            await updateChatContext(chatId, "assistant", response.data);
+            await sendMessageWrapper(chatId, response.data, { reply_to_message_id: msg.message_id });
+            return;
+        }
+        
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error("Error processing voice message: ", error.message, error);

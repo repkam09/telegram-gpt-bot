@@ -87,17 +87,9 @@ export class ChatMemory {
         return RedisCache.has("llm",`${key}`);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     static async getLLM(key: number): Promise<string> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            return this._id_to_llm.get(key) || Config.OPENAI_API_LLM;
-        }
-
-        const result = await RedisCache.get<{ llm: string }>("llm",`${key}`);
-        if (!result) {
-            return Config.OPENAI_API_LLM;
-        }
-
-        return result.llm;
+        return Config.OPENAI_API_LLM;
     }
 
     static async setLLM(key: number, value: string) {

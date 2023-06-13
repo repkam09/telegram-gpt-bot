@@ -48,10 +48,13 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
         const response = await processChatCompletion(chatId, [
             ...prompt,
             ...context
-        ]);
+        ], { functions: false });
 
-        await updateChatContext(chatId, "assistant", response);
-        await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
+        if (response.type === "content") {
+            await updateChatContext(chatId, "assistant", response.data);
+            await sendMessageWrapper(chatId, response.data, { reply_to_message_id: msg.message_id });
+            return;
+        }
     }
 
     if (type === "IMAGE") {
