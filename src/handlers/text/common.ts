@@ -63,7 +63,7 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
         throw new Error("Unexpected createChatCompletion Result: Bad Message Format");
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error("ChatId", chatId, "CreateChatCompletion Error:", error.message, error.stack, error);
+        Logger.error("ChatId", chatId, "CreateChatCompletion Error:", error.message, error.stack);
         return {
             type: "content",
             data: "Sorry, I was unable to process your message"
@@ -94,7 +94,8 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
 
         return url;
     } catch (err: unknown) {
-        Logger.error("ChatId", chatId, "createImage", options, "Error:", (err as Error).message, (err as Error).stack);
+        const error = err as Error;
+        Logger.error("ChatId", chatId, "createImage", options, "Error:", error.message, error.stack);
         return undefined;
     }
 }

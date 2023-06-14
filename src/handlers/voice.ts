@@ -62,7 +62,7 @@ async function handleVoice(msg: TelegramBot.Message) {
         
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error("Error processing voice message: ", error.message, error);
+        Logger.error("Error processing voice message: ", error.message, error.stack);
         await sendMessageWrapper(chatId, "Sorry, I was unable to process your voice message.");
     }
 
@@ -81,8 +81,9 @@ async function processTranscription(path: string): Promise<string> {
 function unlink(path: string) {
     try {
         fs.unlink(path);
-    } catch (err) {
-        Logger.error("Unable to clean up voice file:" + path);
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.error("Unable to clean up voice file:" + path, error.message);
     }
 }
 
