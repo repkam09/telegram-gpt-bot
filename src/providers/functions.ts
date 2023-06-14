@@ -1,19 +1,32 @@
 import { processImageGeneration } from "../handlers/text/common";
 import axios from "axios";
-import { Functions } from "../singletons/functions";
+import { Functions, FuncParams } from "../singletons/functions";
 
-async function fetch(url: string): Promise<string | undefined> {
+async function fetch(url: string): Promise<unknown | undefined> {
     try {
         const data = await axios.get(url);
-
-        if (typeof data.data === "string") {
-            return data.data;
-        }
-
-        return JSON.stringify(data.data);
+        return data.data as unknown;
     } catch (err: unknown) {
         return undefined;
     }
+}
+
+function formatResponse(input: FuncParams, message: string, data: unknown, ) {
+    return JSON.stringify({
+        error: false,
+        message,
+        data,
+        input
+    });
+}
+
+function formatErrorResponse(input: FuncParams, message: string) {
+    return JSON.stringify({
+        error: true,
+        message,
+        data: undefined,
+        input
+    });
 }
 
 export function init() {
@@ -35,15 +48,43 @@ Functions.register({
             "location"
         ]
     }
-}, async (chatId: number, options: any) => {
+}, async (chatId: number, options: FuncParams) => {
     const data = await fetch("https://api.repkam09.com/api/weather/current/zip/" + options.location);
     if (!data) {
-        return JSON.stringify({
-            error: true,
-            message: `Unable to get weather information for: ${options.location}`,
-        });
+        return formatErrorResponse(options, `Unable to get weather information for: ${options.location}`);
     }
-    return data;
+    return formatResponse(options, `Weather information for: ${options.location}`, data);
+});
+
+Functions.register({
+    name: "set_reminder_at_date_time",
+    description: "Sets up a reminder to message the user at a specific time and date",
+    parameters: {
+        type: "object",
+        properties: {
+            date: {
+                type: "string",
+                format: "date",
+                description: "The date to set the reminder for. Eg, 2018-11-13"
+            },
+            time: {
+                type: "string",
+                format: "time",
+                description: "The time, in UTC, to set the reminder for. Eg, 20:20:39+00:00"
+            },
+            message: {
+                type: "string",
+                description: "The message to send the user when the reminder triggers"
+            },
+        },
+        required: [
+            "date",
+            "time",
+            "message",
+        ]
+    }
+}, async (chatId: number, options: FuncParams) => {
+    return formatResponse(options, `Your reminder for ${options.message} has been set for ${options.date} at ${options.time}`, "");
 });
 
 Functions.register({
@@ -61,15 +102,12 @@ Functions.register({
             "location"
         ]
     }
-}, async (chatId: number, options: any) => {
+}, async (chatId: number, options: FuncParams) => {
     const data = await fetch("https://api.repkam09.com/api/weather/forecast/zip/" + options.location);
     if (!data) {
-        return JSON.stringify({
-            error: true,
-            message: `Unable to get weather information for: ${options.location}`,
-        });
+        return formatErrorResponse(options, `Unable to get weather forecast information for: ${options.location}`);
     }
-    return data;
+    return formatResponse(options, `Weather forecast information for: ${options.location}`, data);
 });
 
 Functions.skip_register({
@@ -87,18 +125,11 @@ Functions.skip_register({
             "prompt"
         ]
     }
-}, async (chatId: number, options: any) => {
+}, async (chatId: number, options: FuncParams) => {
     const result = await processImageGeneration(chatId, options.prompt);
     if (!result) {
-        return JSON.stringify({
-            error: true,
-            message: `Unable to generate image for prompt: ${options.prompt}`,
-            generate_image_url: undefined
-        });
+        return formatErrorResponse(options, `Unable to generate image for prompt: ${options.prompt}`);
     }
 
-    return JSON.stringify({
-        error: false,
-        generate_image_url: result
-    });
+    return formatResponse(options, `Generated image for prompt: ${options.prompt}`, result);
 });

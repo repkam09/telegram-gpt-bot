@@ -36,6 +36,8 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
         }
 
         Logger.info("ChatId", chatId, "createChatCompletion Start");
+        Logger.debug(`createChatCompletion Options: ${JSON.stringify(options)}`);
+
         const response = await OpenAI.instance().createChatCompletion(options);
 
         if (!response || !response.data || !response.data.choices) {
@@ -81,6 +83,8 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
     };
     try {
         Logger.info("ChatId", chatId, "createImage Start");
+        Logger.debug(`createImage Options: ${JSON.stringify(options)}`);
+
         const response = await OpenAI.instance().createImage(options);
 
         if (!response || !response.data || !response.data.data) {
@@ -102,23 +106,33 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
     }
 }
 
-export async function updateChatContext(chatId: number, role: ChatCompletionRequestMessageRoleEnum, content: string): Promise<ChatCompletionRequestMessage[]> {
+export async function updateChatContextWithName(chatId: number, name: string, role: ChatCompletionRequestMessageRoleEnum, content: string): Promise<ChatCompletionRequestMessage[]> {
     if (!await ChatMemory.hasContext(chatId)) {
+        Logger.debug("updateChatContext Creating a new context");
         await ChatMemory.setContext(chatId, []);
     }
 
     const currentChatContext = await ChatMemory.getContext(chatId);
 
     if (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
+        Logger.debug("updateChatContext Shifting old message context");
+
         // Remove the oldest user message from memory
         currentChatContext.shift();
         // Remove the oldest assistant message from memory
         currentChatContext.shift();
     }
 
-    currentChatContext.push({ role, content });
+    currentChatContext.push({ role, content, name });
     await ChatMemory.setContext(chatId, currentChatContext);
+
+    Logger.debug("updateChatContext Finished updating context");
     return currentChatContext;
+}
+
+
+export async function updateChatContext(chatId: number, role: ChatCompletionRequestMessageRoleEnum, content: string): Promise<ChatCompletionRequestMessage[]> {
+    return updateChatContextWithName(chatId, chatId.toString(), role, content);
 }
 
 export async function getChatContext(chatId: number): Promise<ChatCompletionRequestMessage[]> {
@@ -131,35 +145,5 @@ export function isAdmin(chatId: number): boolean {
 }
 
 export async function processUserTextInput(chatId: number, text: string): Promise<string> {
-    try {
-        text = text.trim();
-
-        if (Config.GOOGLE_API_KEY) {
-            const youtube = match(text, [
-                new RegExp(/^https:\/\/youtu.be\/(.*?)$/),
-                new RegExp(/^https:\/\/www.youtube.com\/watch\?v=(.*?)$/)
-            ]);
-
-            if (youtube) {
-                return getVideoInfo(chatId, youtube[1]);
-            }
-        }
-    } catch (err) {
-        return text;
-    }
     return text;
-}
-
-function match(text: string, regex: RegExp | RegExp[]): RegExpExecArray | null {
-    if (!Array.isArray(regex)) {
-        return regex.exec(text);
-    }
-
-    for (let i = 0; i < regex.length - 1; i++) {
-        const match = regex[i].exec(text);
-        if (match) {
-            return match;
-        }
-    }
-    return null;
 }

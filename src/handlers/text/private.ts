@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContext } from "./common";
+import { getChatContext, processChatCompletion, processUserTextInput, updateChatContext } from "./common";
 import { ChatCompletionRequestMessage } from "openai";
 import { Logger } from "../../singletons/logger";
 import { Functions } from "../../singletons/functions";
@@ -41,9 +41,9 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     if (response.type === "function") {
-        const fn_context = await Functions.call(chatId, response.data.name as string, response.data.arguments as string);
-        const sub_context = await updateChatContext(chatId, "system", fn_context);
+        await Functions.call(chatId, response.data.name as string, response.data.arguments as string);
 
+        const sub_context = await getChatContext(chatId);
         const sub_response = await processChatCompletion(chatId, [
             ...prompt,
             ...sub_context

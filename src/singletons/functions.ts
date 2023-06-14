@@ -1,8 +1,10 @@
 import { ChatCompletionFunctions } from "openai";
 import { Logger } from "./logger";
+import { updateChatContext, updateChatContextWithName } from "../handlers/text/common";
 
-type HennosChatCompletionFunctionCall = (chatId: number, args: unknown) => Promise<string>
-type HennosChatCompletionFunctionConfig = ChatCompletionFunctions & { calls:  HennosChatCompletionFunctionCall};
+export type HennosChatCompletionFunctionCall = (chatId: number, args: FuncParams) => Promise<string>
+export type HennosChatCompletionFunctionConfig = ChatCompletionFunctions & { calls:  HennosChatCompletionFunctionCall};
+export type FuncParams = {[x: string]: any}
 
 export class Functions { 
     static _functions: Map<string, HennosChatCompletionFunctionConfig> = new Map();
@@ -40,14 +42,17 @@ export class Functions {
         Logger.info(`ChatCompletionFunction skipped ${rules.name} with description ${rules.description}`);
     }
 
-    static call(chatId: number, name: string, args: string): Promise<string> {
+    static async call(chatId: number, name: string, args: string): Promise<void> {
         const current = Functions._functions.get(name);
         if (!current) {
             throw new Error(`Function name ${name} is not registered`);
         }
 
-        const obj = JSON.parse(args);
         Logger.info("ChatId", chatId, "function_call ", name);
-        return current.calls(chatId, obj);
+        const options = JSON.parse(args) as FuncParams;
+        const result = await current.calls(chatId, options);
+
+        await updateChatContextWithName(chatId, name, "function", result);
+        return;
     }
 }
