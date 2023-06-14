@@ -3,6 +3,8 @@ import * as handlers from "./handlers";
 import { BotInstance } from "./singletons/telegram";
 import { OpenAI } from "./singletons/openai";
 import { RedisCache } from "./singletons/redis";
+import { Functions } from "./singletons/functions";
+import {init as RegisterFunctions} from "./providers/functions";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -14,6 +16,10 @@ async function start() {
 
     // Create an OpenAI Instance
     OpenAI.instance();
+
+    // Crate the Functions instance
+    Functions.instance();
+    RegisterFunctions();
 
     // Create a Telegram Bot Instance
     BotInstance.instance();

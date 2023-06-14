@@ -4,7 +4,7 @@ import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils
 import { processChatCompletion, processUserTextInput, updateChatContext } from "./common";
 import { ChatCompletionRequestMessage } from "openai";
 import { Logger } from "../../singletons/logger";
-import { handleFunctionCall } from "../../providers/functions";
+import { Functions } from "../../singletons/functions";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -41,7 +41,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     if (response.type === "function") {
-        const fn_context = await handleFunctionCall(chatId, response.data);
+        const fn_context = await Functions.call(chatId, response.data.name as string, response.data.arguments as string);
         const sub_context = await updateChatContext(chatId, "system", fn_context);
 
         const sub_response = await processChatCompletion(chatId, [

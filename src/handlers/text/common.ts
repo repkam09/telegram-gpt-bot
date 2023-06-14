@@ -4,7 +4,7 @@ import { Logger } from "../../singletons/logger";
 import { ChatMemory } from "../../singletons/memory";
 import { OpenAI } from "../../singletons/openai";
 import { getVideoInfo } from "../../providers/youtube";
-import { buildFunctionsArray } from "../../providers/functions";
+import { Functions } from "../../singletons/functions";
 
 type ProcessChatCompletionResponse = ProcessChatCompletionTextResponse | ProcessChatCompletionFunctionResponse
 
@@ -32,7 +32,7 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
 
         if (settings.functions) {
             options.function_call = "auto";
-            options.functions = buildFunctionsArray();
+            options.functions = Functions.registered();
         }
 
         const response = await OpenAI.instance().createChatCompletion(options);

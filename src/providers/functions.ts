@@ -1,38 +1,6 @@
-import { ChatCompletionFunctions, ChatCompletionRequestMessageFunctionCall } from "openai";
 import { processImageGeneration } from "../handlers/text/common";
 import axios from "axios";
-
-/**
- * This function should take the incoming call, run it, and provide the data back to the context
- * the triggering the processChatCompletion again.
- * 
- * @param chatId 
- * @param data 
- */
-export async function handleFunctionCall(chatId: number, data: ChatCompletionRequestMessageFunctionCall): Promise<string> {
-    if (!data.arguments) {
-        data.arguments = JSON.stringify({});
-    }
-
-    const args = JSON.parse(data.arguments);
-    switch (data.name) {
-    case "get_current_weather_zip": {
-        return get_current_weather_zip(chatId, args);
-    }
-
-    case "get_forecast_weather_zip": {
-        return get_forecast_weather_zip(chatId, args);
-    }
-
-    case "generate_image": {
-        return generate_image(chatId, args);
-    }
-
-    default: {
-        return `Unknown Function: ${data.name}`;
-    }
-    }
-}
+import { Functions } from "../singletons/functions";
 
 async function fetch(url: string): Promise<string | undefined> {
     try {
@@ -48,7 +16,26 @@ async function fetch(url: string): Promise<string | undefined> {
     }
 }
 
-async function get_current_weather_zip(chatId: number, options: any) {
+export function init() {
+    // Dummy function to load in this file
+}
+
+Functions.register({
+    name: "get_current_weather_zip",
+    description: "Get the current weather by zip code",
+    parameters: {
+        type: "object",
+        properties: {
+            location: {
+                type: "string",
+                description: "The zip code"
+            },
+        },
+        required: [
+            "location"
+        ]
+    }
+}, async (chatId: number, options: any) => {
     const data = await fetch("https://api.repkam09.com/api/weather/current/zip/" + options.location);
     if (!data) {
         return JSON.stringify({
@@ -57,9 +44,24 @@ async function get_current_weather_zip(chatId: number, options: any) {
         });
     }
     return data;
-}
+});
 
-async function get_forecast_weather_zip(chatId: number, options: any) {
+Functions.register({
+    name: "get_forecast_weather_zip",
+    description: "Get the weather forecast by zip code",
+    parameters: {
+        type: "object",
+        properties: {
+            location: {
+                type: "string",
+                description: "The zip code"
+            },
+        },
+        required: [
+            "location"
+        ]
+    }
+}, async (chatId: number, options: any) => {
     const data = await fetch("https://api.repkam09.com/api/weather/forecast/zip/" + options.location);
     if (!data) {
         return JSON.stringify({
@@ -68,9 +70,24 @@ async function get_forecast_weather_zip(chatId: number, options: any) {
         });
     }
     return data;
-}
+});
 
-async function generate_image(chatId: number, options: any) {
+Functions.register({
+    name: "generate_image",
+    description: "Create, generate, or draw an image using the OpenAI DALL·E API based on a given prompt",
+    parameters: {
+        type: "object",
+        properties: {
+            prompt: {
+                type: "string",
+                description: "A string that describes the image, drawing, picture or similar that should be generated"
+            },
+        },
+        required: [
+            "prompt"
+        ]
+    }
+}, async (chatId: number, options: any) => {
     const result = await processImageGeneration(chatId, options.prompt);
     if (!result) {
         return JSON.stringify({
@@ -84,42 +101,4 @@ async function generate_image(chatId: number, options: any) {
         error: false,
         generate_image_url: result
     });
-}
-
-
-export function buildFunctionsArray(): ChatCompletionFunctions[] {
-    return [
-        {
-            "name": "get_current_weather_zip",
-            "description": "Get the current weather by zip code",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The zip code"
-                    },
-                },
-                "required": [
-                    "location"
-                ]
-            }
-        },
-        {
-            "name": "generate_image",
-            "description": "Generate an image based on the users input",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "prompt": {
-                        "type": "string",
-                        "description": "The prompt to feed into DALL-E"
-                    }
-                },
-                "required": [
-                    "prompt"
-                ]
-            }
-        }
-    ];
-}
+});
