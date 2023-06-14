@@ -4,7 +4,6 @@ type ChatClassification = "TEXT" | "IMAGE"
 
 export class Classifier { 
     static _instance: BayesClassifier;
-    static _models: string[];
 
     static instance(): BayesClassifier {
         if (!Classifier._instance) {

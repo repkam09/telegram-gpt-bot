@@ -3,7 +3,6 @@ import { Config } from "./config";
 
 export class OpenAI { 
     static _instance: OpenAIApi;
-    static _models: string[];
 
     static instance(): OpenAIApi {
         if (!OpenAI._instance) {
@@ -16,14 +15,5 @@ export class OpenAI {
         }
 
         return OpenAI._instance;
-    }
-
-    static async models() {
-        if (!OpenAI._models) {
-            const models = await OpenAI.instance().listModels();
-            OpenAI._models = models.data.data.map((model) => model.id);
-        }
-
-        return OpenAI._models;
     }
 }

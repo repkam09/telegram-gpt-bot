@@ -42,6 +42,7 @@ export class Functions {
         }
 
         const obj = JSON.parse(args);
+        Logger.info("ChatId", chatId, "function_call ", name);
         return current.calls(chatId, obj);
     }
 }

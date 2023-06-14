@@ -35,6 +35,7 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
             options.functions = Functions.registered();
         }
 
+        Logger.info("ChatId", chatId, "createChatCompletion Start");
         const response = await OpenAI.instance().createChatCompletion(options);
 
         if (!response || !response.data || !response.data.choices) {
@@ -79,6 +80,7 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
         response_format: "url"
     };
     try {
+        Logger.info("ChatId", chatId, "createImage Start");
         const response = await OpenAI.instance().createImage(options);
 
         if (!response || !response.data || !response.data.data) {
