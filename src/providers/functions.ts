@@ -72,7 +72,7 @@ Functions.register({
     return data;
 });
 
-Functions.register({
+Functions.skip_register({
     name: "generate_image",
     description: "Create, generate, or draw an image using the OpenAI DALL·E API based on a given prompt",
     parameters: {

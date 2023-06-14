@@ -35,6 +35,11 @@ export class Functions {
         Logger.info(`ChatCompletionFunction registered ${rules.name} with description ${rules.description}`);
     }
 
+    // This function provides a dumb way to keep stuff in the code but not have it active
+    static skip_register(rules: ChatCompletionFunctions, func: HennosChatCompletionFunctionCall): void {
+        Logger.info(`ChatCompletionFunction skipped ${rules.name} with description ${rules.description}`);
+    }
+
     static call(chatId: number, name: string, args: string): Promise<string> {
         const current = Functions._functions.get(name);
         if (!current) {
