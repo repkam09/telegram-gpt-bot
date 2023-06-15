@@ -4,6 +4,7 @@ import { BotInstance } from "./singletons/telegram";
 import { OpenAI } from "./singletons/openai";
 import { RedisCache } from "./singletons/redis";
 import { Functions } from "./singletons/functions";
+import { Schedule } from "./singletons/schedule";
 import {init as RegisterFunctions} from "./providers/functions";
 
 async function start() {
@@ -23,6 +24,9 @@ async function start() {
 
     // Create a Telegram Bot Instance
     BotInstance.instance();
+
+    // Create a Schedule Instance
+    Schedule.instance();
 
     // Attach the Telegram message handlers
     handlers.audio();

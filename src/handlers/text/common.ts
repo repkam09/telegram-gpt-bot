@@ -3,7 +3,6 @@ import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { ChatMemory } from "../../singletons/memory";
 import { OpenAI } from "../../singletons/openai";
-import { getVideoInfo } from "../../providers/youtube";
 import { Functions } from "../../singletons/functions";
 
 type ProcessChatCompletionResponse = ProcessChatCompletionTextResponse | ProcessChatCompletionFunctionResponse
@@ -23,18 +22,17 @@ type ProcessChatCompletionSettings = {
 }
 export async function processChatCompletion(chatId: number, messages: ChatCompletionRequestMessage[], settings: ProcessChatCompletionSettings): Promise<ProcessChatCompletionResponse> {
     const model = await ChatMemory.getLLM(chatId);
+    const options: CreateChatCompletionRequest = {
+        model: model,
+        messages: messages
+    };
+
+    if (settings.functions) {
+        options.function_call = "auto";
+        options.functions = Functions.registered();
+    }
+
     try {
-
-        const options: CreateChatCompletionRequest = {
-            model: model,
-            messages: messages
-        };
-
-        if (settings.functions) {
-            options.function_call = "auto";
-            options.functions = Functions.registered();
-        }
-
         Logger.info("ChatId", chatId, "createChatCompletion Start");
         Logger.debug(`createChatCompletion Options: ${JSON.stringify(options)}`);
 
@@ -66,7 +64,7 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
         throw new Error("Unexpected createChatCompletion Result: Bad Message Format");
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error("ChatId", chatId, "CreateChatCompletion Error:", error.message, error.stack);
+        Logger.error("ChatId", chatId, "CreateChatCompletion Error:", error.message, error.stack, options);
         return {
             type: "content",
             data: "Sorry, I was unable to process your message"

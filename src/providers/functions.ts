@@ -1,6 +1,8 @@
 import { processImageGeneration } from "../handlers/text/common";
 import axios from "axios";
 import { Functions, FuncParams } from "../singletons/functions";
+import { Schedule } from "../singletons/schedule";
+import { BotInstance } from "../singletons/telegram";
 
 async function fetch(url: string): Promise<unknown | undefined> {
     try {
@@ -11,7 +13,7 @@ async function fetch(url: string): Promise<unknown | undefined> {
     }
 }
 
-function formatResponse(input: FuncParams, message: string, data: unknown, ) {
+function formatResponse(input: FuncParams, message: string, data: unknown,) {
     return JSON.stringify({
         error: false,
         message,
@@ -84,6 +86,11 @@ Functions.register({
         ]
     }
 }, async (chatId: number, options: FuncParams) => {
+    const trigger = new Date(`${options.date}${options.time}`);
+    Schedule.register(trigger, async () => {
+        BotInstance.instance().sendMessage(chatId, options.message);
+    });
+
     return formatResponse(options, `Your reminder for ${options.message} has been set for ${options.date} at ${options.time}`, "");
 });
 
