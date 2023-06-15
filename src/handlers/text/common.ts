@@ -106,16 +106,51 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
     }
 }
 
+/**
+ * The name of the author of this message. name is required if role is function,
+ *  and it should be the name of the function whose response is in the content. 
+ * 
+ * May contain a-z, A-Z, 0-9, and underscores, with a maximum length of 64 characters.
+ * @param name 
+ */
+function processName(name: string): string {
+    Logger.debug("processName before: " + name);
+    const safe = [];
+    const allowed = [
+        "a", "b", "c", "d", "e", "f", "g", 
+        "h", "i", "j", "k", "l", "m", "n", 
+        "o", "p", "q", "r", "s", "t", "u", 
+        "v", "w", "x", "y", "z", "A", "B",
+        "C", "D", "E", "F", "G", "H", "I",
+        "J", "K", "L", "M", "N", "O", "P",
+        "Q", "R", "S", "T", "U", "V", "W",
+        "X", "Y", "Z", "1", "2", "3", "4",
+        "5", "6", "7", "8", "9", "0", "_"
+    ];
+
+    for (let i = 0; i < name.length; i++) {
+        if (!allowed.includes(name[i])) {
+            safe.push("_");
+        } else {
+            safe.push(name[i]);
+        }
+    }
+
+    const safename = safe.join("");
+    Logger.debug("processName after: " + safename);
+    return safename;
+}
+
 export async function updateChatContextWithName(chatId: number, name: string, role: ChatCompletionRequestMessageRoleEnum, content: string): Promise<ChatCompletionRequestMessage[]> {
     if (!await ChatMemory.hasContext(chatId)) {
-        Logger.debug("updateChatContext Creating a new context");
+        Logger.debug("updateChatContextWithName Creating a new context");
         await ChatMemory.setContext(chatId, []);
     }
 
     const currentChatContext = await ChatMemory.getContext(chatId);
 
     if (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
-        Logger.debug("updateChatContext Shifting old message context");
+        Logger.debug("updateChatContextWithName Shifting old message context");
 
         // Remove the oldest user message from memory
         currentChatContext.shift();
@@ -123,16 +158,11 @@ export async function updateChatContextWithName(chatId: number, name: string, ro
         currentChatContext.shift();
     }
 
-    currentChatContext.push({ role, content, name });
+    currentChatContext.push({ role, content, name: processName(name) });
     await ChatMemory.setContext(chatId, currentChatContext);
 
-    Logger.debug("updateChatContext Finished updating context");
+    Logger.debug("updateChatContextWithName Finished updating context");
     return currentChatContext;
-}
-
-
-export async function updateChatContext(chatId: number, role: ChatCompletionRequestMessageRoleEnum, content: string): Promise<ChatCompletionRequestMessage[]> {
-    return updateChatContextWithName(chatId, chatId.toString(), role, content);
 }
 
 export async function getChatContext(chatId: number): Promise<ChatCompletionRequestMessage[]> {

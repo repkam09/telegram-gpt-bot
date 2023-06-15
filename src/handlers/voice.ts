@@ -8,7 +8,7 @@ import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
 import { OpenAI } from "../singletons/openai";
-import { processChatCompletion, updateChatContext } from "./text/common";
+import { processChatCompletion, updateChatContextWithName } from "./text/common";
 import { buildPrompt } from "./text/private";
 import { ChatMemory } from "../singletons/memory";
 
@@ -47,7 +47,7 @@ async function handleVoice(msg: TelegramBot.Message) {
         await sendMessageWrapper(chatId, `\`\`\`\n${whisper}\n\`\`\``, { reply_to_message_id: msg.message_id });
 
         const prompt = buildPrompt(first_name);
-        const context = await updateChatContext(chatId, "user", whisper);
+        const context = await updateChatContextWithName(chatId, first_name, "user", whisper);
 
         const response = await processChatCompletion(chatId, [
             ...prompt,
@@ -55,7 +55,7 @@ async function handleVoice(msg: TelegramBot.Message) {
         ], { functions: false });
 
         if (response.type === "content") {
-            await updateChatContext(chatId, "assistant", response.data);
+            await updateChatContextWithName(chatId, "Hennos", "assistant", response.data);
             await sendMessageWrapper(chatId, response.data, { reply_to_message_id: msg.message_id });
             return;
         }

@@ -1,6 +1,6 @@
 import { ChatCompletionFunctions } from "openai";
 import { Logger } from "./logger";
-import { updateChatContext, updateChatContextWithName } from "../handlers/text/common";
+import { updateChatContextWithName } from "../handlers/text/common";
 
 export type HennosChatCompletionFunctionCall = (chatId: number, args: FuncParams) => Promise<string>
 export type HennosChatCompletionFunctionConfig = ChatCompletionFunctions & { calls:  HennosChatCompletionFunctionCall};
@@ -38,6 +38,7 @@ export class Functions {
     }
 
     // This function provides a dumb way to keep stuff in the code but not have it active
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     static skip_register(rules: ChatCompletionFunctions, func: HennosChatCompletionFunctionCall): void {
         Logger.info(`ChatCompletionFunction skipped ${rules.name} with description ${rules.description}`);
     }

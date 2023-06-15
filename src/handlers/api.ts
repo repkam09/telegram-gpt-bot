@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
 import Koa, { Context, Middleware, Next } from "koa";
 import KoaBody from "koa-bodyparser";
-import { getChatContext, processChatCompletion, updateChatContext } from "./text/common";
+import { getChatContext, processChatCompletion, updateChatContextWithName } from "./text/common";
 import { isOnWhitelist } from "../utils";
 import { Config } from "../singletons/config";
 import { buildPrompt } from "./text/private";
@@ -97,13 +97,13 @@ function ChatMiddleware(): Middleware {
         Logger.trace("text_api", msg);
 
         const prompt = buildPrompt(msg.from!.first_name);
-        const context = await updateChatContext(msg.chat.id, "user", msg.text!);
+        const context = await updateChatContextWithName(msg.chat.id, msg.from!.first_name, "user", msg.text!);
         const response = await processChatCompletion(msg.chat.id, [
             ...prompt,
             ...context
         ], {functions: false});
 
-        const result = await updateChatContext(msg.chat.id, "assistant", response.data as string);
+        const result = await updateChatContextWithName(msg.chat.id, "Hennos", "assistant", response.data as string);
 
         ctx.status = 200;
         ctx.body = { error: false, data: result };

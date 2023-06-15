@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
-import { getChatContext, processChatCompletion, processUserTextInput, updateChatContext } from "./common";
+import { getChatContext, processChatCompletion, processUserTextInput, updateChatContextWithName } from "./common";
 import { ChatCompletionRequestMessage } from "openai";
 import { Logger } from "../../singletons/logger";
 import { Functions } from "../../singletons/functions";
@@ -27,7 +27,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
 
     const prompt = buildPrompt(first_name);
     const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContext(chatId, "user", message);
+    const context = await updateChatContextWithName(chatId, first_name, "user", message);
     
     const response = await processChatCompletion(chatId, [
         ...prompt,
@@ -35,7 +35,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     ], { functions: true });
     
     if (response.type === "content") {
-        await updateChatContext(chatId, "assistant", response.data);
+        await updateChatContextWithName(chatId, "Hennos", "assistant", response.data);
         await sendMessageWrapper(chatId, response.data);
         return;   
     }
@@ -49,7 +49,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
             ...sub_context
         ], { functions: false });
         
-        await updateChatContext(chatId, "assistant", sub_response.data as string);
+        await updateChatContextWithName(chatId, "Hennos", "assistant", sub_response.data as string);
         await sendMessageWrapper(chatId, sub_response.data as string);
         return;
     }

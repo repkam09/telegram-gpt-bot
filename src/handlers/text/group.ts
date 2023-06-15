@@ -3,7 +3,7 @@ import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendMessageWrapper, sendAdminMessage } from "../../utils";
 import { ChatCompletionRequestMessage } from "openai";
-import { updateChatContext, processChatCompletion, processUserTextInput, getChatContext } from "./common";
+import { updateChatContextWithName, processChatCompletion, processUserTextInput, getChatContext } from "./common";
 import { Logger } from "../../singletons/logger";
 import { Functions } from "../../singletons/functions";
 
@@ -26,11 +26,11 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     const { first_name, last_name, username, id } = msg.from;
     const { title } = msg.chat;
 
-    if (!await ChatMemory.hasName(id)) {
+    if (!await ChatMemory.hasName(chatId)) {
         await ChatMemory.setName(chatId, `${title} [${chatId}]`);
     }
 
-    if (!isOnWhitelist(id)) {
+    if (!isOnWhitelist(chatId)) {
         await sendMessageWrapper(chatId, `Sorry, this group chat has not been whitelisted to use this bot. Please request access and provide the group identifier: ${chatId}`);
         await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message from group chat '${title} [${chatId}]' but the group is not whitelisted`);
         return;
@@ -38,7 +38,7 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
 
     const prompt = buildPrompt(title || "Group Chat");
     const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContext(chatId, "user", message);
+    const context = await updateChatContextWithName(chatId, first_name, "user", message);
 
     const response = await processChatCompletion(chatId, [
         ...prompt,
@@ -46,7 +46,7 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     ], { functions: true });
 
     if (response.type === "content") {
-        await updateChatContext(chatId, "assistant", response.data);
+        await updateChatContextWithName(chatId, "Hennos", "assistant", response.data);
         await sendMessageWrapper(chatId, response.data, { reply_to_message_id: msg.message_id });
         return;
     }
@@ -60,7 +60,7 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
             ...sub_context
         ], { functions: false });
         
-        await updateChatContext(chatId, "assistant", sub_response.data as string);
+        await updateChatContextWithName(chatId, "Hennos", "assistant", sub_response.data as string);
         await sendMessageWrapper(chatId, sub_response.data as string, { reply_to_message_id: msg.message_id });
         return;
     }

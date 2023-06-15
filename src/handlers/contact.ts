@@ -1,7 +1,7 @@
 import { BotInstance } from "../singletons/telegram";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
-import { updateChatContext } from "./text/common";
+import { updateChatContextWithName } from "./text/common";
 import { ChatMemory } from "../singletons/memory";
 import { Logger } from "../singletons/logger";
 
@@ -28,6 +28,6 @@ async function handleContact(msg: TelegramBot.Message) {
         return;
     }
 
-    await updateChatContext(chatId, "user", `Here is the contact information for '${msg.contact.first_name}'. Phone Number: ${msg.contact.phone_number}`);
+    await updateChatContextWithName(chatId, first_name, "user", `Here is the contact information for '${msg.contact.first_name}'. Phone Number: ${msg.contact.phone_number}`);
     await sendMessageWrapper(chatId, `I have received the information for your provided contact '${msg.contact.first_name}'`);
 }
