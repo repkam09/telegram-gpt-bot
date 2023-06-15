@@ -22,11 +22,18 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
     return sendMessageWrapper(msg.chat.id, "Unknown Command");
 }
 
+const aboutText = `Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-4 language model, similar to ChatGPT.
+
+This bot is whitelisted for use by approved users only.
+Contact @repkam09 to request access!
+
+For more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).`;
+
 async function handleStartCommand(msg: MessageWithText) {
-    await sendMessageWrapper(msg.chat.id, "Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-3.5 language model, similar to ChatGPT. \n\nFor more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).\n\nYou can get started by asking a question!");
+    await sendMessageWrapper(msg.chat.id, aboutText);
 }
 
 async function handleResetCommand(msg: MessageWithText) {
     await resetMemory(msg.chat.id);
-    await sendMessageWrapper(msg.chat.id, "Memory has been reset");
+    await sendMessageWrapper(msg.chat.id, "Previous chat context has been cleared.");
 }
