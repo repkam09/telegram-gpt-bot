@@ -1,12 +1,16 @@
-# repka-gpt
+# Hennos
 
 A Telegram chat bot that uses the OpenAI API to respond to user queries
+
+The production version of Hennos can be found here: [Hennos](https://t.me/repka_gpt_bot)
+
+Note that there is currently a whitelist and you will need to request access to use the live version.
 
 ## Technical Specifics
 
 Hennos is mostly built around the OpenAI API and GPT-4 and makes use of many of the latest features provided by the API.
 
-Responses are generated using the [Chat Completions API](https://platform.openai.com/docs/guides/gpt/chat-completions-api). 
+Responses are generated using the [Chat Completions API](https://platform.openai.com/docs/guides/gpt/chat-completions-api).
 Hennos can fetch certain real-time information using the [function calling](https://platform.openai.com/docs/guides/gpt/function-calling) features. Right now this includes just basic weather information.
 
 Because Telegram supports voice messages, you can also send a voice message to Hennos which will then use [Whisper](https://platform.openai.com/docs/guides/speech-to-text) to transcribe your voice
@@ -28,6 +32,5 @@ Hennos keeps previous chat context, optionally in Redis, and can respond convers
     5. Information Assistance: I can help answer specific questions, provide factual information, or help with decision-making processes.
 
     Remember, I'm here to help you get the most out of Telegram! Don't hesitate to ask for assistance or engage with me in a conversation. Enjoy messaging!
-
 
 Note that, like most Large Language Models, information is not at all guaranteed to be factual.
