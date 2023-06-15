@@ -22,6 +22,26 @@ export class Config {
         Logger.info(`USE_PERSISTANT_CACHE is configured as ${JSON.stringify(Config.USE_PERSISTANT_CACHE)}`);
     }
 
+    static get JELLYFIN_API_KEY(): string | undefined {
+        return process.env.JELLYFIN_API_KEY;
+    }
+
+    static get JELLYFIN_USER_ID(): string {
+        if (!process.env.JELLYFIN_USER_ID) {
+            return "-1";
+        }
+
+        return process.env.JELLYFIN_USER_ID;
+    }
+
+    static get JELLYFIN_SERVER_URL(): string {
+        if (!process.env.JELLYFIN_SERVER_URL) {
+            return "http://localhost:80/";
+        }
+
+        return process.env.JELLYFIN_SERVER_URL;
+    }
+
     static get HENNOS_MAX_MESSAGE_MEMORY(): number {
         if (!process.env.HENNOS_MAX_MESSAGE_MEMORY) {
             return 10;

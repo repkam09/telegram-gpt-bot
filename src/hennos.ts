@@ -5,7 +5,7 @@ import { OpenAI } from "./singletons/openai";
 import { RedisCache } from "./singletons/redis";
 import { Functions } from "./singletons/functions";
 import { Schedule } from "./singletons/schedule";
-import {init as RegisterFunctions} from "./providers/functions";
+import {jellyfin, reminders, weather, youtube} from "./providers";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -20,7 +20,6 @@ async function start() {
 
     // Crate the Functions instance
     Functions.instance();
-    RegisterFunctions();
 
     // Create a Telegram Bot Instance
     BotInstance.instance();
@@ -38,6 +37,12 @@ async function start() {
     handlers.voice();
     handlers.sticker();
     handlers.api();
+
+    // Load functions
+    jellyfin();
+    reminders();
+    weather();
+    youtube();
 }
 
 // Kick off the async function

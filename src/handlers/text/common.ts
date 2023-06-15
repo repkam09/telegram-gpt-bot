@@ -29,7 +29,7 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
 
     if (settings.functions) {
         options.function_call = "auto";
-        options.functions = Functions.registered();
+        options.functions = Functions.registered(chatId);
     }
 
     try {
