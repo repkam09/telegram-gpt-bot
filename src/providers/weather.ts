@@ -1,5 +1,5 @@
 import { FuncParams, Functions } from "../singletons/functions";
-import { formatErrorResponse, formatResponse } from "./common";
+import { formatErrorResponse, formatResponse, fetch } from "./common";
 
 export default function init() {
     Functions.register({
