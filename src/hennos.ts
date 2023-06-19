@@ -5,7 +5,8 @@ import { OpenAI } from "./singletons/openai";
 import { RedisCache } from "./singletons/redis";
 import { Functions } from "./singletons/functions";
 import { Schedule } from "./singletons/schedule";
-import {jellyfin, reminders, weather, youtube} from "./providers";
+import { jellyfin, reminders, weather, youtube } from "./providers";
+import { Logger } from "./singletons/logger";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -43,6 +44,11 @@ async function start() {
     reminders();
     weather();
     youtube();
+
+    const model = Config.OPENAI_API_LLM;
+    const data = await OpenAI.model(model);
+    
+    Logger.info("Configured Model:", JSON.stringify(data));
 }
 
 // Kick off the async function

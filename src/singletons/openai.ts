@@ -1,8 +1,9 @@
-import { Configuration, OpenAIApi } from "openai";
+import { Configuration, ListModelsResponse, Model, OpenAIApi } from "openai";
 import { Config } from "./config";
 
-export class OpenAI { 
-    static _instance: OpenAIApi;
+export class OpenAI {
+    private static _instance: OpenAIApi;
+    private static _models: ListModelsResponse;
 
     static instance(): OpenAIApi {
         if (!OpenAI._instance) {
@@ -15,5 +16,19 @@ export class OpenAI {
         }
 
         return OpenAI._instance;
+    }
+
+    public static async models(): Promise<ListModelsResponse> {
+        if (!OpenAI._models) {
+            const temp = await OpenAI._instance.listModels();
+            OpenAI._models = temp.data;
+        }
+
+        return OpenAI._models;
+    }
+
+    public static async model(name: string): Promise<Model> {
+        const temp = await OpenAI._instance.retrieveModel(name);
+        return temp.data;
     }
 }

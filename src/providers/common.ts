@@ -1,6 +1,7 @@
 import axios from "axios";
 import { FuncParams } from "../singletons/functions";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetch(url: string, headers: any = {}): Promise<unknown | undefined> {
     try {
         const data = await axios.get(url, {
