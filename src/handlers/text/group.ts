@@ -43,7 +43,7 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     const response = await processChatCompletion(chatId, [
         ...prompt,
         ...context
-    ], { functions: true });
+    ], { functions: false });
 
     if (response.type === "content") {
         await updateChatContextWithName(chatId, "Hennos", "assistant", response.data);
