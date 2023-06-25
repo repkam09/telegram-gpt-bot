@@ -3,6 +3,8 @@ import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
 import Koa, { Context, Middleware, Next } from "koa";
 import KoaBody from "koa-bodyparser";
+import KoaCors from "@koa/cors";
+
 import { getChatContext, processChatCompletion, updateChatContextWithName } from "./text/common";
 import { isOnWhitelist } from "../utils";
 import { Config } from "../singletons/config";
@@ -11,6 +13,7 @@ import { buildPrompt } from "./text/private";
 export function listen() {
     if (Config.HENNOS_EXTERNAL_REQUEST_KEY) {
         const app = new Koa();
+        app.use(KoaCors());
         app.use(ChatAuthorizationMiddleware());
         app.use(KoaBody());
         app.use(ContextMiddleware());
@@ -102,7 +105,7 @@ function ChatMiddleware(): Middleware {
         const response = await processChatCompletion(msg.chat.id, [
             ...prompt,
             ...context
-        ], {functions: false});
+        ], { functions: false });
 
         const result = await updateChatContextWithName(msg.chat.id, "Hennos", "assistant", response.data as string);
 
