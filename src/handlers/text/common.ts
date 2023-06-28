@@ -21,7 +21,7 @@ type ProcessChatCompletionSettings = {
     functions: boolean
 }
 export async function processChatCompletion(chatId: number, messages: ChatCompletionRequestMessage[], settings: ProcessChatCompletionSettings): Promise<ProcessChatCompletionResponse> {
-    const model = await ChatMemory.getLLM(chatId);
+    const model = Config.OPENAI_API_LLM;
     const options: CreateChatCompletionRequest = {
         model: model,
         messages: messages

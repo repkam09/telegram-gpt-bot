@@ -7,6 +7,8 @@ export class ChatMemory {
     private static _id_to_name = new Map<number, string>();
     private static _id_to_llm = new Map<number, string>();
 
+    private static _map_to_map = new Map<string, Map<string, string>>();
+
     public static async hasContext(key: number): Promise<boolean> {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._chat_context_map.has(key);
@@ -21,7 +23,7 @@ export class ChatMemory {
             const result = this._chat_context_map.get(key) as ChatCompletionRequestMessage[];
             return Promise.resolve(result || []);
         }
-        const result = await RedisCache.get<ChatCompletionRequestMessage[]>("context",`${key}`);
+        const result = await RedisCache.get<ChatCompletionRequestMessage[]>("context", `${key}`);
         return result || [];
     }
 
@@ -30,7 +32,7 @@ export class ChatMemory {
             this._chat_context_map.delete(key);
             return;
         }
-        return RedisCache.delete("context",`${key}`);
+        return RedisCache.delete("context", `${key}`);
     }
 
     static async setContext(key: number, value: ChatCompletionRequestMessage[]): Promise<void> {
@@ -38,7 +40,7 @@ export class ChatMemory {
             this._chat_context_map.set(key, value);
             return;
         }
-        return RedisCache.set("context",`${key}`, JSON.stringify(value));
+        return RedisCache.set("context", `${key}`, JSON.stringify(value));
     }
 
     static async getContextKeys(): Promise<number[]> {
@@ -52,14 +54,14 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.has(key);
         }
-        return RedisCache.has("name",`${key}`);
+        return RedisCache.has("name", `${key}`);
     }
 
     static async getName(key: number): Promise<string> {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.get(key) as string;
         }
-        const result = await RedisCache.get<{ name: string }>("name",`${key}`);
+        const result = await RedisCache.get<{ name: string }>("name", `${key}`);
         if (!result) {
             return "unknown";
         }
@@ -77,26 +79,87 @@ export class ChatMemory {
         if (!Config.USE_PERSISTANT_CACHE) {
             return this._id_to_name.set(key, value);
         }
-        return RedisCache.set("name",`${key}`, JSON.stringify({ name: value }));
+        return RedisCache.set("name", `${key}`, JSON.stringify({ name: value }));
     }
 
-    static async hasLLM(key: number): Promise<boolean> {
+    static async storePerUserValue(userId: number, prop: string, value: string): Promise<void> {
         if (!Config.USE_PERSISTANT_CACHE) {
-            return this._id_to_llm.has(key);
+            if (!this._map_to_map.has(prop)) {
+                this._map_to_map.set(prop, new Map<string, string>());
+            }
+
+            const map = this._map_to_map.get(prop) as Map<string, string>;
+            map.set(`${userId}`, value);
+            return;
         }
-        return RedisCache.has("llm",`${key}`);
+
+        return RedisCache.set(prop, `${userId}`, value);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    static async getLLM(key: number): Promise<string> {
-        return Config.OPENAI_API_LLM;
-    }
-
-    static async setLLM(key: number, value: string) {
+    static async getPerUserValue(userId: number, prop: string): Promise<string | undefined> {
         if (!Config.USE_PERSISTANT_CACHE) {
-            return this._id_to_llm.set(key, value);
+            if (!this._map_to_map.has(prop)) {
+                this._map_to_map.set(prop, new Map<string, string>());
+            }
+
+            const map = this._map_to_map.get(prop);
+            return map?.get(`${userId}`);
         }
-        return RedisCache.set("llm",`${key}`, JSON.stringify({ llm: value }));
+
+        return RedisCache.get<string>(prop, `${userId}`);
     }
 
+    static async hasPerUserValue(userId: number, prop: string): Promise<boolean> {
+        if (!Config.USE_PERSISTANT_CACHE) {
+            if (!this._map_to_map.has(prop)) {
+                this._map_to_map.set(prop, new Map<string, string>());
+            }
+
+            const map = this._map_to_map.get(prop) as Map<string, string>;
+            return map.has(`${userId}`);
+        }
+
+        return RedisCache.has(prop, `${userId}`);
+    }
+
+
+    static async storeSystemValue(prop: string, value: string): Promise<void> {
+        if (!Config.USE_PERSISTANT_CACHE) {
+            if (!this._map_to_map.has(prop)) {
+                this._map_to_map.set(prop, new Map<string, string>());
+            }
+
+            const map = this._map_to_map.get(prop) as Map<string, string>;
+            map.set("system_value", value);
+            return;
+        }
+
+        return RedisCache.set(prop, "system_value", value);
+    }
+
+    static async getSystemValue(prop: string): Promise<string | undefined> {
+        if (!Config.USE_PERSISTANT_CACHE) {
+            if (!this._map_to_map.has(prop)) {
+                this._map_to_map.set(prop, new Map<string, string>());
+            }
+
+            const map = this._map_to_map.get(prop);
+            return map?.get("system_value");
+        }
+
+        return RedisCache.get<string>(prop, "system_value");
+    }
+
+    static async hasSystemValue(prop: string): Promise<boolean> {
+        if (!Config.USE_PERSISTANT_CACHE) {
+            if (!this._map_to_map.has(prop)) {
+                this._map_to_map.set(prop, new Map<string, string>());
+            }
+
+            const map = this._map_to_map.get(prop) as Map<string, string>;
+            return map.has("system_value");
+        }
+
+        return RedisCache.has(prop, "system_value");
+    }
 }

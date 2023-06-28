@@ -13,14 +13,15 @@ async function handleText(msg: TelegramBot.Message) {
         return;
     }
 
+    if (msg.text.startsWith("/")) {
+        return handleCommandMessage(msg);
+    }
+
     if (msg.chat.type !== "private") {
         return handleGroupMessage(msg);
     }
 
     if (msg.chat.type === "private") {
-        if (msg.text.startsWith("/")) {
-            return handleCommandMessage(msg);
-        }
         return handlePrivateMessage(msg);
     }
 }

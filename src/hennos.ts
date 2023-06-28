@@ -5,7 +5,7 @@ import { OpenAI } from "./singletons/openai";
 import { RedisCache } from "./singletons/redis";
 import { Functions } from "./singletons/functions";
 import { Schedule } from "./singletons/schedule";
-import { jellyfin, reminders, weather, youtube } from "./providers";
+import { jellyfin, reminders, weather, youtube, rss_feed } from "./providers";
 import { Logger } from "./singletons/logger";
 
 async function start() {
@@ -44,6 +44,7 @@ async function start() {
     reminders();
     weather();
     youtube();
+    await rss_feed();
 
     const model = Config.OPENAI_API_LLM;
     const data = await OpenAI.model(model);

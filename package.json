@@ -27,7 +27,8 @@
     "natural": "^6.5.0",
     "node-telegram-bot-api": "^0.61.0",
     "openai": "^3.3.0",
-    "redis": "^4.6.6"
+    "redis": "^4.6.6",
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "@types/cron": "^2.0.1",
