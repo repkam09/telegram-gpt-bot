@@ -5,7 +5,6 @@ import { RedisCache } from "./redis";
 export class ChatMemory {
     private static _chat_context_map = new Map<number, ChatCompletionRequestMessage[]>();
     private static _id_to_name = new Map<number, string>();
-    private static _id_to_llm = new Map<number, string>();
 
     private static _map_to_map = new Map<string, Map<string, string>>();
 
@@ -82,31 +81,35 @@ export class ChatMemory {
         return RedisCache.set("name", `${key}`, JSON.stringify({ name: value }));
     }
 
-    static async storePerUserValue(userId: number, prop: string, value: string): Promise<void> {
+    static async storePerUserValue<T>(userId: number, prop: string, value: T): Promise<void> {
         if (!Config.USE_PERSISTANT_CACHE) {
             if (!this._map_to_map.has(prop)) {
                 this._map_to_map.set(prop, new Map<string, string>());
             }
 
             const map = this._map_to_map.get(prop) as Map<string, string>;
-            map.set(`${userId}`, value);
+            map.set(`${userId}`, JSON.stringify(value));
             return;
         }
 
-        return RedisCache.set(prop, `${userId}`, value);
+        return RedisCache.set(prop, `${userId}`, JSON.stringify(value));
     }
 
-    static async getPerUserValue(userId: number, prop: string): Promise<string | undefined> {
+    static async getPerUserValue<T>(userId: number, prop: string): Promise<T | undefined> {
         if (!Config.USE_PERSISTANT_CACHE) {
             if (!this._map_to_map.has(prop)) {
                 this._map_to_map.set(prop, new Map<string, string>());
             }
 
-            const map = this._map_to_map.get(prop);
-            return map?.get(`${userId}`);
+            const map = this._map_to_map.get(prop) as Map<string, string>;
+            const stringValue = map.get(`${userId}`);
+            if (!stringValue) {
+                return undefined;
+            }
+            return JSON.parse(stringValue);
         }
 
-        return RedisCache.get<string>(prop, `${userId}`);
+        return RedisCache.get<T>(prop, `${userId}`);
     }
 
     static async hasPerUserValue(userId: number, prop: string): Promise<boolean> {
@@ -123,31 +126,35 @@ export class ChatMemory {
     }
 
 
-    static async storeSystemValue(prop: string, value: string): Promise<void> {
+    static async storeSystemValue<T>(prop: string, value: T): Promise<void> {
         if (!Config.USE_PERSISTANT_CACHE) {
             if (!this._map_to_map.has(prop)) {
                 this._map_to_map.set(prop, new Map<string, string>());
             }
 
             const map = this._map_to_map.get(prop) as Map<string, string>;
-            map.set("system_value", value);
+            map.set("system_value", JSON.stringify(value));
             return;
         }
 
-        return RedisCache.set(prop, "system_value", value);
+        return RedisCache.set(prop, "system_value", JSON.stringify(value));
     }
 
-    static async getSystemValue(prop: string): Promise<string | undefined> {
+    static async getSystemValue<T>(prop: string): Promise<T | undefined> {
         if (!Config.USE_PERSISTANT_CACHE) {
             if (!this._map_to_map.has(prop)) {
                 this._map_to_map.set(prop, new Map<string, string>());
             }
 
-            const map = this._map_to_map.get(prop);
-            return map?.get("system_value");
+            const map = this._map_to_map.get(prop) as Map<string, string>;
+            const stringValue = map.get("system_value");
+            if (!stringValue) {
+                return undefined;
+            }
+            return JSON.parse(stringValue);
         }
 
-        return RedisCache.get<string>(prop, "system_value");
+        return RedisCache.get<T>(prop, "system_value");
     }
 
     static async hasSystemValue(prop: string): Promise<boolean> {

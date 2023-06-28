@@ -10,35 +10,35 @@ export default async function init() {
 
     const result_string = await ChatMemory.getSystemValue(rss_feed_users);
     if (!result_string) {
-        await ChatMemory.storeSystemValue(rss_feed_users, JSON.stringify([]));
+        await ChatMemory.storeSystemValue<number[]>(rss_feed_users, []);
     }
 }
 
 export async function getFeedUserList() {
-    const result = await ChatMemory.getSystemValue(rss_feed_users);
-    return new Set<number>(JSON.parse(result || JSON.stringify([])));
+    const result = await ChatMemory.getSystemValue<number[]>(rss_feed_users);
+    return new Set<number>(result || []);
 }
 
 export async function getUserFeedsList(id: number): Promise<Set<string>> {
-    const result = await ChatMemory.getPerUserValue(id, "feeds");
+    const result = await ChatMemory.getPerUserValue<string[]>(id, "feeds");
     if (!result) {
         return new Set<string>();
     }
 
-    return new Set<string>(JSON.parse(result));
+    return new Set<string>(result);
 }
 
-export async function addUserFeed(id: number, feed: string ) {
+export async function addUserFeed(id: number, feed: string) {
     const currentUsers = await getFeedUserList();
     if (!currentUsers.has(id)) {
         currentUsers.add(id);
-        await ChatMemory.storeSystemValue(rss_feed_users, JSON.stringify(Array.from(currentUsers)));
+        await ChatMemory.storeSystemValue<number[]>(rss_feed_users, Array.from(currentUsers));
     }
 
     const currentFeeds = await getUserFeedsList(id);
     currentFeeds.add(feed);
 
-    await ChatMemory.storePerUserValue(id, "feeds", JSON.stringify(Array.from(currentFeeds)));
+    await ChatMemory.storePerUserValue<string[]>(id, "feeds", Array.from(currentFeeds));
 }
 
 export async function getUserFeedUpdates(id: number) {
