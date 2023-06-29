@@ -66,25 +66,30 @@ export async function getUserFeedUpdates(id: number) {
     let counter = 0;
 
     urls.forEach(async (url) => {
-        const results = await parser.parseURL(url);
-        const message: string[] = [];
-        const seen = await getUserSeenEntriesList(id);
+        try {
+            const results = await parser.parseURL(url);
         
-        results.items.forEach(item => {
-            const guid = buildGuidForEntry(item);
-            if (!seen.includes(guid)) {
-                const title = item.title?.replace("(", "\\(").replace(")", "\\)");
-                message.push(`[${title}](${item.link})`);
-                counter = counter + 1;
-                seen.push(guid);
+            const message: string[] = [];
+            const seen = await getUserSeenEntriesList(id);
+        
+            results.items.forEach(item => {
+                const guid = buildGuidForEntry(item);
+                if (!seen.includes(guid)) {
+                    const title = item.title?.replace("(", "\\(").replace(")", "\\)");
+                    message.push(`[${title}](${item.link})`);
+                    counter = counter + 1;
+                    seen.push(guid);
+                }
+            });
+
+            await updateUserSeenEntriesList(id, seen);
+            if (message.length > 0) {
+                await sendMessageWrapper(id, message.join("\n\n"), { disable_notification: true });
             }
-        });
-
-        await updateUserSeenEntriesList(id, seen);
-        if (message.length > 0) {
-            await sendMessageWrapper(id, message.join("\n\n"), { disable_notification: true });
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(`${id}: Unable to parse feeds from URL ${url}. Error: ${error.message}`);
         }
-
     });
 
     if (counter > 0) {
