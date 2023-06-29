@@ -38,7 +38,7 @@ async function set_reminder_at_date_time(chatId: number, options: FuncParams) {
     const trigger = new Date(`${options.date}${options.time}`);
     Schedule.register(trigger, async () => {
         BotInstance.instance().sendMessage(chatId, options.message as string);
-    });
+    }, "reminder_at_date_time");
 
     return formatResponse(options, `Your reminder for ${options.message} has been set for ${options.date} at ${options.time}`, "");
 }

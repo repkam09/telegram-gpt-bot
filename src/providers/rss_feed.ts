@@ -2,16 +2,13 @@ import { Schedule } from "../singletons/schedule";
 import { ChatMemory } from "../singletons/memory";
 import { sendMessageWrapper } from "../utils";
 import Parser from "rss-parser";
-import { Config } from "../singletons/config";
 import crypto from "node:crypto";
 import { Logger } from "../singletons/logger";
 
 const rss_feed_users = "rss_feed_users";
 
 export default async function init() {
-    if (!Config.HENNOS_DEVELOPMENT_MODE) {
-        Schedule.recurring(60, rss_feed_check);
-    }
+    Schedule.recurring(3, rss_feed_check, "rss_feed_check");
 
     const result_string = await ChatMemory.getSystemValue(rss_feed_users);
     if (!result_string) {
