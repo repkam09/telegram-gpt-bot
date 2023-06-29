@@ -12,12 +12,28 @@ async function start() {
     // Check that all the right environment variables are set
     Config.validate();
 
+    // Create an OpenAI Instance
+    OpenAI.instance();
+        
+    const models = await OpenAI.models();
+    const ids = models.data.map((entry) => entry.id);
+    models.data.forEach((model) => model.id);
+    Logger.info("Available Models:", JSON.stringify(ids));
+
+    const model = Config.OPENAI_API_LLM;
+    if (!ids.includes(model)) {
+        Logger.error(`Configured Model ${model} is not available`);
+        process.exit(1);
+    }
+
+    const data = await OpenAI.model(model);
+    Logger.info("Configured Model:", JSON.stringify(data));
+
+
     if (Config.USE_PERSISTANT_CACHE) {
         await RedisCache.init();
     }
 
-    // Create an OpenAI Instance
-    OpenAI.instance();
 
     // Crate the Functions instance
     Functions.instance();
@@ -45,11 +61,6 @@ async function start() {
     weather();
     youtube();
     await rss_feed();
-
-    const model = Config.OPENAI_API_LLM;
-    const data = await OpenAI.model(model);
-    
-    Logger.info("Configured Model:", JSON.stringify(data));
 }
 
 // Kick off the async function

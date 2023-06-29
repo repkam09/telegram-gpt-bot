@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { resetMemory, sendMessageWrapper } from "../../utils";
 import { Logger } from "../../singletons/logger";
-import { addUserFeed, getFeedUserList, getUserFeedsList } from "../../providers/rss_feed";
+import { addUserFeed, getUserFeedsList, getUserFeedUpdates } from "../../providers/rss_feed";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -26,6 +26,10 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
 
     if (msg.text === "/feeds") {
         return handleListRSSFeeds(msg as MessageWithText);
+    }
+
+    if (msg.text === "/feeds_reload") {
+        return getUserFeedUpdates(msg.chat.id);
     }
 
     if(msg.text.startsWith("/feed ")) {
