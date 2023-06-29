@@ -75,8 +75,7 @@ export async function getUserFeedUpdates(id: number) {
             results.items.forEach(item => {
                 const guid = buildGuidForEntry(item);
                 if (!seen.includes(guid)) {
-                    const title = item.title?.replace("(", "\\(").replace(")", "\\)");
-                    message.push(`[${title}](${item.link})`);
+                    message.push(`[${item.title}](${item.link})`);
                     counter = counter + 1;
                     seen.push(guid);
                 }
