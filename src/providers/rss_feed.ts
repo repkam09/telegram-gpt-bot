@@ -105,6 +105,10 @@ function buildGuidForEntry(item: Parser.Item): string {
         return digest.update(item.title + item.creator).digest("hex");
     }
 
+    if (item.title) {
+        return digest.update(item.title).digest("hex");
+    }
+
     return digest.update(JSON.stringify(item)).digest("hex");
 }
 
