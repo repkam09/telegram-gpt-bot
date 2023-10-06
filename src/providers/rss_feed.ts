@@ -56,8 +56,8 @@ export async function addUserFeed(id: number, feed: string) {
     await ChatMemory.storePerUserValue<string[]>(id, "feeds", Array.from(currentFeeds));
 }
 
-export async function getUserFeedUpdates(id: number) {
-    const urls = await getUserFeedsList(id);
+export async function getUserFeedUpdates(userId: number) {
+    const urls = await getUserFeedsList(userId);
     const parser = new Parser();
 
     let counter = 0;
@@ -67,10 +67,10 @@ export async function getUserFeedUpdates(id: number) {
             const results = await parser.parseURL(url);
         
             const message: string[] = [];
-            const seen = await getUserSeenEntriesList(id);
+            const seen = await getUserSeenEntriesList(userId);
         
-            results.items.forEach(item => {
-                const guid = buildGuidForEntry(item);
+            results.items.forEach((item, index) => {
+                const guid = buildGuidForEntry(item, index);
                 if (!seen.includes(guid)) {
                     message.push(`[${item.title}](${item.link})`);
                     counter = counter + 1;
@@ -78,24 +78,24 @@ export async function getUserFeedUpdates(id: number) {
                 }
             });
 
-            await updateUserSeenEntriesList(id, seen);
+            await updateUserSeenEntriesList(userId, seen);
             if (message.length > 0) {
-                await sendMessageWrapper(id, message.join("\n\n"), { disable_notification: true });
+                await sendMessageWrapper(userId, message.join("\n\n"), { disable_notification: true });
             }
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(`${id}: Unable to parse feeds from URL ${url}. Error: ${error.message}`);
+            Logger.error(`${userId}: Unable to parse feeds from URL ${url}. Error: ${error.message}`);
         }
     });
 
     if (counter > 0) {
-        Logger.debug(`Fetched Feeds for ${id}, ${counter} new entries`);
+        Logger.debug(`Fetched Feeds for ${userId}, ${counter} new entries`);
     } else {
-        Logger.debug(`Fetched Feeds for ${id}, no new entries`);
+        Logger.debug(`Fetched Feeds for ${userId}, no new entries`);
     }
 }
 
-function buildGuidForEntry(item: Parser.Item): string {
+function buildGuidForEntry(item: Parser.Item, index: number): string {
     const digest = crypto.createHash("sha256");
     if (item.guid) {
         return digest.update(item.guid).digest("hex");
@@ -109,13 +109,26 @@ function buildGuidForEntry(item: Parser.Item): string {
         return digest.update(item.title).digest("hex");
     }
 
-    return digest.update(JSON.stringify(item)).digest("hex");
+    if (item.pubDate) {
+        delete item.pubDate;
+    }
+
+    if (item.isoDate) {
+        delete item.isoDate;
+    }
+
+    const hex = digest.update(JSON.stringify(item)).digest("hex");
+    if (index === 0) {
+        Logger.debug("Data:" + JSON.stringify(item) + ", Unique: " + hex);
+    }
+    
+    return hex;
 }
 
 async function rss_feed_check() {
     const users = await getFeedUserList();
-    users.forEach((user) => {
-        Logger.info(`${user}: Starting Feed Updates`);
-        getUserFeedUpdates(user);
+    users.forEach((userId) => {
+        Logger.info(`${userId}: Starting Feed Updates`);
+        getUserFeedUpdates(userId);
     });
 }
