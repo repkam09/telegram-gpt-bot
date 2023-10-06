@@ -19,7 +19,7 @@ export class Logger {
     }
 
     static debug(message: string): void {
-        if (Config.HENNOS_DEVELOPMENT_MODE) {
+        if (Config.HENNOS_VERBOSE_LOGGING) {
             console.info("DEBUG:", message);
         }
     }

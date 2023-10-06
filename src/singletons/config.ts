@@ -16,6 +16,7 @@ export class Config {
 
         Logger.info(`HENNOS_MAX_MESSAGE_MEMORY is configured as ${JSON.stringify(Config.HENNOS_MAX_MESSAGE_MEMORY)}`);
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
+        Logger.info(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
         Logger.info(`HENNOS_EXTERNAL_REQUEST_KEY is configured as ${Config.HENNOS_EXTERNAL_REQUEST_KEY}`);
         Logger.info(`HENNOS_EXTERNAL_REQUEST_PORT is configured as ${Config.HENNOS_EXTERNAL_REQUEST_PORT}`);
 
@@ -92,6 +93,14 @@ export class Config {
         }
 
         return process.env.HENNOS_DEVELOPMENT_MODE === "true";
+    }
+
+    static get HENNOS_VERBOSE_LOGGING(): boolean {
+        if (!process.env.HENNOS_VERBOSE_LOGGING) {
+            return false;
+        }
+
+        return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
     static get USE_PERSISTANT_CACHE(): false | { host: string, port: number } {
