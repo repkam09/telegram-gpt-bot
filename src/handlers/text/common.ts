@@ -34,7 +34,6 @@ export async function processChatCompletion(chatId: number, messages: ChatComple
 
     try {
         Logger.info("ChatId", chatId, "createChatCompletion Start");
-        Logger.debug(`createChatCompletion Options: ${JSON.stringify(options)}`);
 
         const response = await OpenAI.instance().createChatCompletion(options);
 
