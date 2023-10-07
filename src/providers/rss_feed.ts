@@ -118,10 +118,7 @@ function buildGuidForEntry(item: Parser.Item, index: number): string {
     }
 
     const hex = digest.update(JSON.stringify(item)).digest("hex");
-    if (index === 0) {
-        Logger.debug("Data:" + JSON.stringify(item) + ", Unique: " + hex);
-    }
-    
+    Logger.debug("Data:" + JSON.stringify(item) + ", Unique: " + hex);    
     return hex;
 }
 
