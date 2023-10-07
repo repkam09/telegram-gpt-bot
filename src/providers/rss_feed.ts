@@ -69,8 +69,9 @@ export async function getUserFeedUpdates(userId: number) {
             const message: string[] = [];
             const seen = await getUserSeenEntriesList(userId);
         
-            results.items.forEach((item, index) => {
-                const guid = buildGuidForEntry(item, index);
+            results.items.forEach((item) => {
+                const guid = buildGuidForEntry(item);
+                Logger.debug("Data:" + JSON.stringify(item) + ", Unique: " + guid);    
                 if (!seen.includes(guid)) {
                     message.push(`[${item.title}](${item.link})`);
                     counter = counter + 1;
@@ -95,10 +96,14 @@ export async function getUserFeedUpdates(userId: number) {
     }
 }
 
-function buildGuidForEntry(item: Parser.Item, index: number): string {
+export function buildGuidForEntry(item: Parser.Item): string {
     const digest = crypto.createHash("sha256");
     if (item.guid) {
         return digest.update(item.guid).digest("hex");
+    }
+
+    if (item.link) {
+        return digest.update(item.link).digest("hex");
     }
 
     if (item.title && item.creator) {
@@ -118,7 +123,6 @@ function buildGuidForEntry(item: Parser.Item, index: number): string {
     }
 
     const hex = digest.update(JSON.stringify(item)).digest("hex");
-    Logger.debug("Data:" + JSON.stringify(item) + ", Unique: " + hex);    
     return hex;
 }
 
