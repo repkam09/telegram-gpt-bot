@@ -102,10 +102,6 @@ export function buildGuidForEntry(item: Parser.Item): string {
         return digest.update(item.guid).digest("hex");
     }
 
-    if (item.link) {
-        return digest.update(item.link).digest("hex");
-    }
-
     if (item.title && item.creator) {
         return digest.update(item.title + item.creator).digest("hex");
     }

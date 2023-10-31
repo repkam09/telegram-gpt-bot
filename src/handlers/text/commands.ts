@@ -32,7 +32,7 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
         return getUserFeedUpdates(msg.chat.id);
     }
 
-    if(msg.text.startsWith("/feed ")) {
+    if (msg.text.startsWith("/feed ")) {
         return handleRegisterRSSFeed(msg as MessageWithText);
     }
 
@@ -67,6 +67,6 @@ async function handleListRSSFeeds(msg: MessageWithText) {
         return await sendMessageWrapper(msg.chat.id, "You don't seem to have any RSS feeds configured yet");
     }
 
-    const currentAsArray = Array.from(current);
+    const currentAsArray = Array.from(current).map((url, index) => `${index + 1} : ${url}`);
     return await sendMessageWrapper(msg.chat.id, "Here is the list of your current RSS feeds:\n" + currentAsArray.join("\n"));
 }

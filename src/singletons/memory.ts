@@ -2,8 +2,12 @@ import { ChatCompletionRequestMessage } from "openai";
 import { Config } from "./config";
 import { RedisCache } from "./redis";
 
+export type HennosChatCompletionRequestMessage = ChatCompletionRequestMessage & {
+    timestamp: string
+}
+
 export class ChatMemory {
-    private static _chat_context_map = new Map<number, ChatCompletionRequestMessage[]>();
+    private static _chat_context_map = new Map<number, HennosChatCompletionRequestMessage[]>();
     private static _id_to_name = new Map<number, string>();
 
     private static _map_to_map = new Map<string, Map<string, string>>();
@@ -16,13 +20,13 @@ export class ChatMemory {
         return RedisCache.has("context", `${key}`);
     }
 
-    static async getContext(key: number): Promise<ChatCompletionRequestMessage[]> {
+    static async getContext(key: number): Promise<HennosChatCompletionRequestMessage[]> {
         if (!Config.USE_PERSISTANT_CACHE) {
 
-            const result = this._chat_context_map.get(key) as ChatCompletionRequestMessage[];
+            const result = this._chat_context_map.get(key) as HennosChatCompletionRequestMessage[];
             return Promise.resolve(result || []);
         }
-        const result = await RedisCache.get<ChatCompletionRequestMessage[]>("context", `${key}`);
+        const result = await RedisCache.get<HennosChatCompletionRequestMessage[]>("context", `${key}`);
         return result || [];
     }
 
@@ -34,7 +38,7 @@ export class ChatMemory {
         return RedisCache.delete("context", `${key}`);
     }
 
-    static async setContext(key: number, value: ChatCompletionRequestMessage[]): Promise<void> {
+    static async setContext(key: number, value: HennosChatCompletionRequestMessage[]): Promise<void> {
         if (!Config.USE_PERSISTANT_CACHE) {
             this._chat_context_map.set(key, value);
             return;

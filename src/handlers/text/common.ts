@@ -1,7 +1,7 @@
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageFunctionCall, ChatCompletionRequestMessageRoleEnum, CreateChatCompletionRequest, CreateImageRequest } from "openai";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
-import { ChatMemory } from "../../singletons/memory";
+import { ChatMemory, HennosChatCompletionRequestMessage } from "../../singletons/memory";
 import { OpenAI } from "../../singletons/openai";
 import { Functions } from "../../singletons/functions";
 
@@ -155,16 +155,16 @@ export async function updateChatContextWithName(chatId: number, name: string, ro
         currentChatContext.shift();
     }
 
-    currentChatContext.push({ role, content, name: processName(name) });
+    currentChatContext.push({ role, content, name: processName(name), timestamp: new Date().toUTCString() });
     await ChatMemory.setContext(chatId, currentChatContext);
 
     Logger.debug("updateChatContextWithName Finished updating context");
-    return currentChatContext;
+    return currentChatContext.map((current) => convertCompletionRequestMessage(current));
 }
 
 export async function getChatContext(chatId: number): Promise<ChatCompletionRequestMessage[]> {
     const currentChatContext = await ChatMemory.getContext(chatId);
-    return currentChatContext;
+    return currentChatContext.map((current) => convertCompletionRequestMessage(current));
 }
 
 export function isAdmin(chatId: number): boolean {
@@ -173,4 +173,13 @@ export function isAdmin(chatId: number): boolean {
 
 export async function processUserTextInput(chatId: number, text: string): Promise<string> {
     return text;
+}
+
+function convertCompletionRequestMessage(input: HennosChatCompletionRequestMessage): ChatCompletionRequestMessage {
+    return {
+        role: input.role,
+        content: input.content,
+        function_call: input.function_call,
+        name: input.name
+    } satisfies ChatCompletionRequestMessage;
 }

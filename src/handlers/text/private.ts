@@ -21,7 +21,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
 
     if (!isOnWhitelist(id)) {
         await sendMessageWrapper(id, `Sorry, you have not been whitelisted to use this bot. Please request access and provide your identifier: ${id}`);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
+        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted: ${msg.text}`);
         return;
     }
 
