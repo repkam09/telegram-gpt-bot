@@ -56,11 +56,11 @@ async function start() {
     handlers.api();
 
     // Load functions
-    jellyfin();
-    reminders();
-    weather();
-    youtube();
-    await rss_feed();
+    // jellyfin();
+    // reminders();
+    // weather();
+    // youtube();
+    // await rss_feed();
 }
 
 // Kick off the async function
