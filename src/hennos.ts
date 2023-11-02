@@ -7,6 +7,7 @@ import { Functions } from "./singletons/functions";
 import { Schedule } from "./singletons/schedule";
 import { jellyfin, reminders, weather, youtube, rss_feed } from "./providers";
 import { Logger } from "./singletons/logger";
+import { startWorker } from "./temporal/worker";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -55,12 +56,7 @@ async function start() {
     handlers.sticker();
     handlers.api();
 
-    // Load functions
-    // jellyfin();
-    // reminders();
-    // weather();
-    // youtube();
-    // await rss_feed();
+    startWorker();
 }
 
 // Kick off the async function

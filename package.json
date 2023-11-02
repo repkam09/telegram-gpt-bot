@@ -19,6 +19,10 @@
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@koa/cors": "^4.0.0",
+    "@temporalio/activity": "^1.8.6",
+    "@temporalio/client": "^1.8.6",
+    "@temporalio/worker": "^1.8.6",
+    "@temporalio/workflow": "^1.8.6",
     "axios": "^1.4.0",
     "cron": "^2.3.1",
     "dotenv": "^16.0.3",
