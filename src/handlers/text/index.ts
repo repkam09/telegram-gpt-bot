@@ -3,7 +3,6 @@ import TelegramBot from "node-telegram-bot-api";
 import { handleGroupMessage } from "./group";
 import { handlePrivateMessage } from "./private";
 import { handleCommandMessage } from "./commands";
-import { Logger } from "../../singletons/logger";
 
 export function listen() {
     BotInstance.instance().on("text", handleText);
