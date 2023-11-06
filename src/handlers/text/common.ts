@@ -5,8 +5,14 @@ import { ChatMemory } from "../../singletons/memory";
 import { OpenAIWrapper } from "../../singletons/openai";
 import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
+import { sleep } from "../../utils";
 
 export async function processChatCompletion(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        await sleep(5000);
+        return "example string in development mode";
+    }
+
     const model = Config.OPENAI_API_LLM;
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
         model: model,

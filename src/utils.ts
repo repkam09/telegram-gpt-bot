@@ -82,6 +82,12 @@ export function isOnWhitelist(id: number) {
     return Config.TELEGRAM_ID_WHITELIST.includes(id);
 }
 
+export function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+        setTimeout(() => resolve(), ms);
+    });
+}
+
 export class NotImplementedError extends Error {
     constructor(...optionalParams: unknown[]) {
         super("Not Implemented");
