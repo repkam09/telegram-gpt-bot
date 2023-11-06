@@ -1,18 +1,14 @@
 import os from "node:os";
 import fs from "node:fs/promises";
-import installer from "@ffmpeg-installer/ffmpeg";
-import ffmpeg from "fluent-ffmpeg";
-import { createReadStream, createWriteStream } from "node:fs";
+import { createReadStream } from "node:fs";
 import { BotInstance } from "../singletons/telegram";
-import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
+import { isOnWhitelist, sendAdminMessage, sendMessageWrapper, sendVoiceMemoWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
-import { OpenAI } from "../singletons/openai";
+import { OpenAIWrapper } from "../singletons/openai";
 import { processChatCompletion, updateChatContextWithName } from "./text/common";
 import { buildPrompt } from "./text/private";
 import { ChatMemory } from "../singletons/memory";
-
-ffmpeg.setFfmpegPath(installer.path);
 
 export function listen() {
     BotInstance.instance().on("voice", handleVoice);
@@ -39,27 +35,39 @@ async function handleVoice(msg: TelegramBot.Message) {
 
     // Download the voice recording from Telegram
     const oggFilePath = await BotInstance.instance().downloadFile(msg.voice.file_id, os.tmpdir());
-    const mp3FilePath = await processVoiceFile(oggFilePath);
 
     try {
-        const whisper = await processTranscription(mp3FilePath);
-
-        await sendMessageWrapper(chatId, `\`\`\`\n${whisper}\n\`\`\``, { reply_to_message_id: msg.message_id });
+        const transcription = await OpenAIWrapper.instance().audio.transcriptions.create({
+            model: "whisper-1",
+            file: createReadStream(oggFilePath)
+        });
 
         const prompt = buildPrompt(first_name);
-        const context = await updateChatContextWithName(chatId, first_name, "user", whisper);
+        const context = await updateChatContextWithName(chatId, first_name, "user", transcription.text);
+
+        await sendMessageWrapper(chatId, `\`\`\`\n${transcription.text}\n\`\`\``, { reply_to_message_id: msg.message_id });
 
         const response = await processChatCompletion(chatId, [
             ...prompt,
             ...context
-        ], { functions: false });
+        ]);
 
-        if (response.type === "content") {
-            await updateChatContextWithName(chatId, "Hennos", "assistant", response.data);
-            await sendMessageWrapper(chatId, response.data, { reply_to_message_id: msg.message_id });
-            return;
-        }
-        
+        await updateChatContextWithName(chatId, "Hennos", "assistant", response);
+
+        const result = await OpenAIWrapper.instance().audio.speech.create({
+            model: "tts-1",
+            voice: "onyx",
+            input: response,
+            response_format: "opus"
+        });
+
+        const arrayBuffer = await result.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        await sendMessageWrapper(chatId, response);
+        await sendVoiceMemoWrapper(chatId, buffer);
+
+        return;
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error("Error processing voice message: ", error.message, error.stack);
@@ -67,15 +75,6 @@ async function handleVoice(msg: TelegramBot.Message) {
     }
 
     unlink(oggFilePath);
-    unlink(mp3FilePath);
-}
-
-async function processTranscription(path: string): Promise<string> {
-    const stream = createReadStream(path);
-
-    // @ts-expect-error Bad Typing on Library
-    const transcription = await OpenAI.instance().createTranscription(stream, "whisper-1");
-    return transcription.data.text;
 }
 
 function unlink(path: string) {
@@ -85,19 +84,4 @@ function unlink(path: string) {
         const error = err as Error;
         Logger.error("Unable to clean up voice file:" + path, error.message);
     }
-}
-
-async function processVoiceFile(path: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const outPath = path + ".mp3";
-        ffmpeg()
-            .input(path)
-            .audioQuality(96)
-            .toFormat("mp3")
-            .on("error", (error: unknown) => reject(error as Error))
-            .on("exit", () => reject())
-            .on("close", () => reject())
-            .on("end", () => resolve(outPath))
-            .pipe(createWriteStream(outPath), { end: true });
-    });
 }

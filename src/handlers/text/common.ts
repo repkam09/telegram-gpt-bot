@@ -1,78 +1,47 @@
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageFunctionCall, ChatCompletionRequestMessageRoleEnum, CreateChatCompletionRequest, CreateImageRequest } from "openai";
+import OpenAI from "openai";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
-import { ChatMemory, HennosChatCompletionRequestMessage } from "../../singletons/memory";
-import { OpenAI } from "../../singletons/openai";
-import { Functions } from "../../singletons/functions";
+import { ChatMemory } from "../../singletons/memory";
+import { OpenAIWrapper } from "../../singletons/openai";
+import { BotInstance } from "../../singletons/telegram";
+import TelegramBot from "node-telegram-bot-api";
 
-type ProcessChatCompletionResponse = ProcessChatCompletionTextResponse | ProcessChatCompletionFunctionResponse
-
-type ProcessChatCompletionTextResponse = {
-    type: "content",
-    data: string
-}
-
-type ProcessChatCompletionFunctionResponse = {
-    type: "function",
-    data: ChatCompletionRequestMessageFunctionCall
-}
-
-type ProcessChatCompletionSettings = {
-    functions: boolean
-}
-export async function processChatCompletion(chatId: number, messages: ChatCompletionRequestMessage[], settings: ProcessChatCompletionSettings): Promise<ProcessChatCompletionResponse> {
+export async function processChatCompletion(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     const model = Config.OPENAI_API_LLM;
-    const options: CreateChatCompletionRequest = {
+    const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
         model: model,
-        messages: messages
+        messages: messages,
+        stream: false
     };
-
-    if (settings.functions) {
-        options.function_call = "auto";
-        options.functions = Functions.registered(chatId);
-    }
 
     try {
         Logger.info("ChatId", chatId, "createChatCompletion Start");
 
-        const response = await OpenAI.instance().createChatCompletion(options);
+        const response = await OpenAIWrapper.instance().chat.completions.create(options);
 
-        if (!response || !response.data || !response.data.choices) {
+        if (!response || !response.choices) {
             throw new Error("Unexpected createChatCompletion Result: Bad Response Data Choices");
         }
 
-        const { message } = response.data.choices[0];
+        const { message } = response.choices[0];
         if (!message || !message.role) {
             throw new Error("Unexpected createChatCompletion Result: Bad Message Content Role");
         }
 
-        if (message.function_call) {
-            return {
-                type: "function",
-                data: message.function_call
-            };
-        }
-
         if (message.content) {
-            return {
-                type: "content",
-                data: message.content
-            };
+            return message.content;
         }
 
         throw new Error("Unexpected createChatCompletion Result: Bad Message Format");
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error("ChatId", chatId, "CreateChatCompletion Error:", error.message, error.stack, options);
-        return {
-            type: "content",
-            data: "Sorry, I was unable to process your message"
-        };
+        return "Sorry, I was unable to process your message";
     }
 }
 
 export async function processImageGeneration(chatId: number, prompt: string): Promise<string | undefined> {
-    const options: CreateImageRequest = {
+    const options: OpenAI.Images.ImageGenerateParams = {
         prompt,
         n: 1,
         size: "1024x1024",
@@ -82,14 +51,14 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
         Logger.info("ChatId", chatId, "createImage Start");
         Logger.debug(`createImage Options: ${JSON.stringify(options)}`);
 
-        const response = await OpenAI.instance().createImage(options);
+        const response = await OpenAIWrapper.instance().images.generate(options);
 
-        if (!response || !response.data || !response.data.data) {
+        if (!response || !response.data || !response.data) {
             Logger.error("ChatId", chatId, "createImage returned invalid response shape, missing data");
             return undefined;
         }
 
-        const { url } = response.data.data[0];
+        const { url } = response.data[0];
         if (!url) {
             Logger.error("ChatId", chatId, "createImage returned invalid response shape, missing url");
             return undefined;
@@ -103,42 +72,9 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
     }
 }
 
-/**
- * The name of the author of this message. name is required if role is function,
- *  and it should be the name of the function whose response is in the content. 
- * 
- * May contain a-z, A-Z, 0-9, and underscores, with a maximum length of 64 characters.
- * @param name 
- */
-function processName(name: string): string {
-    Logger.debug("processName before: " + name);
-    const safe = [];
-    const allowed = [
-        "a", "b", "c", "d", "e", "f", "g",
-        "h", "i", "j", "k", "l", "m", "n",
-        "o", "p", "q", "r", "s", "t", "u",
-        "v", "w", "x", "y", "z", "A", "B",
-        "C", "D", "E", "F", "G", "H", "I",
-        "J", "K", "L", "M", "N", "O", "P",
-        "Q", "R", "S", "T", "U", "V", "W",
-        "X", "Y", "Z", "1", "2", "3", "4",
-        "5", "6", "7", "8", "9", "0", "_"
-    ];
+export async function updateChatContextWithName(chatId: number, name: string, role: "user" | "assistant", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+    Logger.debug(`${name} ${role} ${content}`);
 
-    for (let i = 0; i < name.length; i++) {
-        if (!allowed.includes(name[i])) {
-            safe.push("_");
-        } else {
-            safe.push(name[i]);
-        }
-    }
-
-    const safename = safe.join("");
-    Logger.debug("processName after: " + safename);
-    return safename;
-}
-
-export async function updateChatContextWithName(chatId: number, name: string, role: ChatCompletionRequestMessageRoleEnum, content: string): Promise<ChatCompletionRequestMessage[]> {
     if (!await ChatMemory.hasContext(chatId)) {
         Logger.debug("updateChatContextWithName Creating a new context");
         await ChatMemory.setContext(chatId, []);
@@ -155,16 +91,16 @@ export async function updateChatContextWithName(chatId: number, name: string, ro
         currentChatContext.shift();
     }
 
-    currentChatContext.push({ role, content, name: processName(name), timestamp: new Date().toUTCString() });
+    currentChatContext.push({ role, content });
     await ChatMemory.setContext(chatId, currentChatContext);
 
     Logger.debug("updateChatContextWithName Finished updating context");
-    return currentChatContext.map((current) => convertCompletionRequestMessage(current));
+    return currentChatContext;
 }
 
-export async function getChatContext(chatId: number): Promise<ChatCompletionRequestMessage[]> {
+export async function getChatContext(chatId: number): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
     const currentChatContext = await ChatMemory.getContext(chatId);
-    return currentChatContext.map((current) => convertCompletionRequestMessage(current));
+    return currentChatContext;
 }
 
 export function isAdmin(chatId: number): boolean {
@@ -175,11 +111,12 @@ export async function processUserTextInput(chatId: number, text: string): Promis
     return text;
 }
 
-function convertCompletionRequestMessage(input: HennosChatCompletionRequestMessage): ChatCompletionRequestMessage {
-    return {
-        role: input.role,
-        content: input.content,
-        function_call: input.function_call,
-        name: input.name
-    } satisfies ChatCompletionRequestMessage;
+export async function processUserImageInput(chatId: number, images: TelegramBot.PhotoSize[]): Promise<string> {
+    return images.map((image) => {
+        const url = BotInstance.instance().getFileLink(image.file_id);
+        return JSON.stringify({
+            type: "image_url",
+            image_url: url
+        });
+    }).join("\n");
 }

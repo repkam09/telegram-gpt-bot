@@ -1,7 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { resetMemory, sendMessageWrapper } from "../../utils";
 import { Logger } from "../../singletons/logger";
-import { addUserFeed, getUserFeedsList, getUserFeedUpdates } from "../../providers/rss_feed";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -24,18 +23,6 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
         return handleStartCommand(msg as MessageWithText);
     }
 
-    if (msg.text === "/feeds") {
-        return handleListRSSFeeds(msg as MessageWithText);
-    }
-
-    if (msg.text === "/feeds_reload") {
-        return getUserFeedUpdates(msg.chat.id);
-    }
-
-    if (msg.text.startsWith("/feed ")) {
-        return handleRegisterRSSFeed(msg as MessageWithText);
-    }
-
     return sendMessageWrapper(msg.chat.id, "Unknown Command");
 }
 
@@ -53,20 +40,4 @@ async function handleStartCommand(msg: MessageWithText) {
 async function handleResetCommand(msg: MessageWithText) {
     await resetMemory(msg.chat.id);
     await sendMessageWrapper(msg.chat.id, "Previous chat context has been cleared.");
-}
-
-async function handleRegisterRSSFeed(msg: MessageWithText) {
-    const feed = msg.text.replace("/feed ", "").trim();
-    await addUserFeed(msg.chat.id, feed);
-    return await sendMessageWrapper(msg.chat.id, "Done!");
-}
-
-async function handleListRSSFeeds(msg: MessageWithText) {
-    const current = await getUserFeedsList(msg.chat.id);
-    if (current.size === 0) {
-        return await sendMessageWrapper(msg.chat.id, "You don't seem to have any RSS feeds configured yet");
-    }
-
-    const currentAsArray = Array.from(current).map((url, index) => `${index + 1} : ${url}`);
-    return await sendMessageWrapper(msg.chat.id, "Here is the list of your current RSS feeds:\n" + currentAsArray.join("\n"));
 }

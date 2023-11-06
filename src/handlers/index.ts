@@ -6,4 +6,3 @@ export { listen as contact } from "./contact";
 export { listen as location } from "./location";
 export { listen as document } from "./document";
 export { listen as sticker } from "./sticker";
-export { listen as api } from "./api";

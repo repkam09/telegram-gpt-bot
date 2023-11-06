@@ -3,6 +3,8 @@ import { ChatMemory } from "../singletons/memory";
 import { BotInstance } from "../singletons/telegram";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
+import { buildPrompt } from "./text/private";
+import { processChatCompletion, processUserImageInput, updateChatContextWithName } from "./text/common";
 
 export function listen() {
     BotInstance.instance().on("photo", handlePhoto);
@@ -14,7 +16,7 @@ async function handlePhoto(msg: TelegramBot.Message) {
         return;
     }
 
-    Logger.trace("photo", msg);
+    Logger.trace("photo_private", msg);
 
     const { first_name, last_name, username, id } = msg.from;
     if (!await ChatMemory.hasName(id)) {
@@ -27,5 +29,17 @@ async function handlePhoto(msg: TelegramBot.Message) {
         return;
     }
 
-    await sendMessageWrapper(chatId, "Error: Images are not yet supported.");
+    const prompt = buildPrompt(first_name);
+
+    const message = await processUserImageInput(chatId, msg.photo);
+    const context = await updateChatContextWithName(chatId, first_name, "user", message);
+
+    const response = await processChatCompletion(chatId, [
+        ...prompt,
+        ...context
+    ]);
+
+    await updateChatContextWithName(chatId, "Hennos", "assistant", response);
+    await sendMessageWrapper(chatId, response);
+    return;
 }

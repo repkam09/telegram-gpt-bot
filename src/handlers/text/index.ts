@@ -8,10 +8,18 @@ export function listen() {
     BotInstance.instance().on("text", handleText);
 }
 
+const chatmap = new Map<string, TelegramBot.Message[]>();
+
 async function handleText(msg: TelegramBot.Message) {
     if (!msg.from || !msg.text) {
         return;
     }
+
+    const uuid = `${msg.chat.id}_${msg.from.id}`;
+    if (!chatmap.has(uuid)) {
+        chatmap.set(uuid, []);
+    }
+    // chatmap.set(uuid,);
 
     if (msg.text.startsWith("/")) {
         return handleCommandMessage(msg);

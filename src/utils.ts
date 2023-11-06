@@ -23,6 +23,19 @@ export async function sendMessageWrapper(chatId: number, content: string, option
     }
 }
 
+export async function sendVoiceMemoWrapper(chatId: number, content: Buffer, options: TelegramBot.SendVoiceOptions = {}): Promise<void> {
+    if (!content) {
+        throw new Error("Message content is undefined");
+    }
+
+    if (!content.length) {
+        throw new Error("Message content does not have a length property");
+    }
+
+    const bot = BotInstance.instance();
+    await bot.sendVoice(chatId, content, options);
+}
+
 async function sendTelegramMessageWithRetry(chatId: number, content: string, options: TelegramBot.SendMessageOptions) {
     const bot = BotInstance.instance();
     try {
