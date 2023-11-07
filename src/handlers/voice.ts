@@ -10,6 +10,8 @@ import { processChatCompletion, updateChatContextWithName } from "./text/common"
 import { buildPrompt } from "./text/private";
 import { ChatMemory } from "../singletons/memory";
 
+export type ValidTTSNames = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
+
 export function listen() {
     BotInstance.instance().on("voice", handleVoice);
 }
@@ -54,9 +56,11 @@ async function handleVoice(msg: TelegramBot.Message) {
 
         await updateChatContextWithName(chatId, "Hennos", "assistant", response);
 
+        const voice = await getUserVoicePreference(chatId);
+
         const result = await OpenAIWrapper.instance().audio.speech.create({
             model: "tts-1",
-            voice: "onyx",
+            voice: voice,
             input: response,
             response_format: "opus"
         });
@@ -84,4 +88,14 @@ function unlink(path: string) {
         const error = err as Error;
         Logger.error("Unable to clean up voice file:" + path, error.message);
     }
+}
+
+
+export async function setUserVoicePreference(chatId: number, voice: ValidTTSNames): Promise<void> {
+    return ChatMemory.storePerUserValue<ValidTTSNames>(chatId, "voice-settings", voice);
+}
+
+export async function getUserVoicePreference(chatId: number): Promise<ValidTTSNames> {
+    const voice = await ChatMemory.getPerUserValue<ValidTTSNames>(chatId, "voice-settings");
+    return voice || "onyx";
 }
