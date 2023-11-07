@@ -1,7 +1,6 @@
 import TelegramBot, { CallbackQuery, InlineQuery } from "node-telegram-bot-api";
-import { resetMemory, sendMessageWrapper, sendVoiceMemoWrapper } from "../../utils";
+import { isOnWhitelist, resetMemory, sendMessageWrapper, sendVoiceMemoWrapper } from "../../utils";
 import { Logger } from "../../singletons/logger";
-import { BotInstance } from "../../singletons/telegram";
 import { OpenAIWrapper } from "../../singletons/openai";
 
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -29,16 +28,12 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
         return handleResetCommand(msg as MessageWithText);
     }
 
-    if (msg.text === "/voice") {
-        return handleVoiceOptionsCommand(msg as MessageWithText);
-    }
-
-    if (msg.text.startsWith("/read")) {
-        return handleVoiceReadCommand(msg as MessageWithText);
-    }
-
     if (msg.text === "/start" || msg.text === "/help" || msg.text === "/about") {
         return handleStartCommand(msg as MessageWithText);
+    }
+
+    if (msg.text.startsWith("/read") && isOnWhitelist(msg.chat.id)) {
+        return handleVoiceReadCommand(msg as MessageWithText);
     }
 
     return sendMessageWrapper(msg.chat.id, "Unknown Command");
@@ -58,11 +53,6 @@ async function handleStartCommand(msg: MessageWithText) {
 async function handleResetCommand(msg: MessageWithText) {
     await resetMemory(msg.chat.id);
     await sendMessageWrapper(msg.chat.id, "Previous chat context has been cleared.");
-}
-
-async function handleVoiceOptionsCommand(msg: MessageWithText) {
-    const bot = BotInstance.instance();
-    bot.answerInlineQuery("super-unique-value", []);
 }
 
 async function handleVoiceReadCommand(msg: MessageWithText) {
