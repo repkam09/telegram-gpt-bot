@@ -78,7 +78,7 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
     }
 }
 
-export async function updateChatContextWithName(chatId: number, name: string, role: "user" | "assistant", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+export async function updateChatContextWithName(chatId: number, name: string, role: "user" | "assistant" | "system", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
     Logger.debug(`${name} ${role} ${content}`);
 
     if (!await ChatMemory.hasContext(chatId)) {
@@ -117,12 +117,39 @@ export async function processUserTextInput(chatId: number, text: string): Promis
     return text;
 }
 
-export async function processUserImageInput(chatId: number, images: TelegramBot.PhotoSize[]): Promise<string> {
-    return images.map((image) => {
-        const url = BotInstance.instance().getFileLink(image.file_id);
-        return JSON.stringify({
+export async function processUserImageInput(chatId: number, images: TelegramBot.PhotoSize[], caption?: string): Promise<string> {
+    const url = await BotInstance.instance().getFileLink(getLargestImage(images).file_id);
+
+    const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
+        { 
+            type: "text",
+            text: caption ? caption : "Describe this image in as much detail as posible"
+        },
+        {
             type: "image_url",
-            image_url: url
-        });
-    }).join("\n");
+            image_url: {
+                detail: "low",
+                url
+            }
+        }
+    ];
+
+    const response = await OpenAIWrapper.instance().chat.completions.create({
+        model: "gpt-4-vision-preview",
+        max_tokens: 2000,
+        messages: [
+            {
+                role: "user",
+                content
+            },
+        ],
+    });
+
+    return response.choices[0].message.content || "No information available about this image";
+}
+
+function getLargestImage(images: TelegramBot.PhotoSize[]): TelegramBot.PhotoSize {
+    return images.reduce((max, obj) => {
+        return (obj.width * obj.height > max.width * max.height) ? obj : max;
+    });
 }
