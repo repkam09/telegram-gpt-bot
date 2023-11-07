@@ -1,8 +1,18 @@
-import TelegramBot from "node-telegram-bot-api";
-import { resetMemory, sendMessageWrapper } from "../../utils";
+import TelegramBot, { CallbackQuery, InlineQuery } from "node-telegram-bot-api";
+import { resetMemory, sendMessageWrapper, sendVoiceMemoWrapper } from "../../utils";
 import { Logger } from "../../singletons/logger";
+import { BotInstance } from "../../singletons/telegram";
+import { OpenAIWrapper } from "../../singletons/openai";
 
 type MessageWithText = TelegramBot.Message & { text: string }
+
+export function handleCommandMessageInline(query: InlineQuery) {
+    Logger.info("InlineQuery", query);
+}
+
+export function handleCommandMessageCallback(query: CallbackQuery) {
+    Logger.info("CallbackQuery", query);
+}
 
 export function handleCommandMessage(msg: TelegramBot.Message) {
     if (!msg.from || !msg.text) {
@@ -17,6 +27,14 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
 
     if (msg.text === "/reset") {
         return handleResetCommand(msg as MessageWithText);
+    }
+
+    if (msg.text === "/voice") {
+        return handleVoiceOptionsCommand(msg as MessageWithText);
+    }
+
+    if (msg.text.startsWith("/read")) {
+        return handleVoiceReadCommand(msg as MessageWithText);
     }
 
     if (msg.text === "/start" || msg.text === "/help" || msg.text === "/about") {
@@ -40,4 +58,27 @@ async function handleStartCommand(msg: MessageWithText) {
 async function handleResetCommand(msg: MessageWithText) {
     await resetMemory(msg.chat.id);
     await sendMessageWrapper(msg.chat.id, "Previous chat context has been cleared.");
+}
+
+async function handleVoiceOptionsCommand(msg: MessageWithText) {
+    const bot = BotInstance.instance();
+    bot.answerInlineQuery("super-unique-value", []);
+}
+
+async function handleVoiceReadCommand(msg: MessageWithText) {
+    const chatId = msg.chat.id;
+    const text = msg.text.replace("/read", "").trim();
+    if (text) {
+        const result = await OpenAIWrapper.instance().audio.speech.create({
+            model: "tts-1",
+            voice: "onyx",
+            input: text,
+            response_format: "opus"
+        });
+    
+        const arrayBuffer = await result.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+    
+        await sendVoiceMemoWrapper(chatId, buffer);
+    }
 }

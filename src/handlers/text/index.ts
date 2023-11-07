@@ -2,11 +2,14 @@ import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { handleGroupMessage } from "./group";
 import { handlePrivateMessage } from "./private";
-import { handleCommandMessage } from "./commands";
+import { handleCommandMessage, handleCommandMessageCallback, handleCommandMessageInline } from "./commands";
 
 export function listen() {
     BotInstance.instance().on("text", handleText);
+    BotInstance.instance().on("inline_query", handleCommandMessageInline);
+    BotInstance.instance().on("callback_query", handleCommandMessageCallback);
 }
+
 
 const chatmap = new Map<number, TelegramBot.Message[]>();
 const timermap = new Map<number, NodeJS.Timeout>();
