@@ -6,7 +6,7 @@ import { isOnWhitelist, sendAdminMessage, sendMessageWrapper, sendVoiceMemoWrapp
 import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
 import { OpenAIWrapper } from "../singletons/openai";
-import { processChatCompletion, updateChatContextWithName } from "./text/common";
+import { processChatCompletion, updateChatContext } from "./text/common";
 import { buildPrompt } from "./text/private";
 import { ChatMemory } from "../singletons/memory";
 
@@ -44,8 +44,10 @@ async function handleVoice(msg: TelegramBot.Message) {
             file: createReadStream(oggFilePath)
         });
 
-        const prompt = buildPrompt(first_name);
-        const context = await updateChatContextWithName(chatId, first_name, "user", transcription.text);
+
+        const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");
+        const prompt = await buildPrompt(chatId, name ? name : first_name);
+        const context = await updateChatContext(chatId, "user", transcription.text);
 
         await sendMessageWrapper(chatId, `\`\`\`\n${transcription.text}\n\`\`\``, { reply_to_message_id: msg.message_id });
 
@@ -54,7 +56,7 @@ async function handleVoice(msg: TelegramBot.Message) {
             ...context
         ]);
 
-        await updateChatContextWithName(chatId, "Hennos", "assistant", response);
+        await updateChatContext(chatId, "assistant", response);
 
         const voice = await getUserVoicePreference(chatId);
 

@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContextWithName } from "./common";
+import { processChatCompletion, processUserTextInput, updateChatContext } from "./common";
 import OpenAI from "openai";
 import { Logger } from "../../singletons/logger";
 
@@ -24,29 +24,35 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
         return;
     }
 
-    const prompt = buildPrompt(first_name);
+    const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");
+    const prompt = await buildPrompt(chatId, name ? name : first_name);
     const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContextWithName(chatId, first_name, "user", message);
+    const context = await updateChatContext(chatId, "user", message);
     const response = await processChatCompletion(chatId, [
         ...prompt,
         ...context
     ]);
 
-    await updateChatContextWithName(chatId, "Hennos", "assistant", response);
+    await updateChatContext(chatId, "assistant", response);
     await sendMessageWrapper(chatId, response);
     return;
 }
 
-export function buildPrompt(name: string,): OpenAI.Chat.ChatCompletionMessageParam[] {
+export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
+    const botName = await ChatMemory.getPerUserValue<string>(chatId, "custom-bot-name");
+    const location = await ChatMemory.getPerUserValue<string>(chatId, "last-known-location");
     const date = new Date().toUTCString();
+
+    const locationDetails = location ? `The user provided the location information previously: ${location}` : "";
+
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",
-            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
+            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.`
         },
         {
             role: "system",
-            content: `The current Date and Time is ${date}.`
+            content: `The current Date and Time is ${date}. ${locationDetails}`
         },
         {
             role: "system",

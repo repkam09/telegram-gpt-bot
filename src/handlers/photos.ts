@@ -3,7 +3,7 @@ import { ChatMemory } from "../singletons/memory";
 import { BotInstance } from "../singletons/telegram";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
-import { processUserImageInput, updateChatContextWithName } from "./text/common";
+import { processUserImageInput, updateChatContext } from "./text/common";
 
 export function listen() {
     BotInstance.instance().on("photo", handlePhoto);
@@ -29,7 +29,13 @@ async function handlePhoto(msg: TelegramBot.Message) {
     }
 
     const message = await processUserImageInput(chatId, msg.photo, msg.caption);
-    await updateChatContextWithName(chatId, "image_input", "system", `The user sent an image. Here is a description of the image: ${message}`);
+    if (!msg.caption) {
+        await updateChatContext(chatId, "system", `The user sent an image. Here is a description of the image: ${message}`);
+    } else {
+        await updateChatContext(chatId, "system", "The user sent an image.");
+        await updateChatContext(chatId, "user", msg.caption);
+        await updateChatContext(chatId, "assistant", message);
+    }
     await sendMessageWrapper(chatId, message);
     return;
 }

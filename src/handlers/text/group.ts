@@ -3,7 +3,7 @@ import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendMessageWrapper, sendAdminMessage } from "../../utils";
 import OpenAI from "openai";
-import { updateChatContextWithName, processChatCompletion, processUserTextInput } from "./common";
+import { updateChatContext, processChatCompletion, processUserTextInput } from "./common";
 import { Logger } from "../../singletons/logger";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
@@ -37,14 +37,14 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
 
     const prompt = buildPrompt(title || "Group Chat");
     const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContextWithName(chatId, first_name, "user", message);
+    const context = await updateChatContext(chatId, "user", message);
 
     const response = await processChatCompletion(chatId, [
         ...prompt,
         ...context
     ]);
 
-    await updateChatContextWithName(chatId, "Hennos", "assistant", response);
+    await updateChatContext(chatId, "assistant", response);
     await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
     return;
 }

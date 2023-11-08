@@ -1,7 +1,6 @@
 import { BotInstance } from "../singletons/telegram";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
-import { updateChatContextWithName } from "./text/common";
 import { ChatMemory } from "../singletons/memory";
 import { Logger } from "../singletons/logger";
 
@@ -28,6 +27,6 @@ async function handleLocation(msg: TelegramBot.Message) {
         return;
     }
 
-    await updateChatContextWithName(chatId, first_name, "user", `Here is my location as of '${new Date().toUTCString()}': lat=${msg.location.latitude}, lon=${msg.location.longitude}`);
-    await sendMessageWrapper(chatId, `Success! Your provided location will be taken into account, if relevant, in future messages.\n\n Information: ${JSON.stringify(msg.location)}.`);
+    await ChatMemory.storePerUserValue<string>(chatId, "last-known-location", `time=${new Date().toUTCString()} lat=${msg.location.latitude}, lon=${msg.location.longitude}`);
+    await sendMessageWrapper(chatId, "Thanks! I will take your location into account in the future.");
 }

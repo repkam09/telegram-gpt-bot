@@ -78,18 +78,18 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
     }
 }
 
-export async function updateChatContextWithName(chatId: number, name: string, role: "user" | "assistant" | "system", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
-    Logger.debug(`${name} ${role} ${content}`);
+export async function updateChatContext(chatId: number, role: "user" | "assistant" | "system", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+    Logger.debug(`${chatId} ${role} ${content}`);
 
     if (!await ChatMemory.hasContext(chatId)) {
-        Logger.debug("updateChatContextWithName Creating a new context");
+        Logger.debug("updateChatContext Creating a new context");
         await ChatMemory.setContext(chatId, []);
     }
 
     const currentChatContext = await ChatMemory.getContext(chatId);
 
     if (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
-        Logger.debug("updateChatContextWithName Shifting old message context");
+        Logger.debug("updateChatContext Shifting old message context");
 
         // Remove the oldest user message from memory
         currentChatContext.shift();
@@ -100,7 +100,7 @@ export async function updateChatContextWithName(chatId: number, name: string, ro
     currentChatContext.push({ role, content });
     await ChatMemory.setContext(chatId, currentChatContext);
 
-    Logger.debug("updateChatContextWithName Finished updating context");
+    Logger.debug("updateChatContext Finished updating context");
     return currentChatContext;
 }
 
@@ -121,7 +121,7 @@ export async function processUserImageInput(chatId: number, images: TelegramBot.
     const url = await BotInstance.instance().getFileLink(getLargestImage(images).file_id);
 
     const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
-        { 
+        {
             type: "text",
             text: caption ? caption : "Describe this image in as much detail as posible"
         },

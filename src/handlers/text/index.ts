@@ -2,17 +2,22 @@ import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { handleGroupMessage } from "./group";
 import { handlePrivateMessage } from "./private";
-import { handleCommandMessage, handleCommandMessageCallback, handleCommandMessageInline } from "./commands";
+import { handleCommandMessage, handleCommandMessageCallback } from "./commands";
+
+type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 
 export function listen() {
     BotInstance.instance().on("text", handleText);
-    BotInstance.instance().on("inline_query", handleCommandMessageInline);
     BotInstance.instance().on("callback_query", handleCommandMessageCallback);
 }
 
-
 const chatmap = new Map<number, TelegramBot.Message[]>();
 const timermap = new Map<number, NodeJS.Timeout>();
+const callbacks = new Map<number, InputCallbackFunction>();
+
+export function registerInputCallback(chatId: number, callback: InputCallbackFunction) {
+    callbacks.set(chatId, callback);
+}
 
 async function handleText(msg: TelegramBot.Message) {
     if (!msg.from || !msg.text) {
@@ -28,6 +33,12 @@ async function handleText(msg: TelegramBot.Message) {
     }
 
     if (msg.chat.type === "private") {
+        if (callbacks.has(msg.chat.id)) {
+            const callback = callbacks.get(msg.chat.id) as InputCallbackFunction;
+            callbacks.delete(msg.chat.id);
+            return callback(msg);
+        }
+
         // Do a little bit of cleaning in case the user sends a message that is longer than the 
         // allowed length in Telegram, it gets split into multiple. Or they send message in quick succession. 
         clearTimeout(timermap.get(msg.chat.id));
