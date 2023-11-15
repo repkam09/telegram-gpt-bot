@@ -196,6 +196,14 @@ export class Config {
         return Array.from(new Set(whitelist)).map((entry) => parseInt(entry));
     }
 
+    static get TELEGRAM_ID_BLACKLIST(): number[] | false {
+        if (!process.env.TELEGRAM_ID_BLACKLIST) {
+            return false;
+        }
+        const blacklist = process.env.TELEGRAM_ID_BLACKLIST.trim().split(",");
+        return Array.from(new Set(blacklist)).map((entry) => parseInt(entry));
+    }
+
     static get OPENAI_API_LLM() {
         if (!process.env.OPENAI_API_LLM) {
             throw new Error("Missing OPENAI_API_LLM");

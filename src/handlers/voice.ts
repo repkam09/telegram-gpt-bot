@@ -2,7 +2,7 @@ import os from "node:os";
 import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { BotInstance } from "../singletons/telegram";
-import { isOnWhitelist, sendAdminMessage, sendMessageWrapper, sendVoiceMemoWrapper } from "../utils";
+import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper, sendVoiceMemoWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
 import { OpenAIWrapper } from "../singletons/openai";
@@ -19,6 +19,11 @@ export function listen() {
 async function handleVoice(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.voice) {
+        return;
+    }
+
+    if (isOnBlacklist(chatId)) {
+        Logger.trace("blacklist", msg);
         return;
     }
 

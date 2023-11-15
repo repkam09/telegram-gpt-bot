@@ -1,5 +1,5 @@
 import TelegramBot, { CallbackQuery } from "node-telegram-bot-api";
-import { isOnWhitelist, sendMessageWrapper } from "../../utils";
+import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
 import { Logger } from "../../singletons/logger";
 import { handleVoiceReadCommand, handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback, handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
@@ -13,6 +13,11 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
     }
 
     if (msg.chat.type !== "private") {
+        return;
+    }
+
+    if (isOnBlacklist(msg.chat.id)) {
+        Logger.trace("blacklist", msg);
         return;
     }
 

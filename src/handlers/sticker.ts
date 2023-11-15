@@ -4,6 +4,7 @@ import fs from "fs";
 import { Logger } from "../singletons/logger";
 import { BotInstance } from "../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
+import { isOnBlacklist } from "../utils";
 
 export function listen() {
     BotInstance.instance().on("sticker", handleSticker);
@@ -12,6 +13,11 @@ export function listen() {
 async function handleSticker(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
     if (!msg.from || !msg.sticker) {
+        return;
+    }
+
+    if (isOnBlacklist(chatId)) {
+        Logger.trace("blacklist", msg);
         return;
     }
 

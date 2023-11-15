@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
-import { isOnWhitelist, sendMessageWrapper, sendAdminMessage } from "../../utils";
+import { isOnWhitelist, sendMessageWrapper, sendAdminMessage, isOnBlacklist } from "../../utils";
 import OpenAI from "openai";
 import { updateChatContext, processChatCompletion, processUserTextInput } from "./common";
 import { Logger } from "../../singletons/logger";
@@ -13,6 +13,11 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     }
 
     if (!msg.text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
+        return;
+    }
+
+    if (isOnBlacklist(chatId)) {
+        Logger.trace("blacklist", msg);
         return;
     }
 

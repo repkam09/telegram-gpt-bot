@@ -1,13 +1,18 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
-import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionFree } from "./common";
+import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
+import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionFree, processFreeUserTextInput, moderateFreeUserTextInput } from "./common";
 import OpenAI from "openai";
 import { Logger } from "../../singletons/logger";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
     if (!msg.from || !msg.text) {
+        return;
+    }
+
+    if (isOnBlacklist(chatId)) {
+        Logger.trace("blacklist", msg);
         return;
     }
 
@@ -19,9 +24,14 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     if (!isOnWhitelist(id)) {
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
         const prompt = await buildFreeTierPrompt(chatId, first_name);
-        const message = await processUserTextInput(chatId, msg.text);
+        const message = await processFreeUserTextInput(chatId, msg.text);
+
+        const flagged = await moderateFreeUserTextInput(chatId, msg.text);
+        if (flagged) {
+            return await sendMessageWrapper(chatId, "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.");
+        }
+
         const response = await processChatCompletionFree(chatId, [
             ...prompt,
             {
@@ -76,7 +86,7 @@ function buildFreeTierPrompt(chatId: number, name: string,): OpenAI.Chat.Complet
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",
-            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
+            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short sentences, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
         },
         {
             role: "system",

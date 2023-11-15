@@ -1,7 +1,7 @@
 import { Logger } from "../singletons/logger";
 import { ChatMemory } from "../singletons/memory";
 import { BotInstance } from "../singletons/telegram";
-import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
+import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
 import { NotWhitelistedMessage, processUserImageInput, updateChatContext } from "./text/common";
 
@@ -12,6 +12,11 @@ export function listen() {
 async function handlePhoto(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.photo) {
+        return;
+    }
+
+    if (isOnBlacklist(chatId)) {
+        Logger.trace("blacklist", msg);
         return;
     }
 

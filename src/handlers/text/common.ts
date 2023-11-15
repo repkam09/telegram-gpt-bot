@@ -7,8 +7,7 @@ import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { sleep } from "../../utils";
 
-export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this bot. This bot is limited access and invite only.";
-
+export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
 
 export async function processChatCompletionFree(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
@@ -159,6 +158,30 @@ export function isAdmin(chatId: number): boolean {
 
 export async function processUserTextInput(chatId: number, text: string): Promise<string> {
     return text;
+}
+
+export async function processFreeUserTextInput(chatId: number, text: string): Promise<string> {
+    return text;
+}
+
+export async function moderateFreeUserTextInput(chatId: number, text: string): Promise<boolean> {
+    try {
+        const response = await OpenAIWrapper.instance().moderations.create({
+            input: text
+        });
+
+        if (!response.results) {
+            return false;
+        }
+
+        if (!response.results[0]) {
+            return false;
+        }
+
+        return response.results[0].flagged;
+    } catch (err) {
+        return false;
+    }
 }
 
 export async function processUserImageInput(chatId: number, images: TelegramBot.PhotoSize[], caption?: string): Promise<string> {
