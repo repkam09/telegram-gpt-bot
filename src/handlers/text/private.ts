@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContext, NotWhitelistedMessage } from "./common";
+import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionFree } from "./common";
 import OpenAI from "openai";
 import { Logger } from "../../singletons/logger";
 
@@ -19,8 +19,17 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     if (!isOnWhitelist(id)) {
-        await sendMessageWrapper(id, NotWhitelistedMessage);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted: ${msg.text}`);
+        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
+        const prompt = await buildFreeTierPrompt(chatId, first_name);
+        const message = await processUserTextInput(chatId, msg.text);
+        const response = await processChatCompletionFree(chatId, [
+            ...prompt,
+            {
+                content: message,
+                role: "user",
+            }
+        ]);
+        await sendMessageWrapper(chatId, response);
         return;
     }
 
@@ -57,6 +66,25 @@ export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI
         {
             role: "system",
             content: `You are currently assisting a user named '${name}' in a one-on-one private chat session.`
+        }
+    ];
+
+    return prompt;
+}
+
+function buildFreeTierPrompt(chatId: number, name: string,): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        {
+            role: "system",
+            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
+        },
+        {
+            role: "system",
+            content: `You are currently assisting a user named '${name}' in a one-on-one private chat session.`
+        },
+        {
+            role: "system",
+            content: "This user is not whitelisted on the service and is getting basic free tier access. Their message history will not be stored after this response."
         }
     ];
 

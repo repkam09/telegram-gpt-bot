@@ -130,6 +130,22 @@ export class Config {
         return process.env.OPENAI_API_ORG;
     }
 
+    static get OPENAI_API_ORG_FREE(): string {
+        if (!process.env.OPENAI_API_ORG_FREE) {
+            throw new Error("Missing OPENAI_API_ORG_FREE");
+        }
+
+        return process.env.OPENAI_API_ORG_FREE;
+    }
+
+    static get OPENAI_API_KEY_FREE(): string {
+        if (!process.env.OPENAI_API_KEY_FREE) {
+            throw new Error("Missing OPENAI_API_KEY_FREE");
+        }
+
+        return process.env.OPENAI_API_KEY_FREE;
+    }
+
     static get OPENAI_API_KEY(): string {
         if (!process.env.OPENAI_API_KEY) {
             throw new Error("Missing OPENAI_API_KEY");

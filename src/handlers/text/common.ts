@@ -10,6 +10,45 @@ import { sleep } from "../../utils";
 export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this bot. This bot is limited access and invite only.";
 
 
+export async function processChatCompletionFree(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        await sleep(5000);
+        return "example string in development mode, free tier response";
+    }
+
+    const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+        model: "gpt-3.5-turbo",
+        messages: messages,
+        stream: false
+    };
+
+    try {
+        Logger.info("ChatId", chatId, "createChatCompletion Free Start");
+
+        const response = await OpenAIWrapper.free_instance().chat.completions.create(options);
+
+        Logger.info("ChatId", chatId, "createChatCompletion Free End");
+
+        if (!response || !response.choices) {
+            throw new Error("Unexpected createChatCompletion Free Result: Bad Response Data Choices");
+        }
+
+        const { message } = response.choices[0];
+        if (!message || !message.role) {
+            throw new Error("Unexpected createChatCompletion Free Result: Bad Message Content Role");
+        }
+
+        if (message.content) {
+            return message.content;
+        }
+        throw new Error("Unexpected createChatCompletion Free Result: Bad Message Format");
+    } catch (err) {
+        const error = err as Error;
+        Logger.error("ChatId", chatId, "CreateChatCompletion Free Error:", error.message, error.stack, options);
+        return "Sorry, I was unable to process your message at this time. ";
+    }
+}
+
 export async function processChatCompletion(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
         await sleep(5000);
@@ -27,6 +66,8 @@ export async function processChatCompletion(chatId: number, messages: OpenAI.Cha
         Logger.info("ChatId", chatId, "createChatCompletion Start");
 
         const response = await OpenAIWrapper.instance().chat.completions.create(options);
+
+        Logger.info("ChatId", chatId, "createChatCompletion End");
 
         if (!response || !response.choices) {
             throw new Error("Unexpected createChatCompletion Result: Bad Response Data Choices");
