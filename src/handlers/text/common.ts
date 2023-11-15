@@ -7,6 +7,9 @@ import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { sleep } from "../../utils";
 
+export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this bot. This bot is limited access and invite only.";
+
+
 export async function processChatCompletion(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
         await sleep(5000);

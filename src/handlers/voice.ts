@@ -6,7 +6,7 @@ import { isOnWhitelist, sendAdminMessage, sendMessageWrapper, sendVoiceMemoWrapp
 import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
 import { OpenAIWrapper } from "../singletons/openai";
-import { processChatCompletion, updateChatContext } from "./text/common";
+import { NotWhitelistedMessage, processChatCompletion, updateChatContext } from "./text/common";
 import { buildPrompt } from "./text/private";
 import { ChatMemory } from "../singletons/memory";
 
@@ -30,7 +30,7 @@ async function handleVoice(msg: TelegramBot.Message) {
     }
 
     if (!isOnWhitelist(id)) {
-        await sendMessageWrapper(id, `Sorry, you have not been whitelisted to use this bot. Please request access and provide your identifier: ${id}`);
+        await sendMessageWrapper(id, NotWhitelistedMessage);
         await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
         return;
     }
