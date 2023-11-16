@@ -3,13 +3,24 @@ import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { ChatMemory } from "../../singletons/memory";
 import { OpenAIWrapper } from "../../singletons/openai";
+import { OllamaWrapper } from "../../singletons/ollama";
 import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { sleep } from "../../utils";
 
 export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
 
-export async function processChatCompletionFree(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
+export async function processChatCompletionLocal(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
+    Logger.info("ChatId", chatId, "createChatCompletion Local Start");
+
+    const result = await OllamaWrapper.chat(chatId, messages);
+
+    Logger.info("ChatId", chatId, "createChatCompletion Local End");
+
+    return result;
+}
+
+export async function processChatCompletionLimited(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
         await sleep(5000);
         return "example string in development mode, free tier response";

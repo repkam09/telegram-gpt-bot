@@ -1,9 +1,10 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionFree, processFreeUserTextInput, moderateFreeUserTextInput } from "./common";
+import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionLimited, processChatCompletionLocal, processFreeUserTextInput, moderateFreeUserTextInput } from "./common";
 import OpenAI from "openai";
 import { Logger } from "../../singletons/logger";
+import { Config } from "../../singletons/config";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -32,15 +33,25 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
             return await sendMessageWrapper(chatId, "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.");
         }
 
-        const response = await processChatCompletionFree(chatId, [
-            ...prompt,
-            {
-                content: message,
-                role: "user",
-            }
-        ]);
-        await sendMessageWrapper(chatId, response);
-        return;
+        if (Config.OLLAMA_LLM) {
+            const response = await processChatCompletionLocal(chatId, [
+                ...prompt,
+                {
+                    content: message,
+                    role: "user",
+                }
+            ]);
+            return await sendMessageWrapper(chatId, response);
+        } else {
+            const response = await processChatCompletionLimited(chatId, [
+                ...prompt,
+                {
+                    content: message,
+                    role: "user",
+                }
+            ]);
+            return await sendMessageWrapper(chatId, response);
+        }
     }
 
     const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");

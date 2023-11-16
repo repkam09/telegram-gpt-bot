@@ -7,40 +7,22 @@ export class Config {
     static validate() {
         Logger.info(`OPENAI_API_ORG is configured as ${Config.OPENAI_API_ORG ? "[HIDDEN]" : "error"}`);
         Logger.info(`OPENAI_API_KEY is configured as ${Config.OPENAI_API_KEY ? "[HIDDEN]" : "error"}`);
+
         Logger.info(`OPENAI_API_LLM is configured as ${Config.OPENAI_API_LLM}`);
+        Logger.info(`OLLAMA_LLM is configured as ${Config.OLLAMA_LLM}`);
 
         Logger.info(`TELEGRAM_BOT_KEY is configured as ${Config.TELEGRAM_BOT_KEY ? "[HIDDEN]" : "error"}`);
         Logger.info(`TELEGRAM_GROUP_PREFIX is configured as ${Config.TELEGRAM_GROUP_PREFIX}`);
         Logger.info(`TELEGRAM_BOT_ADMIN is configured as ${Config.TELEGRAM_BOT_ADMIN}`);
         Logger.info(`TELEGRAM_ID_WHITELIST is configured as ${Config.TELEGRAM_ID_WHITELIST}`);
+        Logger.info(`TELEGRAM_ID_BLACKLIST is configured as ${Config.TELEGRAM_ID_BLACKLIST}`);
+
 
         Logger.info(`HENNOS_MAX_MESSAGE_MEMORY is configured as ${JSON.stringify(Config.HENNOS_MAX_MESSAGE_MEMORY)}`);
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
         Logger.info(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
-        Logger.info(`HENNOS_EXTERNAL_REQUEST_KEY is configured as ${Config.HENNOS_EXTERNAL_REQUEST_KEY}`);
-        Logger.info(`HENNOS_EXTERNAL_REQUEST_PORT is configured as ${Config.HENNOS_EXTERNAL_REQUEST_PORT}`);
 
         Logger.info(`USE_PERSISTANT_CACHE is configured as ${JSON.stringify(Config.USE_PERSISTANT_CACHE)}`);
-    }
-
-    static get JELLYFIN_API_KEY(): string | undefined {
-        return process.env.JELLYFIN_API_KEY;
-    }
-
-    static get JELLYFIN_USER_ID(): string {
-        if (!process.env.JELLYFIN_USER_ID) {
-            return "-1";
-        }
-
-        return process.env.JELLYFIN_USER_ID;
-    }
-
-    static get JELLYFIN_SERVER_URL(): string {
-        if (!process.env.JELLYFIN_SERVER_URL) {
-            return "http://localhost:80/";
-        }
-
-        return process.env.JELLYFIN_SERVER_URL;
     }
 
     static get HENNOS_MAX_MESSAGE_MEMORY(): number {
@@ -55,36 +37,6 @@ export class Config {
         }
 
         return limit;
-    }
-
-    static get HENNOS_EXTERNAL_REQUEST_KEY(): string | false {
-        if (!process.env.HENNOS_EXTERNAL_REQUEST_KEY) {
-            return false;
-        }
-
-        return process.env.HENNOS_EXTERNAL_REQUEST_KEY;
-    }
-
-    static get HENNOS_EXTERNAL_REQUEST_PORT(): number {
-        if (!process.env.HENNOS_EXTERNAL_REQUEST_PORT) {
-            return 16006;
-        }
-
-        const port = parseInt(process.env.HENNOS_EXTERNAL_REQUEST_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid HENNOS_EXTERNAL_REQUEST_PORT value");
-        }
-
-        return port;
-    }
-
-    static get GOOGLE_API_KEY(): false | string {
-        if (!process.env.GOOGLE_API_KEY) {
-            return false;
-        }
-
-        return process.env.GOOGLE_API_KEY;
     }
 
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
@@ -154,6 +106,22 @@ export class Config {
         return process.env.OPENAI_API_KEY;
     }
 
+    static get OPENAI_API_LLM() {
+        if (!process.env.OPENAI_API_LLM) {
+            throw new Error("Missing OPENAI_API_LLM");
+        }
+
+        return process.env.OPENAI_API_LLM;
+    }
+
+    static get OLLAMA_LLM(): string | false{
+        if (!process.env.OLLAMA_LLM) {
+            return false;
+        }
+
+        return process.env.OLLAMA_LLM;
+    }
+
     static get TELEGRAM_BOT_KEY(): string {
         if (!process.env.TELEGRAM_BOT_KEY) {
             throw new Error("Missing TELEGRAM_BOT_KEY");
@@ -170,11 +138,6 @@ export class Config {
         return process.env.TELEGRAM_GROUP_PREFIX + " ";
     }
 
-    /**
-     * This value will return the Telegram chatId of the Admin user
-     * 
-     * If one was not configured the value will be -1
-     */
     static get TELEGRAM_BOT_ADMIN(): number {
         if (!process.env.TELEGRAM_BOT_ADMIN) {
             return -1;
@@ -202,13 +165,5 @@ export class Config {
         }
         const blacklist = process.env.TELEGRAM_ID_BLACKLIST.trim().split(",");
         return Array.from(new Set(blacklist)).map((entry) => parseInt(entry));
-    }
-
-    static get OPENAI_API_LLM() {
-        if (!process.env.OPENAI_API_LLM) {
-            throw new Error("Missing OPENAI_API_LLM");
-        }
-
-        return process.env.OPENAI_API_LLM;
     }
 }
