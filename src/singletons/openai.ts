@@ -3,7 +3,7 @@ import { Config } from "./config";
 
 export class OpenAIWrapper {
     private static _instance: OpenAI;
-    private static _free_instance: OpenAI;
+    private static _limited_instance: OpenAI;
     private static _models: OpenAI.Models;
 
     static instance(): OpenAI {
@@ -26,13 +26,13 @@ export class OpenAIWrapper {
         return OpenAIWrapper._models;
     }
 
-    public static free_instance(): OpenAI {
-        if (!OpenAIWrapper._free_instance) {
-            OpenAIWrapper._free_instance = new OpenAI({
-                organization: Config.OPENAI_API_ORG_FREE,
-                apiKey: Config.OPENAI_API_KEY_FREE
+    public static limited_instance(): OpenAI {
+        if (!OpenAIWrapper._limited_instance) {
+            OpenAIWrapper._limited_instance = new OpenAI({
+                organization: Config.OPENAI_API_ORG_LIMITED,
+                apiKey: Config.OPENAI_API_KEY_LIMITED
             });
         }
-        return OpenAIWrapper._free_instance;
+        return OpenAIWrapper._limited_instance;
     }
 }

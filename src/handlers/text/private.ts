@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionLimited, processChatCompletionLocal, processFreeUserTextInput, moderateFreeUserTextInput } from "./common";
+import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionLimited, processChatCompletionLocal, processLimitedUserTextInput, moderateLimitedUserTextInput } from "./common";
 import OpenAI from "openai";
 import { Logger } from "../../singletons/logger";
 import { Config } from "../../singletons/config";
@@ -25,10 +25,10 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     if (!isOnWhitelist(id)) {
-        const prompt = await buildFreeTierPrompt(chatId, first_name);
-        const message = await processFreeUserTextInput(chatId, msg.text);
+        const prompt = await buildLimitedTierPrompt(chatId, first_name);
+        const message = await processLimitedUserTextInput(chatId, msg.text);
 
-        const flagged = await moderateFreeUserTextInput(chatId, msg.text);
+        const flagged = await moderateLimitedUserTextInput(chatId, msg.text);
         if (flagged) {
             return await sendMessageWrapper(chatId, "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.");
         }
@@ -93,7 +93,7 @@ export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI
     return prompt;
 }
 
-function buildFreeTierPrompt(chatId: number, name: string,): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+function buildLimitedTierPrompt(chatId: number, name: string,): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",
@@ -105,7 +105,7 @@ function buildFreeTierPrompt(chatId: number, name: string,): OpenAI.Chat.Complet
         },
         {
             role: "system",
-            content: "This user is not whitelisted on the service and is getting basic free tier access. Their message history will not be stored after this response."
+            content: "This user is not whitelisted on the service and is getting basic, limited, tier access. Their message history will not be stored after this response."
         }
     ];
 

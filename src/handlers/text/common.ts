@@ -11,6 +11,11 @@ import { sleep } from "../../utils";
 export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
 
 export async function processChatCompletionLocal(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        await sleep(5000);
+        return "example string in development mode, local tier response";
+    }
+    
     Logger.info("ChatId", chatId, "createChatCompletion Local Start");
 
     const result = await OllamaWrapper.chat(chatId, messages);
@@ -23,7 +28,7 @@ export async function processChatCompletionLocal(chatId: number, messages: OpenA
 export async function processChatCompletionLimited(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
         await sleep(5000);
-        return "example string in development mode, free tier response";
+        return "example string in development mode, limmited tier response";
     }
 
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -33,28 +38,28 @@ export async function processChatCompletionLimited(chatId: number, messages: Ope
     };
 
     try {
-        Logger.info("ChatId", chatId, "createChatCompletion Free Start");
+        Logger.info("ChatId", chatId, "createChatCompletion Limited Start");
 
-        const response = await OpenAIWrapper.free_instance().chat.completions.create(options);
+        const response = await OpenAIWrapper.limited_instance().chat.completions.create(options);
 
-        Logger.info("ChatId", chatId, "createChatCompletion Free End");
+        Logger.info("ChatId", chatId, "createChatCompletion Limited End");
 
         if (!response || !response.choices) {
-            throw new Error("Unexpected createChatCompletion Free Result: Bad Response Data Choices");
+            throw new Error("Unexpected createChatCompletion Limited Result: Bad Response Data Choices");
         }
 
         const { message } = response.choices[0];
         if (!message || !message.role) {
-            throw new Error("Unexpected createChatCompletion Free Result: Bad Message Content Role");
+            throw new Error("Unexpected createChatCompletion Limited Result: Bad Message Content Role");
         }
 
         if (message.content) {
             return message.content;
         }
-        throw new Error("Unexpected createChatCompletion Free Result: Bad Message Format");
+        throw new Error("Unexpected createChatCompletion Limited Result: Bad Message Format");
     } catch (err) {
         const error = err as Error;
-        Logger.error("ChatId", chatId, "CreateChatCompletion Free Error:", error.message, error.stack, options);
+        Logger.error("ChatId", chatId, "CreateChatCompletion Limited Error:", error.message, error.stack, options);
         return "Sorry, I was unable to process your message at this time. ";
     }
 }
@@ -171,11 +176,11 @@ export async function processUserTextInput(chatId: number, text: string): Promis
     return text;
 }
 
-export async function processFreeUserTextInput(chatId: number, text: string): Promise<string> {
+export async function processLimitedUserTextInput(chatId: number, text: string): Promise<string> {
     return text;
 }
 
-export async function moderateFreeUserTextInput(chatId: number, text: string): Promise<boolean> {
+export async function moderateLimitedUserTextInput(chatId: number, text: string): Promise<boolean> {
     try {
         const response = await OpenAIWrapper.instance().moderations.create({
             input: text

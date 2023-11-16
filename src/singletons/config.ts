@@ -82,20 +82,20 @@ export class Config {
         return process.env.OPENAI_API_ORG;
     }
 
-    static get OPENAI_API_ORG_FREE(): string {
-        if (!process.env.OPENAI_API_ORG_FREE) {
-            throw new Error("Missing OPENAI_API_ORG_FREE");
+    static get OPENAI_API_ORG_LIMITED(): string {
+        if (!process.env.OPENAI_API_ORG_LIMITED) {
+            throw new Error("Missing OPENAI_API_ORG_LIMITED");
         }
 
-        return process.env.OPENAI_API_ORG_FREE;
+        return process.env.OPENAI_API_ORG_LIMITED;
     }
 
-    static get OPENAI_API_KEY_FREE(): string {
-        if (!process.env.OPENAI_API_KEY_FREE) {
-            throw new Error("Missing OPENAI_API_KEY_FREE");
+    static get OPENAI_API_KEY_LIMITED(): string {
+        if (!process.env.OPENAI_API_KEY_LIMITED) {
+            throw new Error("Missing OPENAI_API_KEY_LIMITED");
         }
 
-        return process.env.OPENAI_API_KEY_FREE;
+        return process.env.OPENAI_API_KEY_LIMITED;
     }
 
     static get OPENAI_API_KEY(): string {
