@@ -8,7 +8,7 @@ import { Logger } from "../singletons/logger";
 import { OpenAIWrapper } from "../singletons/openai";
 import { NotWhitelistedMessage, processChatCompletion, updateChatContext } from "./text/common";
 import { buildPrompt } from "./text/private";
-import { ChatMemory } from "../singletons/memory";
+import { Database } from "../singletons/prisma";
 
 export type ValidTTSNames = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
 
@@ -30,9 +30,8 @@ async function handleVoice(msg: TelegramBot.Message) {
     Logger.trace("voice", msg);
 
     const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
-    }
+    await Database.upsertUser(chatId, msg.from.first_name);
+
 
     if (!isOnWhitelist(id)) {
         await sendMessageWrapper(id, NotWhitelistedMessage);
@@ -50,8 +49,7 @@ async function handleVoice(msg: TelegramBot.Message) {
         });
 
 
-        const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");
-        const prompt = await buildPrompt(chatId, name ? name : first_name);
+        const prompt = await buildPrompt(chatId);
         const context = await updateChatContext(chatId, "user", transcription.text);
 
         await sendMessageWrapper(chatId, `\`\`\`\n${transcription.text}\n\`\`\``, { reply_to_message_id: msg.message_id });
@@ -63,11 +61,13 @@ async function handleVoice(msg: TelegramBot.Message) {
 
         await updateChatContext(chatId, "assistant", response);
 
-        const voice = await getUserVoicePreference(chatId);
+        const user = await Database.getUser(chatId, {
+            voice: true,
+        });
 
         const result = await OpenAIWrapper.instance().audio.speech.create({
             model: "tts-1",
-            voice: voice,
+            voice: user.voice,
             input: response,
             response_format: "opus"
         });
@@ -95,14 +95,4 @@ function unlink(path: string) {
         const error = err as Error;
         Logger.error("Unable to clean up voice file:" + path, error.message);
     }
-}
-
-
-export async function setUserVoicePreference(chatId: number, voice: ValidTTSNames): Promise<void> {
-    return ChatMemory.storePerUserValue<ValidTTSNames>(chatId, "voice-settings", voice);
-}
-
-export async function getUserVoicePreference(chatId: number): Promise<ValidTTSNames> {
-    const voice = await ChatMemory.getPerUserValue<ValidTTSNames>(chatId, "voice-settings");
-    return voice || "onyx";
 }

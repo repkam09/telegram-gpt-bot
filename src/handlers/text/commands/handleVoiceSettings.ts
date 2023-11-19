@@ -1,8 +1,9 @@
 import TelegramBot from "node-telegram-bot-api";
 import { BotInstance } from "../../../singletons/telegram";
-import { ValidTTSNames, getUserVoicePreference, setUserVoicePreference } from "../../voice";
+import { ValidTTSNames } from "../../voice";
 import { OpenAIWrapper } from "../../../singletons/openai";
 import { sendVoiceMemoWrapper } from "../../../utils";
+import { Database } from "../../../singletons/prisma";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -11,7 +12,10 @@ export async function handleVoiceSettingsCallback(chatId: number, queryId: strin
     const name = data.replace("voice-settings-", "").trim();
 
     const bot = BotInstance.instance();
-    setUserVoicePreference(chatId, name as ValidTTSNames).then(() => {
+
+    Database.updateUser(chatId, {
+        voice: name as ValidTTSNames
+    }).then(() => {
         bot.answerCallbackQuery(queryId, {
             text: "Future audio messages will use the " + name + " voice."
         });
@@ -75,10 +79,12 @@ export async function handleVoiceReadCommand(msg: MessageWithText) {
     const chatId = msg.chat.id;
     const text = msg.text.replace("/read", "").trim();
     if (text) {
-        const voice = await getUserVoicePreference(chatId);
+        const user = await Database.getUser(chatId, {
+            voice: true,
+        });
         const result = await OpenAIWrapper.instance().audio.speech.create({
             model: "tts-1",
-            voice: voice,
+            voice: user.voice,
             input: text,
             response_format: "opus"
         });

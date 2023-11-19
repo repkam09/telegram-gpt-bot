@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         Int       @id
+  name       String
+  botName    String
+  voice      String
+  messages   Message[]
+  location   Location? @relation(fields: [locationId], references: [id])
+  locationId Int?
+}
+
+model Group {
+  id   Int    @id
+  name String
+}
+
+model Location {
+  id   Int      @id @default(autoincrement())
+  lat  Float
+  lng  Float
+  date DateTime @default(now())
+  User User[]
+}
+
+enum Role {
+  assistant
+  user
+  system
+}
+
+model Message {
+  id      Int      @id @default(autoincrement())
+  date    DateTime @default(now())
+  name    String?
+  role    Role
+  content String
+  User    User     @relation(fields: [userId], references: [id])
+  userId  Int
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

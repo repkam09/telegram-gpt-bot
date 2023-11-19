@@ -1,5 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
-import { resetMemory, sendMessageWrapper } from "../../../utils";
+import { sendMessageWrapper } from "../../../utils";
+import { Database } from "../../../singletons/prisma";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -31,6 +32,10 @@ You can send a GPS location and Hennos will take that into account in future con
 }
 
 export async function handleResetCommand(msg: MessageWithText) {
-    await resetMemory(msg.chat.id);
+    await Database.instance().message.deleteMany({
+        where: {
+            userId: msg.chat.id
+        }
+    });
     await sendMessageWrapper(msg.chat.id, "Previous chat context has been cleared. The bot will not remember anything about your previous conversation.");
 }

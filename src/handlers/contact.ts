@@ -1,9 +1,9 @@
 import { BotInstance } from "../singletons/telegram";
 import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
-import { ChatMemory } from "../singletons/memory";
 import { Logger } from "../singletons/logger";
 import { NotWhitelistedMessage } from "./text/common";
+import { Database } from "../singletons/prisma";
 
 export function listen() {
     BotInstance.instance().on("contact", handleContact);
@@ -23,9 +23,8 @@ async function handleContact(msg: TelegramBot.Message) {
     Logger.trace("contact", msg);
 
     const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
-    }
+    await Database.upsertUser(chatId, msg.from.first_name);
+
 
     if (!isOnWhitelist(id)) {
         await sendMessageWrapper(id, NotWhitelistedMessage);

@@ -1,10 +1,16 @@
 import { Config } from "./singletons/config";
 import { BotInstance } from "./singletons/telegram";
-import { ChatMemory } from "./singletons/memory";
 import { Logger } from "./singletons/logger";
 import TelegramBot from "node-telegram-bot-api";
+import { isAdmin } from "./handlers/text/common";
 
 export async function sendMessageWrapper(chatId: number, content: string, options: TelegramBot.SendMessageOptions = {}) {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        if (!isAdmin(chatId)) {
+            throw new Error("Message from unexpected user while in development mode: " + chatId);
+        }
+    }
+
     if (!content) {
         throw new Error("Message content is undefined");
     }
@@ -24,6 +30,12 @@ export async function sendMessageWrapper(chatId: number, content: string, option
 }
 
 export async function sendVoiceMemoWrapper(chatId: number, content: Buffer, options: TelegramBot.SendVoiceOptions = {}): Promise<void> {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        if (!isAdmin(chatId)) {
+            throw new Error("Message from unexpected user while in development mode: " + chatId);
+        }
+    }
+
     if (!content) {
         throw new Error("Message content is undefined");
     }
@@ -37,6 +49,12 @@ export async function sendVoiceMemoWrapper(chatId: number, content: Buffer, opti
 }
 
 async function sendTelegramMessageWithRetry(chatId: number, content: string, options: TelegramBot.SendMessageOptions) {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        if (!isAdmin(chatId)) {
+            throw new Error("Message from unexpected user while in development mode: " + chatId);
+        }
+    }
+
     const bot = BotInstance.instance();
     try {
         await bot.sendMessage(chatId, content, { ...options, parse_mode: "Markdown" });
@@ -68,10 +86,6 @@ function chunkSubstr(str: string, size: number) {
     }
 
     return chunks;
-}
-
-export async function resetMemory(chatId: number): Promise<void> {
-    await ChatMemory.deleteContext(chatId);
 }
 
 export function isOnWhitelist(id: number) {

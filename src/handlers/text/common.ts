@@ -1,21 +1,19 @@
 import OpenAI from "openai";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
-import { ChatMemory } from "../../singletons/memory";
 import { OpenAIWrapper } from "../../singletons/openai";
 import { OllamaWrapper } from "../../singletons/ollama";
 import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
-import { sleep } from "../../utils";
+import { Database } from "../../singletons/prisma";
 
 export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
 
 export async function processChatCompletionLocal(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
-    if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(5000);
-        return "example string in development mode, local tier response";
+    if (Config.HENNOS_MOCK_COMPLETION) {
+        return "This is a string that would be returned from processChatCompletionLocal";
     }
-    
+
     Logger.info("ChatId", chatId, "createChatCompletion Local Start");
 
     const result = await OllamaWrapper.chat(chatId, messages);
@@ -26,9 +24,8 @@ export async function processChatCompletionLocal(chatId: number, messages: OpenA
 }
 
 export async function processChatCompletionLimited(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
-    if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(5000);
-        return "example string in development mode, limmited tier response";
+    if (Config.HENNOS_MOCK_COMPLETION) {
+        return "This is a string that would be returned from processChatCompletionLimited";
     }
 
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -65,9 +62,8 @@ export async function processChatCompletionLimited(chatId: number, messages: Ope
 }
 
 export async function processChatCompletion(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
-    if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(5000);
-        return "example string in development mode";
+    if (Config.HENNOS_MOCK_COMPLETION) {
+        return "This is a string that would be returned from processChatCompletion";
     }
 
     const model = Config.OPENAI_API_LLM;
@@ -138,34 +134,12 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
 }
 
 export async function updateChatContext(chatId: number, role: "user" | "assistant" | "system", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
-    Logger.debug(`${chatId} ${role} ${content}`);
-
-    if (!await ChatMemory.hasContext(chatId)) {
-        Logger.debug("updateChatContext Creating a new context");
-        await ChatMemory.setContext(chatId, []);
-    }
-
-    const currentChatContext = await ChatMemory.getContext(chatId);
-
-    if (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
-        Logger.debug("updateChatContext Shifting old message context");
-
-        // Remove the oldest user message from memory
-        currentChatContext.shift();
-        // Remove the oldest assistant message from memory
-        currentChatContext.shift();
-    }
-
-    currentChatContext.push({ role, content });
-    await ChatMemory.setContext(chatId, currentChatContext);
-
-    Logger.debug("updateChatContext Finished updating context");
-    return currentChatContext;
+    await Database.putUserMessage(chatId, role, content);
+    return getChatContext(chatId);
 }
 
 export async function getChatContext(chatId: number): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
-    const currentChatContext = await ChatMemory.getContext(chatId);
-    return currentChatContext;
+    return Database.getUserMessages(chatId);
 }
 
 export function isAdmin(chatId: number): boolean {

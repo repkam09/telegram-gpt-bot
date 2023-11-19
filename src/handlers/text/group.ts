@@ -1,10 +1,10 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../../singletons/config";
-import { ChatMemory } from "../../singletons/memory";
 import { isOnWhitelist, sendMessageWrapper, sendAdminMessage, isOnBlacklist } from "../../utils";
 import OpenAI from "openai";
 import { updateChatContext, processChatCompletion, processUserTextInput } from "./common";
 import { Logger } from "../../singletons/logger";
+import { Database } from "../../singletons/prisma";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -26,21 +26,30 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
     // If the user did @ the bot, strip out that @ prefix before sending the message
     msg.text = msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, "");
 
-
     const { first_name, last_name, username, id } = msg.from;
-    const { title } = msg.chat;
 
-    if (!await ChatMemory.hasName(chatId)) {
-        await ChatMemory.setName(chatId, `${title} [${chatId}]`);
+    if (msg.chat.title) {
+        await Database.instance().group.upsert({
+            where: {
+                id: chatId
+            },
+            create: {
+                id: chatId,
+                name: msg.chat.title
+            },
+            update: {
+                name: msg.chat.title
+            }
+        });
     }
 
     if (!isOnWhitelist(chatId)) {
         await sendMessageWrapper(chatId, `Sorry, this group chat has not been whitelisted to use this bot. Please request access and provide the group identifier: ${chatId}`);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message from group chat '${title} [${chatId}]' but the group is not whitelisted`);
+        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message from group chat '${msg.chat.title} [${chatId}]' but the group is not whitelisted`);
         return;
     }
 
-    const prompt = buildPrompt(title || "Group Chat");
+    const prompt = buildPrompt(msg.chat.title || "Group Chat");
     const message = await processUserTextInput(chatId, msg.text);
     const context = await updateChatContext(chatId, "user", message);
 

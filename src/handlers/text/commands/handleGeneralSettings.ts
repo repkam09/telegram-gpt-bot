@@ -1,12 +1,20 @@
 import TelegramBot from "node-telegram-bot-api";
 import { BotInstance } from "../../../singletons/telegram";
 import { registerInputCallback } from "..";
-import { ChatMemory } from "../../../singletons/memory";
 import { sendVoiceSettingsPrompt } from "./handleVoiceSettings";
+import { Config } from "../../../singletons/config";
+import { isAdmin } from "../common";
+import { Database } from "../../../singletons/prisma";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
 export async function handleGeneralSettingsCallback(chatId: number, queryId: string, data: string) {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        if (!isAdmin(chatId)) {
+            throw new Error("Message from unexpected user while in development mode: " + chatId);
+        }
+    }
+
     const bot = BotInstance.instance();
 
     // Set the voice and return to the user.
@@ -19,9 +27,13 @@ export async function handleGeneralSettingsCallback(chatId: number, queryId: str
     if (command === "my-name") {
         bot.answerCallbackQuery(queryId);
         registerInputCallback(chatId, (msg: TelegramBot.Message) => {
-            const name = msg.text as string;
-            ChatMemory.storePerUserValue(chatId, "custom-name", name);
-            bot.sendMessage(chatId, "Thanks! I'll call you " + name + " going forward.");
+            Database.updateUser(chatId, {
+                name: msg.text as string
+            }).then(() => {
+                bot.sendMessage(chatId, "Thanks! I'll call you " + msg.text + " going forward.");
+            }).catch(() => {
+                bot.sendMessage(chatId, "There was an error while updating your name. Please try again later.");
+            });
         });
         bot.sendMessage(chatId, "What would you like me to call you?");
     }
@@ -35,9 +47,13 @@ export async function handleGeneralSettingsCallback(chatId: number, queryId: str
     if (command === "bot-name") {
         bot.answerCallbackQuery(queryId);
         registerInputCallback(chatId, (msg: TelegramBot.Message) => {
-            const name = msg.text as string;
-            ChatMemory.storePerUserValue(chatId, "custom-bot-name", name);
-            bot.sendMessage(chatId, "Thanks, I'll use that going forward.");
+            Database.updateUser(chatId, {
+                botName: msg.text as string
+            }).then(() => {
+                bot.sendMessage(chatId, "Thanks, I'll use that going forward.");
+            }).catch(() => {
+                bot.sendMessage(chatId, "There was an error while updating my name. Please try again later.");
+            });
         });
         bot.sendMessage(chatId, "What would you like to call me?");
     }

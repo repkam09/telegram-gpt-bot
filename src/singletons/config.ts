@@ -20,6 +20,7 @@ export class Config {
 
         Logger.info(`HENNOS_MAX_MESSAGE_MEMORY is configured as ${JSON.stringify(Config.HENNOS_MAX_MESSAGE_MEMORY)}`);
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
+        Logger.info(`HENNOS_MOCK_COMPLETION is configured as ${Config.HENNOS_MOCK_COMPLETION}`);
         Logger.info(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
 
         Logger.info(`USE_PERSISTANT_CACHE is configured as ${JSON.stringify(Config.USE_PERSISTANT_CACHE)}`);
@@ -45,6 +46,14 @@ export class Config {
         }
 
         return process.env.HENNOS_DEVELOPMENT_MODE === "true";
+    }
+
+    static get HENNOS_MOCK_COMPLETION(): boolean {
+        if (!process.env.HENNOS_MOCK_COMPLETION) {
+            return false;
+        }
+
+        return process.env.HENNOS_MOCK_COMPLETION === "true";
     }
 
     static get HENNOS_VERBOSE_LOGGING(): boolean {
@@ -114,7 +123,7 @@ export class Config {
         return process.env.OPENAI_API_LLM;
     }
 
-    static get OLLAMA_LLM(): string | false{
+    static get OLLAMA_LLM(): string | false {
         if (!process.env.OLLAMA_LLM) {
             return false;
         }

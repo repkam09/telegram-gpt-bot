@@ -4,6 +4,8 @@ import { Logger } from "../../singletons/logger";
 import { handleVoiceReadCommand, handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback, handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
 import { handleHelpCommand, handleResetCommand, handleStartCommand } from "./commands/basic";
+import { Config } from "../../singletons/config";
+import { isAdmin } from "./common";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -19,6 +21,12 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
     if (isOnBlacklist(msg.chat.id)) {
         Logger.trace("blacklist", msg);
         return;
+    }
+
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        if (!isAdmin(msg.chat.id)) {
+            throw new Error("Message from unexpected user while in development mode: " + msg.chat.id);
+        }
     }
 
     Logger.trace("text_command", msg);

@@ -1,9 +1,9 @@
 import { BotInstance } from "../singletons/telegram";
 import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
-import { ChatMemory } from "../singletons/memory";
 import { Logger } from "../singletons/logger";
 import { NotWhitelistedMessage } from "./text/common";
+import { Database } from "../singletons/prisma";
 
 export function listen() {
     BotInstance.instance().on("location", handleLocation);
@@ -23,9 +23,8 @@ async function handleLocation(msg: TelegramBot.Message) {
     Logger.trace("location", msg);
 
     const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
-    }
+    await Database.upsertUser(chatId, msg.from.first_name);
+
 
     if (!isOnWhitelist(id)) {
         await sendMessageWrapper(id, NotWhitelistedMessage);
@@ -33,6 +32,20 @@ async function handleLocation(msg: TelegramBot.Message) {
         return;
     }
 
-    await ChatMemory.storePerUserValue<string>(chatId, "last-known-location", `time=${new Date().toUTCString()} lat=${msg.location.latitude}, lon=${msg.location.longitude}`);
+    await Database.updateUser(chatId, {
+        location: {
+            upsert: {
+                create: {
+                    lat: msg.location.latitude,
+                    lng: msg.location.longitude
+                },
+                update: {
+                    lat: msg.location.latitude,
+                    lng: msg.location.longitude
+                }
+            }
+        }
+    });
+
     await sendMessageWrapper(chatId, "Thanks! I will take your location into account in the future.");
 }

@@ -1,10 +1,10 @@
 import TelegramBot from "node-telegram-bot-api";
-import { ChatMemory } from "../../singletons/memory";
 import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
 import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionLimited, processChatCompletionLocal, processLimitedUserTextInput, moderateLimitedUserTextInput } from "./common";
 import OpenAI from "openai";
 import { Logger } from "../../singletons/logger";
 import { Config } from "../../singletons/config";
+import { Database } from "../../singletons/prisma";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -18,14 +18,10 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     }
 
     Logger.trace("text_private", msg);
+    await Database.upsertUser(chatId, msg.from.first_name);
 
-    const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
-    }
-
-    if (!isOnWhitelist(id)) {
-        const prompt = await buildLimitedTierPrompt(chatId, first_name);
+    if (!isOnWhitelist(chatId)) {
+        const prompt = await buildLimitedTierPrompt(chatId);
         const message = await processLimitedUserTextInput(chatId, msg.text);
 
         const flagged = await moderateLimitedUserTextInput(chatId, msg.text);
@@ -54,8 +50,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
         }
     }
 
-    const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");
-    const prompt = await buildPrompt(chatId, name ? name : first_name);
+    const prompt = await buildPrompt(chatId);
     const message = await processUserTextInput(chatId, msg.text);
     const context = await updateChatContext(chatId, "user", message);
     const response = await processChatCompletion(chatId, [
@@ -68,17 +63,31 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     return;
 }
 
-export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
-    const botName = await ChatMemory.getPerUserValue<string>(chatId, "custom-bot-name");
-    const location = await ChatMemory.getPerUserValue<string>(chatId, "last-known-location");
-    const date = new Date().toUTCString();
+export async function buildPrompt(chatId: number): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
+    const user = await Database.instance().user.findUniqueOrThrow({
+        where: {
+            id: chatId
+        },
+        select: {
+            name: true,
+            location: {
+                select: {
+                    date: true,
+                    lat: true,
+                    lng: true
+                }
+            },
+            botName: true
+        }
+    });
 
-    const locationDetails = location ? `The user provided the location information previously: ${location}` : "";
+    const date = new Date().toUTCString();
+    const locationDetails = user.location ? `The user provided the location information at ${user.location.date}. Lat: ${user.location.lat}, Lng: ${user.location.lng}` : "";
 
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",
-            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.`
+            content: `You are a conversational chat assistant named '${user.botName}' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.`
         },
         {
             role: "system",
@@ -86,14 +95,22 @@ export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI
         },
         {
             role: "system",
-            content: `You are currently assisting a user named '${name}' in a one-on-one private chat session.`
+            content: `You are currently assisting a user named '${user.name}' in a one-on-one private chat session.`
         }
     ];
 
     return prompt;
 }
 
-function buildLimitedTierPrompt(chatId: number, name: string,): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+async function buildLimitedTierPrompt(chatId: number): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
+    const user = await Database.instance().user.findUniqueOrThrow({
+        where: {
+            id: chatId
+        },
+        select: {
+            name: true,
+        }
+    });
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",
@@ -101,7 +118,7 @@ function buildLimitedTierPrompt(chatId: number, name: string,): OpenAI.Chat.Comp
         },
         {
             role: "system",
-            content: `You are currently assisting a user named '${name}' in a one-on-one private chat session.`
+            content: `You are currently assisting a user named '${user.name}' in a one-on-one private chat session.`
         },
         {
             role: "system",
