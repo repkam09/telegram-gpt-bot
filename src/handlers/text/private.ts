@@ -68,9 +68,10 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     return;
 }
 
-export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
+export async function buildPrompt(chatId: number, name: string): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     const botName = await ChatMemory.getPerUserValue<string>(chatId, "custom-bot-name");
     const location = await ChatMemory.getPerUserValue<string>(chatId, "last-known-location");
+
     const date = new Date().toUTCString();
 
     const locationDetails = location ? `The user provided the location information previously: ${location}` : "";
@@ -78,7 +79,7 @@ export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",
-            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable.`
+            content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
         },
         {
             role: "system",
@@ -89,6 +90,32 @@ export async function buildPrompt(chatId: number, name: string,): Promise<OpenAI
             content: `You are currently assisting a user named '${name}' in a one-on-one private chat session.`
         }
     ];
+
+    const personality = await ChatMemory.getPerUserValue<string>(chatId, "personality-mode");
+
+    switch (personality) {
+    case "seductive":
+        prompt.unshift({
+            role: "system",
+            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are also seductive and flirty.`
+        });
+        break;
+    
+    case "snarky":
+        prompt.unshift({
+            role: "system",
+            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is snarky and sarcastic while still being helpful.`
+        });
+        break;
+
+    default:
+        prompt.unshift({
+            role: "system",
+            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly.`
+        });
+        break;
+    }
+
 
     return prompt;
 }
