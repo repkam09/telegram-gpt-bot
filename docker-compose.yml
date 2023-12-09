@@ -1,0 +1,8 @@
+version: '3.3'
+services:
+  hennos: 
+    container_name: hennos
+    restart: unless-stopped
+    image: hennos-gpt:latest
+    volumes:
+      - '.env:/app/hennos/.env'
