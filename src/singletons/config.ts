@@ -114,13 +114,36 @@ export class Config {
         return process.env.OPENAI_API_LLM;
     }
 
-    static get OLLAMA_LLM(): string | false{
+    static get OLLAMA_LLM(): string | false {
         if (!process.env.OLLAMA_LLM) {
             return false;
         }
 
         return process.env.OLLAMA_LLM;
     }
+
+    static get OLLAMA_HOST(): string {
+        if (!process.env.OLLAMA_HOST) {
+            return "localhost";
+        }
+
+        return process.env.OLLAMA_HOST;
+    }
+
+    static get OLLAMA_PORT(): number {
+        if (!process.env.OLLAMA_PORT) {
+            return 11434;
+        }
+
+        const port = parseInt(process.env.OLLAMA_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid OLLAMA_PORT value");
+        }
+
+        return port;
+    }
+
 
     static get TELEGRAM_BOT_KEY(): string {
         if (!process.env.TELEGRAM_BOT_KEY) {

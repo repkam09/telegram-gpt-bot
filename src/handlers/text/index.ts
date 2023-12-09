@@ -29,7 +29,13 @@ async function handleText(msg: TelegramBot.Message) {
     }
 
     if (msg.chat.type !== "private") {
-        return handleGroupMessage(msg);
+        // Do a little bit of cleaning in case the user sends a message that is longer than the 
+        // allowed length in Telegram, it gets split into multiple. Or they send message in quick succession. 
+        clearTimeout(timermap.get(msg.chat.id));
+        chatmap.set(msg.chat.id, [...(chatmap.get(msg.chat.id) || []), msg]);
+
+        const timeout = setTimeout(() => processUserGroupMessages(msg.chat.id), 2000);
+        timermap.set(msg.chat.id, timeout);
     }
 
     if (msg.chat.type === "private") {
@@ -65,4 +71,22 @@ function processUserMessages(chatId: number) {
     const lastMessage = { ...messages[messages.length - 1], text: combinedText };
 
     return handlePrivateMessage(lastMessage);
+}
+
+function processUserGroupMessages(chatId: number) {
+    timermap.delete(chatId);
+
+    const messages = chatmap.get(chatId);
+    chatmap.delete(chatId);
+
+    if (!messages) return;
+
+    if (messages.length === 1) {
+        return handleGroupMessage(messages[0]);
+    }
+
+    const combinedText = messages.map((message) => message.text).join("\n");
+    const lastMessage = { ...messages[messages.length - 1], text: combinedText };
+
+    return handleGroupMessage(lastMessage);
 }

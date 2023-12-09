@@ -24,7 +24,7 @@ export class OllamaWrapper {
                 return `${message.role}: ${message.content}`;
             });
 
-            const result = await axios<OllamaResult>("http://localhost:11434/api/generate", {
+            const result = await axios<OllamaResult>(`http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}/api/generate`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
