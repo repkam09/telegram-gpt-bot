@@ -1,6 +1,4 @@
-#!/bin/bash
 git pull
-npm i
-npm run validate && npm run build
-sudo service repka-gpt restart
-sudo service repka-gpt status
+docker build -t hennos-gpt .
+docker compose down
+docker compose up -d
