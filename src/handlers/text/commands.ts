@@ -3,7 +3,9 @@ import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
 import { Logger } from "../../singletons/logger";
 import { handleVoiceReadCommand, handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback, handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
+import { handleWhitelistCommand } from "./commands/handleWhitelist";
 import { handleHelpCommand, handleResetCommand, handleStartCommand } from "./commands/basic";
+import { isAdmin } from "./common";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -41,6 +43,10 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
 
     if (msg.text.startsWith("/settings") && isOnWhitelist(msg.chat.id)) {
         return handleGeneralSettingsCommand(msg as MessageWithText);
+    }
+
+    if (msg.text.startsWith("/whitelist") && isAdmin(msg.chat.id)) {
+        return handleWhitelistCommand(msg as MessageWithText);
     }
 
     return sendMessageWrapper(msg.chat.id, "Unknown Command");

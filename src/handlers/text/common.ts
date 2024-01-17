@@ -12,14 +12,12 @@ export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to us
 
 export async function processChatCompletionLocal(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(5000);
+        await sleep(1000);
         return "example string in development mode, local tier response";
     }
-    
+
     Logger.info("ChatId", chatId, "createChatCompletion Local Start");
-
     const result = await OllamaWrapper.chat(chatId, messages);
-
     Logger.info("ChatId", chatId, "createChatCompletion Local End");
 
     return result;
@@ -27,7 +25,7 @@ export async function processChatCompletionLocal(chatId: number, messages: OpenA
 
 export async function processChatCompletionLimited(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(5000);
+        await sleep(1000);
         return "example string in development mode, limmited tier response";
     }
 
@@ -66,7 +64,7 @@ export async function processChatCompletionLimited(chatId: number, messages: Ope
 
 export async function processChatCompletion(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(5000);
+        await sleep(1000);
         return "example string in development mode";
     }
 
@@ -106,6 +104,11 @@ export async function processChatCompletion(chatId: number, messages: OpenAI.Cha
 }
 
 export async function processImageGeneration(chatId: number, prompt: string): Promise<string | undefined> {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
+        await sleep(1000);
+        return undefined;
+    }
+
     const options: OpenAI.Images.ImageGenerateParams = {
         prompt,
         n: 1,
@@ -138,10 +141,7 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
 }
 
 export async function updateChatContext(chatId: number, role: "user" | "assistant" | "system", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
-    Logger.debug(`${chatId} ${role} ${content}`);
-
     if (!await ChatMemory.hasContext(chatId)) {
-        Logger.debug("updateChatContext Creating a new context");
         await ChatMemory.setContext(chatId, []);
     }
 
@@ -159,7 +159,6 @@ export async function updateChatContext(chatId: number, role: "user" | "assistan
     currentChatContext.push({ role, content });
     await ChatMemory.setContext(chatId, currentChatContext);
 
-    Logger.debug("updateChatContext Finished updating context");
     return currentChatContext;
 }
 

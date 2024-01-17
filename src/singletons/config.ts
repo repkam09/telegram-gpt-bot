@@ -2,8 +2,12 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { Logger } from "./logger";
+import { ChatMemory } from "./memory";
 
 export class Config {
+    private static _TELEGRAM_ID_WHITELIST: number[] | false = false;
+    private static _TELEGRAM_ID_BLACKLIST: number[] | false = false;
+
     static validate() {
         Logger.info(`OPENAI_API_ORG is configured as ${Config.OPENAI_API_ORG ? "[HIDDEN]" : "error"}`);
         Logger.info(`OPENAI_API_KEY is configured as ${Config.OPENAI_API_KEY ? "[HIDDEN]" : "error"}`);
@@ -14,15 +18,47 @@ export class Config {
         Logger.info(`TELEGRAM_BOT_KEY is configured as ${Config.TELEGRAM_BOT_KEY ? "[HIDDEN]" : "error"}`);
         Logger.info(`TELEGRAM_GROUP_PREFIX is configured as ${Config.TELEGRAM_GROUP_PREFIX}`);
         Logger.info(`TELEGRAM_BOT_ADMIN is configured as ${Config.TELEGRAM_BOT_ADMIN}`);
-        Logger.info(`TELEGRAM_ID_WHITELIST is configured as ${Config.TELEGRAM_ID_WHITELIST}`);
-        Logger.info(`TELEGRAM_ID_BLACKLIST is configured as ${Config.TELEGRAM_ID_BLACKLIST}`);
-
 
         Logger.info(`HENNOS_MAX_MESSAGE_MEMORY is configured as ${JSON.stringify(Config.HENNOS_MAX_MESSAGE_MEMORY)}`);
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
         Logger.info(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
 
         Logger.info(`USE_PERSISTANT_CACHE is configured as ${JSON.stringify(Config.USE_PERSISTANT_CACHE)}`);
+    }
+
+    static async update_whitelist(whitelist: number[]) {
+        const redis_whitelist = await ChatMemory.getSystemValue<number[]>("whitelist") ?? [];
+        const new_whitelist = Array.from(new Set([...whitelist, ...redis_whitelist]));
+        await ChatMemory.storeSystemValue("whitelist", new_whitelist);
+        Config._TELEGRAM_ID_WHITELIST = new_whitelist;
+    }
+
+    static async update_blacklist(blacklist: number[]) {
+        const redis_blacklist = await ChatMemory.getSystemValue<number[]>("blacklist") ?? [];
+        const new_blacklist = Array.from(new Set([...blacklist, ...redis_blacklist]));
+        await ChatMemory.storeSystemValue("blacklist", new_blacklist);
+        Config._TELEGRAM_ID_BLACKLIST = new_blacklist;
+    }
+
+    static async sync() {
+        Logger.info("Starting Configuration Sync");
+        if (process.env.TELEGRAM_ID_WHITELIST) {
+            const whitelist = process.env.TELEGRAM_ID_WHITELIST.trim().split(",").map((entry) => parseInt(entry));
+            await Config.update_whitelist(whitelist);
+        } else {
+            return Config._TELEGRAM_ID_WHITELIST = false;
+        }
+        Logger.info(`TELEGRAM_ID_WHITELIST is configured as ${Config.TELEGRAM_ID_WHITELIST}`);
+
+        if (process.env.TELEGRAM_ID_BLACKLIST) {
+            const blacklist = process.env.TELEGRAM_ID_BLACKLIST.trim().split(",").map((entry) => parseInt(entry));
+            await Config.update_blacklist(blacklist);
+        } else {
+            return Config._TELEGRAM_ID_BLACKLIST = false;
+        }
+        Logger.info(`TELEGRAM_ID_BLACKLIST is configured as ${Config.TELEGRAM_ID_BLACKLIST}`);
+
+        Logger.info("Finished Configuration Sync");
     }
 
     static get HENNOS_MAX_MESSAGE_MEMORY(): number {
@@ -175,18 +211,10 @@ export class Config {
     }
 
     static get TELEGRAM_ID_WHITELIST(): number[] | false {
-        if (!process.env.TELEGRAM_ID_WHITELIST) {
-            return false;
-        }
-        const whitelist = process.env.TELEGRAM_ID_WHITELIST.trim().split(",");
-        return Array.from(new Set(whitelist)).map((entry) => parseInt(entry));
+        return Config._TELEGRAM_ID_WHITELIST;
     }
 
     static get TELEGRAM_ID_BLACKLIST(): number[] | false {
-        if (!process.env.TELEGRAM_ID_BLACKLIST) {
-            return false;
-        }
-        const blacklist = process.env.TELEGRAM_ID_BLACKLIST.trim().split(",");
-        return Array.from(new Set(blacklist)).map((entry) => parseInt(entry));
+        return Config._TELEGRAM_ID_BLACKLIST;
     }
 }

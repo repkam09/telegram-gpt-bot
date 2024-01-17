@@ -18,9 +18,9 @@ export class Logger {
         console.error(message, ...optionalParams);
     }
 
-    static debug(message: string): void {
+    static debug(message?: any, ...optionalParams: any[]): void {
         if (Config.HENNOS_VERBOSE_LOGGING) {
-            console.info("DEBUG:", message);
+            console.log("DEBUG:", message, ...optionalParams);
         }
     }
 

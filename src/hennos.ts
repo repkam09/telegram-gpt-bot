@@ -15,6 +15,8 @@ async function start() {
         await RedisCache.init();
     }
 
+    await Config.sync();
+
     // Create a Telegram Bot Instance
     BotInstance.instance();
 
