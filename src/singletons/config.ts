@@ -217,4 +217,24 @@ export class Config {
     static get TELEGRAM_ID_BLACKLIST(): number[] | false {
         return Config._TELEGRAM_ID_BLACKLIST;
     }
+
+    static get CRYPTO_IV(): Buffer {
+        if (!process.env.CRYPTO_IV) {
+            throw new Error("Missing CRYPTO_IV");
+        }
+
+        const buffer = Buffer.from(process.env.CRYPTO_IV, "utf8");
+        const iv = Buffer.alloc(16, 0);
+        buffer.copy(iv, 0, 0, 16);
+
+        return iv;
+    }
+
+    static get CRYPTO_ALGO(): string {
+        if (!process.env.CRYPTO_ALGO) {
+            return "aes-256-cbc";
+        }
+
+        return process.env.CRYPTO_ALGO;
+    }
 }

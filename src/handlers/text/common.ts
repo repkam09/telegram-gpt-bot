@@ -145,15 +145,18 @@ export async function updateChatContext(chatId: number, role: "user" | "assistan
         await ChatMemory.setContext(chatId, []);
     }
 
-    const currentChatContext = await ChatMemory.getContext(chatId);
+    const currentChatContext = await getChatContext(chatId);
 
     if (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
-        Logger.debug("updateChatContext Shifting old message context");
+        const currentChatContextStringLengthBefore = currentChatContext.reduce((acc, val) => acc + (val.content ? val.content.length : 0), 0);
+        Logger.info(`ChatId ${chatId} Started cleaning up old message context. Entries: ${currentChatContext.length}/${Config.HENNOS_MAX_MESSAGE_MEMORY} (Content: ${currentChatContextStringLengthBefore}).`);
 
-        // Remove the oldest user message from memory
-        currentChatContext.shift();
-        // Remove the oldest assistant message from memory
-        currentChatContext.shift();
+        while (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
+            currentChatContext.shift();
+        }
+
+        const currentChatContextStringLengthAfter = currentChatContext.reduce((acc, val) => acc + (val.content ? val.content.length : 0), 0);
+        console.log(`ChatId ${chatId} Finished cleaning up old message context. Entries: ${currentChatContext.length}/${Config.HENNOS_MAX_MESSAGE_MEMORY} (Content: ${currentChatContextStringLengthAfter}).`);
     }
 
     currentChatContext.push({ role, content });
