@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import crypto from "crypto";
 import { Config } from "./config";
 import { RedisCache } from "./redis";
 
@@ -18,11 +19,33 @@ export class ChatMemory {
 
     static async getContext(key: number): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
         if (!Config.USE_PERSISTANT_CACHE) {
-
             const result = this._chat_context_map.get(key) as OpenAI.Chat.ChatCompletionMessageParam[];
             return Promise.resolve(result || []);
         }
-        const result = await RedisCache.get<OpenAI.Chat.ChatCompletionMessageParam[]>("context", `${key}`);
+
+        const encrypted = await RedisCache.get<OpenAI.Chat.ChatCompletionMessageParam[]>("context", `${key}`);
+        if (!encrypted) {
+            return [];
+        }
+
+        const result = encrypted.map((entry) => {
+            if (!entry.content) {
+                return entry;
+            }
+
+            if (typeof entry.content !== "string") {
+                return entry;
+            }
+
+            const decipher = crypto.createDecipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
+            const decrypted = decipher.update(entry.content, "hex", "utf8") + decipher.final("utf8");
+            return {
+                ...entry,
+                content: decrypted,
+            };
+        });
+
+        
         return result || [];
     }
 
@@ -39,7 +62,25 @@ export class ChatMemory {
             this._chat_context_map.set(key, value);
             return;
         }
-        return RedisCache.set("context", `${key}`, JSON.stringify(value));
+
+        const encrypted = value.map((entry) => {
+            if (!entry.content) {
+                return entry;
+            }
+
+            if (typeof entry.content !== "string") {
+                return entry;
+            }
+
+            const cipher = crypto.createCipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
+            const encrypted = cipher.update(entry.content, "utf8", "hex") + cipher.final("hex");
+            return {
+                ...entry,
+                content: encrypted
+            };
+        });
+
+        return RedisCache.set("context", `${key}`, JSON.stringify(encrypted));
     }
 
     static async getContextKeys(): Promise<number[]> {
@@ -169,4 +210,11 @@ export class ChatMemory {
 
         return RedisCache.has(prop, "system_value");
     }
+}
+
+function secret(input: number): Buffer {
+    const buffer = Buffer.from(String(input), "utf8");
+    const key = Buffer.alloc(32, 0);
+    buffer.copy(key, 0, 0, 32);
+    return key;
 }
