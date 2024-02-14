@@ -41,7 +41,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
                     role: "user",
                 }
             ]);
-            return await sendMessageWrapper(chatId, response);
+            return sendMessageWrapper(chatId, response);
         } else {
             const response = await processChatCompletionLimited(chatId, [
                 ...prompt,
@@ -50,7 +50,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
                     role: "user",
                 }
             ]);
-            return await sendMessageWrapper(chatId, response);
+            return sendMessageWrapper(chatId, response);
         }
     }
 
@@ -64,8 +64,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     ]);
 
     await updateChatContext(chatId, "assistant", response);
-    await sendMessageWrapper(chatId, response);
-    return;
+    return sendMessageWrapper(chatId, response);
 }
 
 export async function buildPrompt(chatId: number, name: string): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {

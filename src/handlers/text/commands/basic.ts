@@ -6,28 +6,30 @@ type MessageWithText = TelegramBot.Message & { text: string }
 export async function handleStartCommand(msg: MessageWithText) {
     await sendMessageWrapper(msg.chat.id, `Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-4 language model, similar to ChatGPT.
 
-This bot is whitelisted for use by approved users only.
-Contact @repkam09 to request access!
-    
-For more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).`);
+This bot contains additional features for approved users only. Limited access is availble to others.
+
+For more information type /help or check out the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).`);
 }
 
 export async function handleHelpCommand(msg: MessageWithText) {
     await sendMessageWrapper(msg.chat.id, `Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-4 language model, similar to ChatGPT.
 
-This bot is whitelisted for use by approved users only.
-Contact @repkam09 to request access!
-    
-Looking for other ideas? 
-    
-Try out voice messages in addition to text conversations, if you send a voice message Hennos will respond in both text and voice form.
-You can customize the voice that Hennos uses, along with other settings, with the /settings command. This voice is AI generated and provided via the OpenAI TTS service.
-    
-If you send an image Hennos will give you a description of what you sent. If you want to ask a question based on an image, you can ask right in the caption field.
-    
-You can send a GPS location and Hennos will take that into account in future conversation.
+This bot contains additional features for approved users only. Limited access is availble to others.
 
- For more information see the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).`);
+Limited User Features:
+- Basic text conversations with the bot.
+- No chat memory is stored between messages.
+- Messages are moderated for content policy violations.
+
+
+Whitelisted User Features: 
+- Basic text conversations with the bot.
+- Full message history up to the context limit of the OpenAI API.
+- Voice messages as both input and output.
+- Image messages as input.
+- GPS location based context (if the user sends a location, the bot will take that into account in future conversation).
+- Customizable voice settings.
+`);
 }
 
 export async function handleResetCommand(msg: MessageWithText) {
