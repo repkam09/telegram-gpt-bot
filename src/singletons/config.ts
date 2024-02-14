@@ -19,7 +19,7 @@ export class Config {
         Logger.info(`TELEGRAM_GROUP_PREFIX is configured as ${Config.TELEGRAM_GROUP_PREFIX}`);
         Logger.info(`TELEGRAM_BOT_ADMIN is configured as ${Config.TELEGRAM_BOT_ADMIN}`);
 
-        Logger.info(`HENNOS_MAX_MESSAGE_MEMORY is configured as ${JSON.stringify(Config.HENNOS_MAX_MESSAGE_MEMORY)}`);
+        Logger.info(`HENNOS_MAX_TOKENS is configured as ${JSON.stringify(Config.HENNOS_MAX_TOKENS)}`);
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
         Logger.info(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
 
@@ -61,15 +61,15 @@ export class Config {
         Logger.info("Finished Configuration Sync");
     }
 
-    static get HENNOS_MAX_MESSAGE_MEMORY(): number {
-        if (!process.env.HENNOS_MAX_MESSAGE_MEMORY) {
-            return 10;
+    static get HENNOS_MAX_TOKENS(): number {
+        if (!process.env.HENNOS_MAX_TOKENS) {
+            return 4096;
         }
 
-        const limit = parseInt(process.env.HENNOS_MAX_MESSAGE_MEMORY);
+        const limit = parseInt(process.env.HENNOS_MAX_TOKENS);
 
         if (Number.isNaN(limit)) {
-            throw new Error("Invalid HENNOS_MAX_MESSAGE_MEMORY value");
+            throw new Error("Invalid HENNOS_MAX_TOKENS value");
         }
 
         return limit;
@@ -236,5 +236,13 @@ export class Config {
         }
 
         return process.env.CRYPTO_ALGO;
+    }
+
+    static get CRYPTO_ENABLED(): boolean {
+        if (process.env.CRYPTO_ENABLED === "true") {
+            return true;
+        }   
+
+        return false;
     }
 }

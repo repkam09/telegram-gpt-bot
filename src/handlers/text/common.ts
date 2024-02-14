@@ -7,6 +7,7 @@ import { OllamaWrapper } from "../../singletons/ollama";
 import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { sleep } from "../../utils";
+import { TiktokenModel, encoding_for_model } from "tiktoken";
 
 export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
 
@@ -140,28 +141,45 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
     }
 }
 
+function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessageParam[]): number {
+    const encoder = encoding_for_model(Config.OPENAI_API_LLM as TiktokenModel);
+    const total = context.reduce((acc, val) => {
+        if (!val.content || typeof val.content !== "string") {
+            return acc;
+        }
+
+        const tokens = encoder.encode(val.content).length;
+        return acc + tokens;
+    }, 0);
+
+    encoder.free();
+    return total;
+}
+
 export async function updateChatContext(chatId: number, role: "user" | "assistant" | "system", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
     if (!await ChatMemory.hasContext(chatId)) {
         await ChatMemory.setContext(chatId, []);
     }
-
     const currentChatContext = await getChatContext(chatId);
 
-    if (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
-        const currentChatContextStringLengthBefore = currentChatContext.reduce((acc, val) => acc + (val.content ? val.content.length : 0), 0);
-        Logger.info(`ChatId ${chatId} Started cleaning up old message context. Entries: ${currentChatContext.length}/${Config.HENNOS_MAX_MESSAGE_MEMORY} (Content: ${currentChatContextStringLengthBefore}).`);
+    currentChatContext.push({ role, content });
 
-        while (currentChatContext.length > Config.HENNOS_MAX_MESSAGE_MEMORY) {
-            currentChatContext.shift();
+    let totalTokens = getChatContextTokenCount(currentChatContext);
+
+    while (totalTokens > Config.HENNOS_MAX_TOKENS) {
+        Logger.info(`ChatId ${chatId} Started cleaning up old message context. Tokens: ${totalTokens}/${Config.HENNOS_MAX_TOKENS}).`);
+        
+        if (currentChatContext.length === 0) {
+            throw new Error("Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
         }
 
-        const currentChatContextStringLengthAfter = currentChatContext.reduce((acc, val) => acc + (val.content ? val.content.length : 0), 0);
-        console.log(`ChatId ${chatId} Finished cleaning up old message context. Entries: ${currentChatContext.length}/${Config.HENNOS_MAX_MESSAGE_MEMORY} (Content: ${currentChatContextStringLengthAfter}).`);
+        currentChatContext.shift();
+        totalTokens = getChatContextTokenCount(currentChatContext);
     }
 
-    currentChatContext.push({ role, content });
     await ChatMemory.setContext(chatId, currentChatContext);
 
+    Logger.info(`ChatId ${chatId} updateChatContext for ${role}. Tokens: ${totalTokens}/${Config.HENNOS_MAX_TOKENS}).`);
     return currentChatContext;
 }
 

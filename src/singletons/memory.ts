@@ -28,25 +28,7 @@ export class ChatMemory {
             return [];
         }
 
-        const result = encrypted.map((entry) => {
-            if (!entry.content) {
-                return entry;
-            }
-
-            if (typeof entry.content !== "string") {
-                return entry;
-            }
-
-            const decipher = crypto.createDecipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
-            const decrypted = decipher.update(entry.content, "hex", "utf8") + decipher.final("utf8");
-            return {
-                ...entry,
-                content: decrypted,
-            };
-        });
-
-        
-        return result || [];
+        return decrypt(key, encrypted);
     }
 
     static async deleteContext(key: number): Promise<void> {
@@ -63,23 +45,7 @@ export class ChatMemory {
             return;
         }
 
-        const encrypted = value.map((entry) => {
-            if (!entry.content) {
-                return entry;
-            }
-
-            if (typeof entry.content !== "string") {
-                return entry;
-            }
-
-            const cipher = crypto.createCipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
-            const encrypted = cipher.update(entry.content, "utf8", "hex") + cipher.final("hex");
-            return {
-                ...entry,
-                content: encrypted
-            };
-        });
-
+        const encrypted = encrypt(key, value);
         return RedisCache.set("context", `${key}`, JSON.stringify(encrypted));
     }
 
@@ -211,6 +177,58 @@ export class ChatMemory {
         return RedisCache.has(prop, "system_value");
     }
 }
+
+function encrypt(key: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    if (!Config.CRYPTO_ENABLED) {
+        return messages;
+    }
+
+    const encrypted = messages.map((entry) => {
+        if (!entry.content) {
+            return entry;
+        }
+
+        if (typeof entry.content !== "string") {
+            return entry;
+        }
+
+        const cipher = crypto.createCipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
+        const encrypted = cipher.update(entry.content, "utf8", "hex") + cipher.final("hex");
+        return {
+            ...entry,
+            content: encrypted
+        };
+    });
+
+    return encrypted;
+}
+
+function decrypt(key: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    if (!Config.CRYPTO_ENABLED) {
+        return messages;
+    }
+
+    const plain = messages.map((entry) => {
+        if (!entry.content) {
+            return entry;
+        }
+
+        if (typeof entry.content !== "string") {
+            return entry;
+        }
+
+        const decipher = crypto.createDecipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
+        const decrypted = decipher.update(entry.content, "hex", "utf8") + decipher.final("utf8");
+        return {
+            ...entry,
+            content: decrypted,
+        };
+    });
+
+    return plain;
+}
+
+
 
 function secret(input: number): Buffer {
     const buffer = Buffer.from(String(input), "utf8");
