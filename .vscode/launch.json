@@ -6,6 +6,7 @@
     "configurations": [
         {
             "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
             "request": "launch",
             "name": "Launch Hennos",
             "skipFiles": [

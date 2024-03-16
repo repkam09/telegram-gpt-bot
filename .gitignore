@@ -2,3 +2,5 @@ node_modules
 .env
 build
 models/*.bin
+hennos.db
+hennos.db-journal

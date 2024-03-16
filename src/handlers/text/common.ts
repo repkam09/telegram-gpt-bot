@@ -3,7 +3,6 @@ import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { ChatMemory } from "../../singletons/memory";
 import { OpenAIWrapper } from "../../singletons/openai";
-import { OllamaWrapper } from "../../singletons/ollama";
 import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { sleep } from "../../utils";
@@ -12,22 +11,42 @@ import { TiktokenModel, encoding_for_model } from "tiktoken";
 export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
 
 export async function processChatCompletionLocal(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
-    if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(1000);
-        return "example string in development mode, local tier response";
+    const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+        model: Config.OLLAMA_LLM,
+        messages: messages,
+        stream: false
+    };
+
+    try {
+        Logger.info("ChatId", chatId, "createChatCompletion Ollama Start");
+
+        const response = await OpenAIWrapper.limited_instance_ollama().chat.completions.create(options);
+
+        Logger.info("ChatId", chatId, "createChatCompletion Ollama End");
+
+        if (!response || !response.choices) {
+            throw new Error("Unexpected createChatCompletion Ollama Result: Bad Response Data Choices");
+        }
+
+        const { message } = response.choices[0];
+        if (!message || !message.role) {
+            throw new Error("Unexpected createChatCompletion Ollama Result: Bad Message Content Role");
+        }
+
+        if (message.content) {
+            return message.content;
+        }
+        throw new Error("Unexpected createChatCompletion Ollama Result: Bad Message Format");
+    } catch (err) {
+        const error = err as Error;
+        Logger.error("ChatId", chatId, "CreateChatCompletion Ollama Error:", error.message, error.stack, options);
+        return "Sorry, I was unable to process your message at this time. ";
     }
-
-    Logger.info("ChatId", chatId, "createChatCompletion Local Start");
-    const result = await OllamaWrapper.chat(chatId, messages);
-    Logger.info("ChatId", chatId, "createChatCompletion Local End");
-
-    return result;
 }
 
 export async function processChatCompletionLimited(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(1000);
-        return "example string in development mode, limmited tier response";
+        return processChatCompletionLocal(chatId, messages);
     }
 
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -65,8 +84,7 @@ export async function processChatCompletionLimited(chatId: number, messages: Ope
 
 export async function processChatCompletion(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
-        await sleep(1000);
-        return "example string in development mode";
+        return processChatCompletionLocal(chatId, messages);
     }
 
     const model = Config.OPENAI_API_LLM;
@@ -157,9 +175,6 @@ function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessagePara
 }
 
 export async function updateChatContext(chatId: number, role: "user" | "assistant" | "system", content: string): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
-    if (!await ChatMemory.hasContext(chatId)) {
-        await ChatMemory.setContext(chatId, []);
-    }
     const currentChatContext = await getChatContext(chatId);
 
     currentChatContext.push({ role, content });
@@ -177,7 +192,9 @@ export async function updateChatContext(chatId: number, role: "user" | "assistan
         totalTokens = getChatContextTokenCount(currentChatContext);
     }
 
-    await ChatMemory.setContext(chatId, currentChatContext);
+
+    // Save the new context
+    await ChatMemory.addMessage(chatId, role, content);
 
     Logger.info(`ChatId ${chatId} updateChatContext for ${role}. (Tokens: ${totalTokens}/${Config.HENNOS_MAX_TOKENS}).`);
     return currentChatContext;

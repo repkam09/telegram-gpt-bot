@@ -23,9 +23,8 @@ async function handleDocument(msg: TelegramBot.Message) {
     Logger.trace("document", msg);
 
     const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
-    }
+    await ChatMemory.upsertUserInfo(id, first_name, last_name, username);
+
 
     if (!isOnWhitelist(id)) {
         await sendMessageWrapper(id, NotWhitelistedMessage);

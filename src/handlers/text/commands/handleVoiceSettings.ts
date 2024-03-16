@@ -3,6 +3,7 @@ import { BotInstance } from "../../../singletons/telegram";
 import { ValidTTSNames, getUserVoicePreference, setUserVoicePreference } from "../../voice";
 import { OpenAIWrapper } from "../../../singletons/openai";
 import { sendVoiceMemoWrapper } from "../../../utils";
+import { Logger } from "../../../singletons/logger";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -16,7 +17,8 @@ export async function handleVoiceSettingsCallback(chatId: number, queryId: strin
             text: "Future audio messages will use the " + name + " voice."
         });
         bot.sendMessage(chatId, "Configuration saved. Future audio messages will use the " + name + " voice.");
-    }).catch(() => {
+    }).catch((err: unknown) => {
+        Logger.error(`Error while updating voice settings for user ${chatId}`, err);
         bot.answerCallbackQuery(queryId, {
             text: "There was an error while updating your voice settings"
         });

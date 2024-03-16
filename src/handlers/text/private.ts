@@ -1,10 +1,9 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ChatMemory } from "../../singletons/memory";
 import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
-import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionLimited, processChatCompletionLocal, processLimitedUserTextInput, moderateLimitedUserTextInput } from "./common";
+import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionLimited, processLimitedUserTextInput, moderateLimitedUserTextInput } from "./common";
 import OpenAI from "openai";
 import { Logger } from "../../singletons/logger";
-import { Config } from "../../singletons/config";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
     const chatId = msg.chat.id;
@@ -20,9 +19,7 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
     Logger.trace("text_private", msg);
 
     const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
-    }
+    await ChatMemory.upsertUserInfo(id, first_name, last_name, username);
 
     if (!isOnWhitelist(id)) {
         const prompt = await buildLimitedTierPrompt(chatId, first_name);
@@ -33,25 +30,14 @@ export async function handlePrivateMessage(msg: TelegramBot.Message) {
             return await sendMessageWrapper(chatId, "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.");
         }
 
-        if (Config.OLLAMA_LLM) {
-            const response = await processChatCompletionLocal(chatId, [
-                ...prompt,
-                {
-                    content: message,
-                    role: "user",
-                }
-            ]);
-            return sendMessageWrapper(chatId, response);
-        } else {
-            const response = await processChatCompletionLimited(chatId, [
-                ...prompt,
-                {
-                    content: message,
-                    role: "user",
-                }
-            ]);
-            return sendMessageWrapper(chatId, response);
-        }
+        const response = await processChatCompletionLimited(chatId, [
+            ...prompt,
+            {
+                content: message,
+                role: "user",
+            }
+        ]);
+        return sendMessageWrapper(chatId, response);
     }
 
     const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");

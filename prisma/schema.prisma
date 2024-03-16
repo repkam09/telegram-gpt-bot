@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Chat {
+  chatId Int @id
+}
+
+model User {
+  chatId      Int     @id
+  firstName   String
+  lastName    String?
+  username    String?
+  whitelisted Boolean @default(false)
+}
+
+model Group {
+  chatId      Int     @id
+  name        String
+  whitelisted Boolean @default(false)
+}
+
+model Messages {
+  id       Int      @id @default(autoincrement())
+  chatId   Int
+  content  String
+  datetime DateTime @default(now())
+  role     String
+}
+
+model Settings {
+  chatId Int    @id
+  key    String
+  value  String
+
+  @@unique([chatId, key])
+}
+
+model SystemSettings {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
