@@ -6,7 +6,7 @@ import { OpenAIWrapper } from "../../singletons/openai";
 import { BotInstance } from "../../singletons/telegram";
 import TelegramBot from "node-telegram-bot-api";
 import { sleep } from "../../utils";
-import { TiktokenModel, encoding_for_model } from "tiktoken";
+import { encoding_for_model } from "tiktoken";
 
 export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
 
@@ -160,7 +160,7 @@ export async function processImageGeneration(chatId: number, prompt: string): Pr
 }
 
 function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessageParam[]): number {
-    const encoder = encoding_for_model(Config.OPENAI_API_LLM as TiktokenModel);
+    const encoder = encoding_for_model("gpt-4");
     const total = context.reduce((acc, val) => {
         if (!val.content || typeof val.content !== "string") {
             return acc;

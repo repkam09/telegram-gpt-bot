@@ -11,7 +11,7 @@
     "tsc:noemit": "tsc --noEmit",
     "lint": "eslint --fix .",
     "start": "node ./build/hennos.js",
-    "redis": "docker run -p 127.0.0.1:6379:6379 -d redis",
+    "qdrant": "docker run -p 6333:6333 docker.io/qdrant/qdrant",
     "test": "jest",
     "dev": "npm-run-all build start"
   },
@@ -21,6 +21,7 @@
     "@prisma/client": "^5.11.0",
     "axios": "^1.6.5",
     "dotenv": "^16.3.1",
+    "llamaindex": "^0.2.1",
     "node-telegram-bot-api": "^0.64.0",
     "openai": "^4.24.7",
     "redis": "^4.6.12",

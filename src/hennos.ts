@@ -3,6 +3,7 @@ import * as handlers from "./handlers";
 import { BotInstance } from "./singletons/telegram";
 import { OpenAIWrapper } from "./singletons/openai";
 import { Database } from "./singletons/sqlite";
+import { Vector } from "./singletons/vector";
 async function start() {
     // Check that all the right environment variables are set
     Config.validate();
@@ -11,6 +12,7 @@ async function start() {
     OpenAIWrapper.instance();
 
     await Database.init();
+    await Vector.init();
     
     // Create a Telegram Bot Instance
     BotInstance.instance();
