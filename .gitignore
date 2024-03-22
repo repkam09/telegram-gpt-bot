@@ -5,3 +5,5 @@ models/*.bin
 hennos.db
 hennos.db-journal
 documents
+hennos.sqlite
+hennos.sqlite-journal

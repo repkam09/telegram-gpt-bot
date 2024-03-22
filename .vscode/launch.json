@@ -24,7 +24,8 @@
                 "<node_internals>/**"
             ],
             "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/develop.js"
+            "program": "${workspaceFolder}/build/develop.js",
+            "sourceMaps": true
         }
     ]
 }
