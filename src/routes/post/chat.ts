@@ -1,7 +1,8 @@
 import Koa, { Context } from "koa";
 import Router from "@koa/router";
-import OpenAI from "openai";
-import { processChatCompletionLimited } from "../../handlers/text/common";
+import { processChatCompletion, updateChatContext } from "../../handlers/text/common";
+import { buildPrompt } from "../../handlers/text/private";
+import { Database } from "../../singletons/sqlite";
 
 interface KoaContext extends Context {
     request: KoaRequest;
@@ -32,35 +33,15 @@ export function routes(router: Router) {
 }
 
 async function handlePrivateMessage(chatId: number, message: string): Promise<string> {
-    const first_name = "Mark";
+    const db = Database.instance();
+    const user = await db.user.findUniqueOrThrow({ where: { chatId: chatId } });
 
-    const prompt = await buildLimitedTierPrompt(chatId, first_name);
-    const response = await processChatCompletionLimited(chatId, [
+    const prompt = await buildPrompt(chatId, user.firstName);
+    const context = await updateChatContext(chatId, "user", message);
+    const response = await processChatCompletion(chatId, [
         ...prompt,
-        {
-            content: message,
-            role: "user",
-        }
+        ...context
     ]);
-
+    await updateChatContext(chatId, "assistant", response);
     return response;
-}
-
-function buildLimitedTierPrompt(chatId: number, name: string,): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        {
-            role: "system",
-            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You should respond in short sentences, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
-        },
-        {
-            role: "system",
-            content: `You are currently assisting a user named '${name}' in a one-on-one private chat session.`
-        },
-        {
-            role: "system",
-            content: "This user is not whitelisted on the service and is getting basic, limited, tier access. Their message history will not be stored after this response."
-        }
-    ];
-
-    return prompt;
 }

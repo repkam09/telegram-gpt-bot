@@ -6,7 +6,7 @@ import { routes as chatPostRoutes } from "./routes/post/chat";
 import { routes as chatGetRoutes } from "./routes/get/chat";
 import { routes as rootGetRoutes } from "./routes/get/root";
 
-export function init() {
+export function server() {
     const app = new Koa();
     const router = new Router({
         prefix: "/api/hennos"
