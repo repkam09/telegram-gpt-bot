@@ -4,3 +4,4 @@ build
 models/*.bin
 hennos.db
 hennos.db-journal
+documents

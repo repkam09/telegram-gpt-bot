@@ -6,8 +6,19 @@ import TelegramBot from "node-telegram-bot-api";
 import { NotWhitelistedMessage } from "./text/common";
 import fs from "node:fs/promises";
 import os from "os";
-import { Document } from "llamaindex";
-import { Vector } from "../singletons/vector";
+import {
+    Document,
+    SimpleNodeParser,
+    SummaryIndex,
+    SummaryRetrieverMode,
+    serviceContextFromDefaults,
+    Ollama,
+    OllamaEmbedding,
+    ResponseSynthesizer,
+    MetadataMode,
+    SentenceSplitter,
+    SimpleDirectoryReader
+} from "llamaindex";
 
 export function listen() {
     BotInstance.instance().on("document", handleDocument);
@@ -36,18 +47,60 @@ async function handleDocument(msg: TelegramBot.Message) {
         return;
     }
 
+    const mime_type = msg.document.mime_type;
     await sendMessageWrapper(chatId, `Processing Document: ${msg.document.file_name} (${msg.document.file_size} bytes)`);
     const path = await BotInstance.instance().downloadFile(msg.document.file_id, os.tmpdir());
-    const essay = await fs.readFile(path, "utf-8");
-    const document = new Document({ text: essay, id_: msg.document.file_unique_id });
+    switch (mime_type) {
+    case "text/plain": {
+        const response = await handlePlainTextDocument(chatId, path, msg.document!);
+        return sendMessageWrapper(chatId, response);
+    }
+    default: {
+        return sendMessageWrapper(chatId, `This document seems to be a ${mime_type} which is not yet supported.`);
+    }
+    }
+}
 
-    await Vector.instance().docStore.addDocuments([document], false);
-    await sendMessageWrapper(chatId, `Finished Processing Document: ${msg.document.file_name}`);
-
-    const query = await Vector.instance().asQueryEngine();
-    const response = await query.query({
-        query: "What is Llamaindex?"
+export async function handlePlainTextDocument(chatId: number, path: string, tg: TelegramBot.Document): Promise<string> {
+    const dir = new SimpleDirectoryReader();
+    const documents = await dir.loadData({
+        directoryPath: path
     });
 
-    await sendMessageWrapper(chatId, `Document Query: ${response.response}`);
+    const serviceContext = serviceContextFromDefaults({
+        llm: new Ollama({
+            model: "mistral:text",
+            requestTimeout: 600000,
+            contextWindow: 4096
+        }),
+        embedModel: new OllamaEmbedding({
+            contextWindow: 4096,
+            model: "nomic-embed-text:latest",
+            requestTimeout: 600000
+        }),
+        nodeParser: new SimpleNodeParser({
+            chunkSize: 512,
+            chunkOverlap: 128
+        })
+    });
+
+    const index = await SummaryIndex.fromDocuments(documents, {
+        serviceContext
+    });
+
+    const queryEngine = index.asQueryEngine({
+        responseSynthesizer: new ResponseSynthesizer({
+            metadataMode: MetadataMode.ALL,
+            serviceContext
+        }),
+        retriever: index.asRetriever({
+            mode: SummaryRetrieverMode.DEFAULT,
+        })
+    });
+
+    const response = await queryEngine.query({
+        query: "What was included in the appliance order?"
+    });
+
+    return response.toString();
 }

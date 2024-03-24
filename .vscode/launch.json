@@ -14,6 +14,17 @@
             ],
             "preLaunchTask": "tsc",
             "program": "${workspaceFolder}/build/hennos.js"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Develop",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/develop.js"
         }
     ]
 }

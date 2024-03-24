@@ -4,6 +4,7 @@ import { BotInstance } from "./singletons/telegram";
 import { OpenAIWrapper } from "./singletons/openai";
 import { Database } from "./singletons/sqlite";
 import { Vector } from "./singletons/vector";
+
 async function start() {
     // Check that all the right environment variables are set
     Config.validate();
