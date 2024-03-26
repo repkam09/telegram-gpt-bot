@@ -18,7 +18,7 @@ export async function processChatCompletionLocal(chatId: number, messages: OpenA
     };
 
     try {
-        Logger.info("ChatId", chatId, "createChatCompletion Ollama Start");
+        Logger.info("ChatId", chatId, `createChatCompletion Ollama Start (${Config.OLLAMA_LLM})`);
 
         const response = await OpenAIWrapper.limited_instance_ollama().chat.completions.create(options);
 
@@ -56,7 +56,7 @@ export async function processChatCompletionLimited(chatId: number, messages: Ope
     };
 
     try {
-        Logger.info("ChatId", chatId, "createChatCompletion Limited Start");
+        Logger.info("ChatId", chatId, "createChatCompletion Limited Start (gpt-3.5-turbo)");
 
         const response = await OpenAIWrapper.limited_instance().chat.completions.create(options);
 
@@ -95,7 +95,7 @@ export async function processChatCompletion(chatId: number, messages: OpenAI.Cha
     };
 
     try {
-        Logger.info("ChatId", chatId, "createChatCompletion Start");
+        Logger.info("ChatId", chatId, `createChatCompletion Start (${Config.OPENAI_API_LLM})`);
 
         const response = await OpenAIWrapper.instance().chat.completions.create(options);
 
@@ -183,7 +183,7 @@ export async function updateChatContext(chatId: number, role: "user" | "assistan
 
     while (totalTokens > Config.HENNOS_MAX_TOKENS) {
         Logger.info(`ChatId ${chatId} Started cleaning up old message context. (Tokens: ${totalTokens}/${Config.HENNOS_MAX_TOKENS}).`);
-        
+
         if (currentChatContext.length === 0) {
             throw new Error("Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
         }

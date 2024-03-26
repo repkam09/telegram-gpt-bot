@@ -26,6 +26,19 @@
             "preLaunchTask": "tsc",
             "program": "${workspaceFolder}/build/develop.js",
             "sourceMaps": true
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Search",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/search.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
         }
     ]
 }
