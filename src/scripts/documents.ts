@@ -1,6 +1,6 @@
 import path from "path";
-import { Config } from "./singletons/config";
-import { handlePlainTextDocument } from "./handlers/document";
+import { Config } from "../singletons/config";
+import { handlePlainTextDocument } from "../handlers/document";
 import TelegramBot from "node-telegram-bot-api";
 
 async function test() {

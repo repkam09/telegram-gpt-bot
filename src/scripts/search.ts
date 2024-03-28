@@ -1,7 +1,7 @@
-import { Config } from "./singletons/config";
+import { Config } from "../singletons/config";
 import readline from "node:readline";
 import axios from "axios";
-import { processChatCompletionLocal } from "./handlers/text/common";
+import { processChatCompletionLocal } from "../handlers/text/common";
 import OpenAI from "openai";
 import { convert } from "html-to-text";
 

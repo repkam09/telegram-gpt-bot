@@ -2,12 +2,8 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { Logger } from "./logger";
-import { ChatMemory } from "./memory";
 
 export class Config {
-    private static _TELEGRAM_ID_WHITELIST: number[] | false = false;
-    private static _TELEGRAM_ID_BLACKLIST: number[] | false = false;
-
     static validate() {
         Logger.info(`OPENAI_API_LLM: ${Config.OPENAI_API_LLM}`);
         Logger.info(`OLLAMA_LLM: ${Config.OLLAMA_LLM}`);
@@ -15,20 +11,6 @@ export class Config {
         Logger.info(`HENNOS_MAX_TOKENS: ${Config.HENNOS_MAX_TOKENS}`);
         Logger.info(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
         Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
-    }
-
-    static async update_whitelist(whitelist: number[]) {
-        const redis_whitelist = await ChatMemory.getSystemValue<number[]>("whitelist") ?? [];
-        const new_whitelist = Array.from(new Set([...whitelist, ...redis_whitelist]));
-        await ChatMemory.storeSystemValue("whitelist", new_whitelist);
-        Config._TELEGRAM_ID_WHITELIST = new_whitelist;
-    }
-
-    static async update_blacklist(blacklist: number[]) {
-        const redis_blacklist = await ChatMemory.getSystemValue<number[]>("blacklist") ?? [];
-        const new_blacklist = Array.from(new Set([...blacklist, ...redis_blacklist]));
-        await ChatMemory.storeSystemValue("blacklist", new_blacklist);
-        Config._TELEGRAM_ID_BLACKLIST = new_blacklist;
     }
 
     static get HENNOS_MAX_TOKENS(): number {
@@ -51,6 +33,14 @@ export class Config {
         }
 
         return process.env.HENNOS_DEVELOPMENT_MODE === "true";
+    }
+
+    static get HTTP_SERVER_ENABLED(): boolean {
+        if (!process.env.HTTP_SERVER_ENABLED) {
+            return false;
+        }
+
+        return process.env.HTTP_SERVER_ENABLED === "true";
     }
 
     static get HENNOS_VERBOSE_LOGGING(): boolean {
@@ -158,13 +148,5 @@ export class Config {
         }
 
         return adminId;
-    }
-
-    static get TELEGRAM_ID_WHITELIST(): number[] | false {
-        return Config._TELEGRAM_ID_WHITELIST;
-    }
-
-    static get TELEGRAM_ID_BLACKLIST(): number[] | false {
-        return Config._TELEGRAM_ID_BLACKLIST;
     }
 }

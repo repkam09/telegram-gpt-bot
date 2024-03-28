@@ -1,7 +1,6 @@
-import { Logger } from "../singletons/logger";
 import { ChatMemory } from "../singletons/memory";
 import { BotInstance } from "../singletons/telegram";
-import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
+import { sendMessageWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
 import { NotWhitelistedMessage } from "./text/common";
 
@@ -10,26 +9,14 @@ export function listen() {
 }
 
 async function handleAudio(msg: TelegramBot.Message) {
-    const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.audio) {
         return;
     }
 
-    if (isOnBlacklist(chatId)) {
-        Logger.trace("blacklist", msg);
-        return;
+    const user = await ChatMemory.upsertUserInfo(msg.from);
+    if (!user.whitelisted) {
+        return sendMessageWrapper(user.chatId, NotWhitelistedMessage);
     }
 
-    Logger.trace("audio", msg);
-
-    const { first_name, last_name, username, id } = msg.from;
-    await ChatMemory.upsertUserInfo(id, first_name, last_name, username);
-
-    if (!isOnWhitelist(id)) {
-        await sendMessageWrapper(id, NotWhitelistedMessage);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
-        return;
-    }
-
-    await sendMessageWrapper(chatId, "Error: Audio messages are not yet supported");
+    await sendMessageWrapper(user.chatId, "Error: Audio messages are not yet supported");
 }

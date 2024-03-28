@@ -2,9 +2,9 @@ import Koa, { Context, Next } from "koa";
 import Router from "@koa/router";
 import BodyParser from "koa-bodyparser";
 
-import { routes as chatPostRoutes } from "./routes/post/chat";
-import { routes as chatGetRoutes } from "./routes/get/chat";
-import { routes as rootGetRoutes } from "./routes/get/root";
+import { routes as chatPostRoutes } from "../routes/post/chat";
+import { routes as chatGetRoutes } from "../routes/get/chat";
+import { routes as rootGetRoutes } from "../routes/get/root";
 
 export function server() {
     const app = new Koa();
@@ -24,7 +24,7 @@ export function server() {
 
     app.use(router.routes());
     app.use(router.allowedMethods());
-    app.listen(3000);
+    app.listen(process.env.HENNOS_API_PORT || 3000);
 
     console.log("Server running on port 3000");
 

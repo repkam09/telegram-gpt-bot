@@ -19,12 +19,12 @@
             "type": "node",
             "runtimeArgs": ["--preserve-symlinks"],
             "request": "launch",
-            "name": "Launch Develop",
+            "name": "Launch Documents",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/develop.js",
+            "program": "${workspaceFolder}/build/scripts/documents.js",
             "sourceMaps": true
         },
         {
@@ -36,7 +36,20 @@
                 "<node_internals>/**"
             ],
             "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/search.js",
+            "program": "${workspaceFolder}/build/scripts/search.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Import",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/import.js",
             "sourceMaps": true,
             "console": "integratedTerminal"
         }

@@ -1,25 +1,64 @@
-import TelegramBot from "node-telegram-bot-api";
 import { BotInstance } from "../../../singletons/telegram";
-import { Config } from "../../../singletons/config";
+import { User } from "../../../singletons/memory";
+import { Database } from "../../../singletons/sqlite";
 
-type MessageWithText = TelegramBot.Message & { text: string }
+export async function handleWhitelistCommand(user: User, text: string) {
+    const trimmed = text.replace("/whitelist", "").trim();
+    const bot = BotInstance.instance();
+    const db = Database.instance();
 
-export async function handleWhitelistCommand(msg: MessageWithText) {
-    const chatId = msg.chat.id;
-    const trimmed = msg.text.replace("/whitelist", "").trim();
     if (trimmed) {
-        const bot = BotInstance.instance();
         const input = parseInt(trimmed);
         if (isNaN(input)) {
-            bot.sendMessage(chatId, "The chatId you tried to whitelist appears to be invalid. Expected an integer value.");
-            return;
+            return bot.sendMessage(user.chatId, "The chatId you tried to whitelist appears to be invalid. Expected an integer value.");
         }
-        await Config.update_whitelist([input]);
-        await bot.sendMessage(chatId, `ChatId ${input} has been whitelisted.`);
+
+        // Check if we have a user with that chatId.
+        const exists = await db.user.findUnique({
+            select: {
+                chatId: true,
+                whitelisted: true
+            },
+            where: {
+                chatId: input
+            }
+        });
+
+        if (!exists) {
+            return bot.sendMessage(user.chatId, `ChatId ${input} is not a known user.`);
+        }
+
+        if (exists.whitelisted) {
+            return bot.sendMessage(user.chatId, `ChatId ${input} is already whitelisted.`);
+        }
+
+        await db.user.update({
+            where: {
+                chatId: input
+            },
+            data: {
+                whitelisted: true
+            }
+        });
+
+        return bot.sendMessage(user.chatId, `ChatId ${input} has been whitelisted.`);
     }
 
-    if (Config.TELEGRAM_ID_WHITELIST) {
-        const bot = BotInstance.instance();
-        await bot.sendMessage(chatId, `The current whitelist is: ${Config.TELEGRAM_ID_WHITELIST.join(", ")}`);
+    // Get a list of all the whitelisted users
+    const whitelistedUsers = await db.user.findMany({
+        select: {
+            chatId: true,
+            firstName: true,
+        },
+        where: {
+            whitelisted: true
+        }
+    });
+
+    if (whitelistedUsers.length === 0) {
+        return bot.sendMessage(user.chatId, "There are currently no whitelisted users.");
     }
+
+    const message = whitelistedUsers.map(u => `${u.chatId} - ${u.firstName}`).join("\n");
+    return bot.sendMessage(user.chatId, `Whitelisted users:\n${message}`);
 }

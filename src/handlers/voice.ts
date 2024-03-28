@@ -2,7 +2,7 @@ import os from "node:os";
 import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { BotInstance } from "../singletons/telegram";
-import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper, sendVoiceMemoWrapper } from "../utils";
+import { sendMessageWrapper, sendVoiceMemoWrapper } from "../utils";
 import TelegramBot from "node-telegram-bot-api";
 import { Logger } from "../singletons/logger";
 import { OpenAIWrapper } from "../singletons/openai";
@@ -17,25 +17,13 @@ export function listen() {
 }
 
 async function handleVoice(msg: TelegramBot.Message) {
-    const chatId = msg.chat.id;
     if (msg.chat.type !== "private" || !msg.from || !msg.voice) {
         return;
     }
 
-    if (isOnBlacklist(chatId)) {
-        Logger.trace("blacklist", msg);
-        return;
-    }
-
-    Logger.trace("voice", msg);
-
-    const { first_name, last_name, username, id } = msg.from;
-    await ChatMemory.upsertUserInfo(id, first_name, last_name, username);
-
-    if (!isOnWhitelist(id)) {
-        await sendMessageWrapper(id, NotWhitelistedMessage);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
-        return;
+    const user = await ChatMemory.upsertUserInfo(msg.from);
+    if (!user.whitelisted) {
+        return sendMessageWrapper(user.chatId, NotWhitelistedMessage);
     }
 
     // Download the voice recording from Telegram
@@ -48,20 +36,20 @@ async function handleVoice(msg: TelegramBot.Message) {
         });
 
 
-        const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");
-        const prompt = await buildPrompt(chatId, name ? name : first_name);
-        const context = await updateChatContext(chatId, "user", transcription.text);
+        const name = await ChatMemory.getPerUserValue<string>(user.chatId, "custom-name");
+        const prompt = await buildPrompt(user.chatId, name ? name : user.firstName);
+        const context = await updateChatContext(user.chatId, "user", transcription.text);
 
-        await sendMessageWrapper(chatId, `\`\`\`\n${transcription.text}\n\`\`\``, { reply_to_message_id: msg.message_id });
+        await sendMessageWrapper(user.chatId, `\`\`\`\n${transcription.text}\n\`\`\``, { reply_to_message_id: msg.message_id });
 
-        const response = await processChatCompletion(chatId, [
+        const response = await processChatCompletion(user.chatId, [
             ...prompt,
             ...context
         ]);
 
-        await updateChatContext(chatId, "assistant", response);
+        await updateChatContext(user.chatId, "assistant", response);
 
-        const voice = await getUserVoicePreference(chatId);
+        const voice = await getUserVoicePreference(user.chatId);
 
         const result = await OpenAIWrapper.instance().audio.speech.create({
             model: "tts-1",
@@ -73,14 +61,14 @@ async function handleVoice(msg: TelegramBot.Message) {
         const arrayBuffer = await result.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        await sendMessageWrapper(chatId, response);
-        await sendVoiceMemoWrapper(chatId, buffer);
+        await sendMessageWrapper(user.chatId, response);
+        await sendVoiceMemoWrapper(user.chatId, buffer);
 
         return;
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error("Error processing voice message: ", error.message, error.stack);
-        await sendMessageWrapper(chatId, "Sorry, I was unable to process your voice message.");
+        await sendMessageWrapper(user.chatId, "Sorry, I was unable to process your voice message.");
     }
 
     unlink(oggFilePath);

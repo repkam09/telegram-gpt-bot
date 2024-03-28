@@ -5,12 +5,16 @@
   "main": "src/hennos.js",
   "scripts": {
     "clean": "rimraf ./build",
-    "build": "npm-run-all clean lint tsc:emit",
+    "build": "npm-run-all clean prisma:generate lint tsc:emit",
     "validate": "npm-run-all lint tsc:noemit",
     "tsc:emit": "tsc",
     "tsc:noemit": "tsc --noEmit",
     "lint": "eslint --fix .",
-    "start": "node ./build/hennos.js",
+    "start": "npm run migrate:deploy && node build/hennos.js",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:reset": "prisma migrate reset",
+    "migrate:new": "prisma migrate dev --create-only",   
+    "prisma:generate": "prisma generate",
     "qdrant": "docker run -p 6333:6333 docker.io/qdrant/qdrant",
     "test": "jest",
     "dev": "npm-run-all build start"

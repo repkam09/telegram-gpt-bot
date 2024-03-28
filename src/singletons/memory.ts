@@ -2,6 +2,22 @@ import OpenAI from "openai";
 import { Database } from "./sqlite";
 import { ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
 import { Logger } from "./logger";
+import TelegramBot from "node-telegram-bot-api";
+
+export type User = {
+    chatId: number;
+    firstName: string;
+    lastName: string | null;
+    username: string | null;
+    whitelisted: boolean;
+};
+
+export type Group = {
+    chatId: number;
+    name: string;
+    whitelisted: boolean;
+};
+
 
 export class ChatMemory {
     public static async hasContext(chatId: number): Promise<boolean> {
@@ -92,7 +108,7 @@ export class ChatMemory {
         Logger.debug(`Finish addMessage chatId: ${chatId}`);
     }
 
-    static async getUserInfo(chatId: number) {
+    static async getUserInfo(chatId: number): Promise<User> {
         Logger.debug(`Start getUserInfo chatId: ${chatId}`);
 
         const db = Database.instance();
@@ -100,7 +116,9 @@ export class ChatMemory {
             select: {
                 firstName: true,
                 lastName: true,
-                username: true
+                username: true,
+                whitelisted: true,
+                chatId: true
             },
             where: {
                 chatId: chatId
@@ -108,16 +126,20 @@ export class ChatMemory {
         });
 
         Logger.debug(`Finish getUserInfo chatId: ${chatId}`);
-        return result;
+        return {
+            ...result,
+            chatId: Number(result.chatId),
+        };
     }
 
-    static async upsertUserInfo(chatId: number, first_name: string, last_name?: string, username?: string): Promise<void> {
-        Logger.debug(`Start upsertUserInfo chatId: ${chatId}`);
+    static async upsertUserInfo(from: TelegramBot.User): Promise<User> {
+        const { first_name, last_name, username, id } = from;
+        Logger.debug(`Start upsertUserInfo chatId: ${id}`);
 
         const db = Database.instance();
         await db.user.upsert({
             where: {
-                chatId: chatId
+                chatId: id
             },
             update: {
                 firstName: first_name,
@@ -125,51 +147,92 @@ export class ChatMemory {
                 username
             },
             create: {
-                chatId: chatId,
+                chatId: id,
                 firstName: first_name,
                 lastName: last_name,
                 username
             }
         });
-        Logger.debug(`Finish upsertUserInfo chatId: ${chatId}`);
+        Logger.debug(`Finish upsertUserInfo chatId: ${id}`);
+        return ChatMemory.getUserInfo(id);
     }
 
-    static async upsertGroupInfo(chatId: number, value: string) {
-        Logger.debug(`Start upsertGroupInfo chatId: ${chatId}`);
+    static async upsertGroupInfo(chat: TelegramBot.Chat): Promise<Group> {
+        const { id, title } = chat;
+        Logger.debug(`Start upsertGroupInfo chatId: ${id}`);
         const db = Database.instance();
         await db.group.upsert({
             where: {
-                chatId: chatId
+                chatId: id
             },
             update: {
-                name: value
+                name: title
             },
             create: {
-                chatId: chatId,
-                name: value
+                chatId: id,
+                name: title ?? "Group Chat"
             }
         });
-        Logger.debug(`Finish upsertGroupInfo chatId: ${chatId}`);
+        Logger.debug(`Finish upsertGroupInfo chatId: ${id}`);
+        return ChatMemory.getGroupInfo(id);
+    }
+
+    static async getGroupInfo(chatId: number) {
+        Logger.debug(`Start getGroupInfo chatId: ${chatId}`);
+        const db = Database.instance();
+        const result = await db.group.findUniqueOrThrow({
+            select: {
+                whitelisted: true,
+                chatId: true,
+                name: true
+            },
+            where: {
+                chatId: chatId
+            }
+        });
+
+        Logger.debug(`Finish getGroupInfo chatId: ${chatId}`);
+        return {
+            ...result,
+            chatId: Number(result.chatId),
+        };
     }
 
     static async storePerUserValue<T>(chatId: number, prop: string, value: T): Promise<void> {
         Logger.debug(`Start storePerUserValue chatId: ${chatId}, prop: ${prop}, value: ${value}`);
-
         const db = Database.instance();
-        await db.settings.upsert({
-            where: {
-                chatId: chatId,
-                key: prop
-            },
-            update: {
-                value: JSON.stringify(value)
-            },
-            create: {
-                chatId: chatId,
-                key: prop,
-                value: JSON.stringify(value)
-            }
-        });
+        if (prop === "voice-settings") {
+            await db.user.update({
+                where: {
+                    chatId
+                },
+                data: {
+                    voice: value as string
+                }
+            });
+        }
+
+        if (prop === "custom-bot-name") {
+            await db.user.update({
+                where: {
+                    chatId
+                },
+                data: {
+                    botName: value as string
+                }
+            });
+        }
+
+        if (prop === "custom-name") {
+            await db.user.update({
+                where: {
+                    chatId
+                },
+                data: {
+                    preferredName: value as string
+                }
+            });
+        }
 
         Logger.debug(`Finish storePerUserValue chatId: ${chatId}`);
     }
@@ -178,13 +241,14 @@ export class ChatMemory {
         Logger.debug(`Start getPerUserValue chatId: ${chatId}`);
 
         const db = Database.instance();
-        const result = await db.settings.findUnique({
-            select: {
-                value: true
-            },
+        const result = await db.user.findUnique({
             where: {
-                chatId: chatId,
-                key: prop
+                chatId
+            },
+            select: {
+                voice: true,
+                botName: true,
+                preferredName: true
             }
         });
 
@@ -194,23 +258,22 @@ export class ChatMemory {
         }
 
         Logger.debug(`Finish getPerUserValue chatId: ${chatId}`);
-        return JSON.parse(result.value) as T;
+        if (prop === "voice-settings") {
+            return result.voice as unknown as T;
+        }
+
+        if (prop === "custom-bot-name") {
+            return result.botName as unknown as T;
+        }
+
+        if (prop === "custom-name") {
+            return result.preferredName as unknown as T;
+        }
     }
 
     static async hasPerUserValue(chatId: number, prop: string): Promise<boolean> {
         Logger.debug(`Start hasPerUserValue chatId: ${chatId}`);
-
-        const db = Database.instance();
-        const result = await db.settings.findUnique({
-            select: {
-                value: true
-            },
-            where: {
-                chatId: chatId,
-                key: prop
-            }
-        });
-
+        const result = await ChatMemory.getPerUserValue<string>(chatId, prop);
         Logger.debug(`Finish hasPerUserValue chatId: ${chatId}`);
         return result ? true : false;
     }

@@ -3,6 +3,7 @@ import { BotInstance } from "./singletons/telegram";
 import { ChatMemory } from "./singletons/memory";
 import { Logger } from "./singletons/logger";
 import TelegramBot from "node-telegram-bot-api";
+import { Database } from "./singletons/sqlite";
 
 export async function sendMessageWrapper(chatId: number, content: string, options: TelegramBot.SendMessageOptions = {}) {
     if (!content) {
@@ -74,20 +75,19 @@ export async function resetMemory(chatId: number): Promise<void> {
     await ChatMemory.deleteContext(chatId);
 }
 
-export function isOnWhitelist(id: number) {
-    if (!Config.TELEGRAM_ID_WHITELIST) {
-        return true;
-    }
+export async function isOnWhitelist(id: number) {
+    const db = Database.instance();
+    const user = await db.user.findUnique({
+        select: {
+            chatId: true,
+            whitelisted: true
+        },
+        where: {
+            chatId: id
+        }
+    });
 
-    return Config.TELEGRAM_ID_WHITELIST.includes(id);
-}
-
-export function isOnBlacklist(id: number) {
-    if (!Config.TELEGRAM_ID_BLACKLIST) {
-        return false;
-    }
-
-    return Config.TELEGRAM_ID_BLACKLIST.includes(id);
+    return user ? user.whitelisted : false;
 }
 
 export function sleep(ms: number): Promise<void> {

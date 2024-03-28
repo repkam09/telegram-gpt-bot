@@ -1,13 +1,11 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
-import { isOnWhitelist, sendMessageWrapper, isOnBlacklist } from "../../utils";
+import { sendMessageWrapper } from "../../utils";
 import OpenAI from "openai";
 import { updateChatContext, processChatCompletion, processUserTextInput, processLimitedUserTextInput, moderateLimitedUserTextInput, processChatCompletionLimited } from "./common";
-import { Logger } from "../../singletons/logger";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
-    const chatId = msg.chat.id;
     if (!msg.from || !msg.text) {
         return;
     }
@@ -16,50 +14,42 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
         return;
     }
 
-    if (isOnBlacklist(chatId)) {
-        Logger.trace("blacklist", msg);
-        return;
-    }
-
-    Logger.trace("text_group", msg);
-
     // If the user did @ the bot, strip out that @ prefix before sending the message
     msg.text = msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, "");
 
-    const { title } = msg.chat;
+    const group = await ChatMemory.upsertGroupInfo(msg.chat);
+    await ChatMemory.upsertUserInfo(msg.from);
 
-    await ChatMemory.upsertGroupInfo(chatId, title ?? "Group Chat");
+    if (!group.whitelisted) {
+        const prompt = buildLimitedTierPrompt(group.name);
+        const message = await processLimitedUserTextInput(group.chatId, msg.text);
 
-    if (!isOnWhitelist(chatId)) {
-        const prompt = buildLimitedTierPrompt(title ?? "Group Chat");
-        const message = await processLimitedUserTextInput(chatId, msg.text);
-
-        const flagged = await moderateLimitedUserTextInput(chatId, msg.text);
+        const flagged = await moderateLimitedUserTextInput(group.chatId, msg.text);
         if (flagged) {
-            return await sendMessageWrapper(chatId, "Sorry, I can't help with that. Your message appears to violate OpenAI's Content Policy.");
+            return await sendMessageWrapper(group.chatId, "Sorry, I can't help with that. Your message appears to violate OpenAI's Content Policy.");
         }
 
-        const response = await processChatCompletionLimited(chatId, [
+        const response = await processChatCompletionLimited(group.chatId, [
             ...prompt,
             {
                 content: message,
                 role: "user",
             }
         ]);
-        return await sendMessageWrapper(chatId, response);
+        return await sendMessageWrapper(group.chatId, response);
     }
 
-    const prompt = buildPrompt(title || "Group Chat");
-    const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContext(chatId, "user", message);
+    const prompt = buildPrompt(group.name);
+    const message = await processUserTextInput(group.chatId, msg.text);
+    const context = await updateChatContext(group.chatId, "user", message);
 
-    const response = await processChatCompletion(chatId, [
+    const response = await processChatCompletion(group.chatId, [
         ...prompt,
         ...context
     ]);
 
-    await updateChatContext(chatId, "assistant", response);
-    await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
+    await updateChatContext(group.chatId, "assistant", response);
+    await sendMessageWrapper(group.chatId, response, { reply_to_message_id: msg.message_id });
     return;
 }
 

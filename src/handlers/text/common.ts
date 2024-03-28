@@ -8,7 +8,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { sleep } from "../../utils";
 import { encoding_for_model } from "tiktoken";
 
-export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature. This bot is limited access and invite only.";
+export const NotWhitelistedMessage = "Sorry, you have not been whitelisted to use this feature.";
 
 export async function processChatCompletionLocal(chatId: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {

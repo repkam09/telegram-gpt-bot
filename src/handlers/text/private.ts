@@ -1,57 +1,55 @@
 import TelegramBot from "node-telegram-bot-api";
-import { ChatMemory } from "../../singletons/memory";
-import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
+import { ChatMemory, User } from "../../singletons/memory";
+import { sendMessageWrapper } from "../../utils";
 import { processChatCompletion, processUserTextInput, updateChatContext, processChatCompletionLimited, processLimitedUserTextInput, moderateLimitedUserTextInput } from "./common";
 import OpenAI from "openai";
-import { Logger } from "../../singletons/logger";
 
 export async function handlePrivateMessage(msg: TelegramBot.Message) {
-    const chatId = msg.chat.id;
     if (!msg.from || !msg.text) {
         return;
     }
 
-    if (isOnBlacklist(chatId)) {
-        Logger.trace("blacklist", msg);
-        return;
+    const user = await ChatMemory.upsertUserInfo(msg.from);
+    if (user.whitelisted) {
+        return handleWhitelistedPrivateMessage(user, msg.text);
+    } else {
+        return handleLimitedUserPrivateMessage(user, msg.text);
     }
+}
 
-    Logger.trace("text_private", msg);
-
-    const { first_name, last_name, username, id } = msg.from;
-    await ChatMemory.upsertUserInfo(id, first_name, last_name, username);
-
-    if (!isOnWhitelist(id)) {
-        const prompt = await buildLimitedTierPrompt(chatId, first_name);
-        const message = await processLimitedUserTextInput(chatId, msg.text);
-
-        const flagged = await moderateLimitedUserTextInput(chatId, msg.text);
-        if (flagged) {
-            return await sendMessageWrapper(chatId, "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.");
-        }
-
-        const response = await processChatCompletionLimited(chatId, [
-            ...prompt,
-            {
-                content: message,
-                role: "user",
-            }
-        ]);
-        return sendMessageWrapper(chatId, response);
-    }
-
-    const name = await ChatMemory.getPerUserValue<string>(chatId, "custom-name");
-    const prompt = await buildPrompt(chatId, name ? name : first_name);
-    const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContext(chatId, "user", message);
-    const response = await processChatCompletion(chatId, [
+async function handleWhitelistedPrivateMessage(user: User, text: string) {
+    const name = await ChatMemory.getPerUserValue<string>(user.chatId, "custom-name");
+    const prompt = await buildPrompt(user.chatId, name ?? user.firstName);
+    const message = await processUserTextInput(user.chatId, text);
+    const context = await updateChatContext(user.chatId, "user", message);
+    const response = await processChatCompletion(user.chatId, [
         ...prompt,
         ...context
     ]);
 
-    await updateChatContext(chatId, "assistant", response);
-    return sendMessageWrapper(chatId, response);
+    await updateChatContext(user.chatId, "assistant", response);
+    return sendMessageWrapper(user.chatId, response);
 }
+
+async function handleLimitedUserPrivateMessage(user: User, text: string) {
+    const prompt = await buildLimitedTierPrompt(user.chatId, user.firstName);
+    const message = await processLimitedUserTextInput(user.chatId, text);
+
+    const flagged = await moderateLimitedUserTextInput(user.chatId, text);
+    if (flagged) {
+        return await sendMessageWrapper(user.chatId, "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.");
+    }
+
+    const response = await processChatCompletionLimited(user.chatId, [
+        ...prompt,
+        {
+            content: message,
+            role: "user",
+        }
+    ]);
+    return sendMessageWrapper(user.chatId, response);
+}
+
 
 export async function buildPrompt(chatId: number, name: string): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     const botName = await ChatMemory.getPerUserValue<string>(chatId, "custom-bot-name");
@@ -85,7 +83,7 @@ export async function buildPrompt(chatId: number, name: string): Promise<OpenAI.
             content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are also seductive and flirty.`
         });
         break;
-    
+
     case "snarky":
         prompt.unshift({
             role: "system",

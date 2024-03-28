@@ -1,15 +1,13 @@
 import TelegramBot, { CallbackQuery } from "node-telegram-bot-api";
-import { isOnBlacklist, isOnWhitelist, sendMessageWrapper } from "../../utils";
-import { Logger } from "../../singletons/logger";
+import { sendMessageWrapper } from "../../utils";
 import { handleVoiceReadCommand, handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback, handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
 import { handleWhitelistCommand } from "./commands/handleWhitelist";
 import { handleHelpCommand, handleResetCommand, handleStartCommand } from "./commands/basic";
 import { isAdmin } from "./common";
+import { ChatMemory } from "../../singletons/memory";
 
-type MessageWithText = TelegramBot.Message & { text: string }
-
-export function handleCommandMessage(msg: TelegramBot.Message) {
+export async function handleCommandMessage(msg: TelegramBot.Message) {
     if (!msg.from || !msg.text) {
         return;
     }
@@ -18,38 +16,32 @@ export function handleCommandMessage(msg: TelegramBot.Message) {
         return;
     }
 
-    if (isOnBlacklist(msg.chat.id)) {
-        Logger.trace("blacklist", msg);
-        return;
-    }
-
-    Logger.trace("text_command", msg);
-
+    const user = await ChatMemory.upsertUserInfo(msg.from);
     if (msg.text === "/reset") {
-        return handleResetCommand(msg as MessageWithText);
+        return handleResetCommand(user);
     }
 
     if (msg.text === "/start") {
-        return handleStartCommand(msg as MessageWithText);
+        return handleStartCommand(user);
     }
 
     if (msg.text === "/help" || msg.text === "/about") {
-        return handleHelpCommand(msg as MessageWithText);
+        return handleHelpCommand(user);
     }
 
-    if (msg.text.startsWith("/read") && isOnWhitelist(msg.chat.id)) {
-        return handleVoiceReadCommand(msg as MessageWithText);
+    if (msg.text === "/settings" && user.whitelisted) {
+        return handleGeneralSettingsCommand(user);
     }
 
-    if (msg.text.startsWith("/settings") && isOnWhitelist(msg.chat.id)) {
-        return handleGeneralSettingsCommand(msg as MessageWithText);
+    if (msg.text.startsWith("/read") && user.whitelisted) {
+        return handleVoiceReadCommand(user, msg.text);
     }
 
     if (msg.text.startsWith("/whitelist") && isAdmin(msg.chat.id)) {
-        return handleWhitelistCommand(msg as MessageWithText);
+        return handleWhitelistCommand(user, msg.text);
     }
 
-    return sendMessageWrapper(msg.chat.id, "Unknown Command");
+    return sendMessageWrapper(user.chatId, "Unknown Command");
 }
 
 export async function handleCommandMessageCallback(query: CallbackQuery) {
