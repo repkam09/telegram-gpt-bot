@@ -6,6 +6,7 @@
     "configurations": [
         {
             "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
             "request": "launch",
             "name": "Launch Hennos",
             "skipFiles": [
@@ -13,6 +14,57 @@
             ],
             "preLaunchTask": "tsc",
             "program": "${workspaceFolder}/build/hennos.js"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Documents",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/documents.js",
+            "sourceMaps": true
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Search",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/search.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Import",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/import.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Context",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/context.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
         }
     ]
 }

@@ -1,238 +1,330 @@
 import OpenAI from "openai";
-import crypto from "crypto";
-import { Config } from "./config";
-import { RedisCache } from "./redis";
+import { Database } from "./sqlite";
+import { ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
+import { Logger } from "./logger";
+import TelegramBot from "node-telegram-bot-api";
+
+export type User = {
+    chatId: number;
+    firstName: string;
+    lastName: string | null;
+    username: string | null;
+    whitelisted: boolean;
+};
+
+export type Group = {
+    chatId: number;
+    name: string;
+    whitelisted: boolean;
+};
+
 
 export class ChatMemory {
-    private static _chat_context_map = new Map<number, OpenAI.Chat.ChatCompletionMessageParam[]>();
-    private static _id_to_name = new Map<number, string>();
+    public static async hasContext(chatId: number): Promise<boolean> {
+        Logger.debug(`Start hasContext chatId: ${chatId}`);
 
-    private static _map_to_map = new Map<string, Map<string, string>>();
+        const db = Database.instance();
+        const result = await db.chat.findUnique({
+            select: {
+                chatId: true
+            },
+            where: {
+                chatId: chatId
+            }
+        });
 
-    public static async hasContext(key: number): Promise<boolean> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            return this._chat_context_map.has(key);
-        }
-
-        return RedisCache.has("context", `${key}`);
+        Logger.debug(`Finish hasContext chatId: ${chatId}`);
+        return result ? true : false;
     }
 
-    static async getContext(key: number): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            const result = this._chat_context_map.get(key) as OpenAI.Chat.ChatCompletionMessageParam[];
-            return Promise.resolve(result || []);
-        }
+    static async getContext(chatId: number): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+        Logger.debug(`Start getContext chatId: ${chatId}`);
 
-        const encrypted = await RedisCache.get<OpenAI.Chat.ChatCompletionMessageParam[]>("context", `${key}`);
-        if (!encrypted) {
-            return [];
-        }
+        const db = Database.instance();
+        const result = await db.messages.findMany({
+            where: {
+                chatId: chatId
+            },
+            select: {
+                content: true,
+                role: true
+            },
+            orderBy: {
+                id: "desc"
+            },
+            take: 50
+        });
 
-        return decrypt(key, encrypted);
+        Logger.debug(`Finish getContext chatId: ${chatId}`);
+
+        return result.reverse().map((entry) => {
+            if (entry.role === "system") {
+                return {
+                    content: entry.content,
+                    role: entry.role,
+                } as ChatCompletionSystemMessageParam;
+            }
+
+            if (entry.role === "user") {
+                return {
+                    content: entry.content,
+                    role: entry.role,
+                } as ChatCompletionUserMessageParam;
+            }
+
+            if (entry.role === "assistant") {
+                return {
+                    content: entry.content,
+                    role: entry.role,
+                } as ChatCompletionAssistantMessageParam;
+            }
+
+            throw new Error("Invalid role");
+        });
     }
 
-    static async deleteContext(key: number): Promise<void> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            this._chat_context_map.delete(key);
-            return;
-        }
-        return RedisCache.delete("context", `${key}`);
+    static async deleteContext(chatId: number): Promise<void> {
+        Logger.debug(`Start deleteContext chatId: ${chatId}`);
+
+        const db = Database.instance();
+        await db.messages.deleteMany({
+            where: {
+                chatId: chatId
+            }
+        });
+
+        Logger.debug(`Finish deleteContext chatId: ${chatId}`);
     }
 
-    static async setContext(key: number, value: OpenAI.Chat.ChatCompletionMessageParam[]): Promise<void> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            this._chat_context_map.set(key, value);
-            return;
-        }
-
-        const encrypted = encrypt(key, value);
-        return RedisCache.set("context", `${key}`, JSON.stringify(encrypted));
+    static async addMessage(chatId: number, role: "user" | "assistant" | "system", content: string): Promise<void> {
+        Logger.debug(`Start addMessage chatId: ${chatId}`);
+        const db = Database.instance();
+        await db.messages.create({
+            data: {
+                chatId: chatId,
+                role,
+                content
+            }
+        });
+        Logger.debug(`Finish addMessage chatId: ${chatId}`);
     }
 
-    static async getContextKeys(): Promise<number[]> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            return Promise.resolve(Array.from(this._chat_context_map.keys()));
-        }
-        return [];
+    static async getUserInfo(chatId: number): Promise<User> {
+        Logger.debug(`Start getUserInfo chatId: ${chatId}`);
+
+        const db = Database.instance();
+        const result = await db.user.findUniqueOrThrow({
+            select: {
+                firstName: true,
+                lastName: true,
+                username: true,
+                whitelisted: true,
+                chatId: true
+            },
+            where: {
+                chatId: chatId
+            }
+        });
+
+        Logger.debug(`Finish getUserInfo chatId: ${chatId}`);
+        return {
+            ...result,
+            chatId: Number(result.chatId),
+        };
     }
 
-    static async hasName(key: number): Promise<boolean> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            return this._id_to_name.has(key);
-        }
-        return RedisCache.has("name", `${key}`);
+    static async upsertUserInfo(from: TelegramBot.User): Promise<User> {
+        const { first_name, last_name, username, id } = from;
+        Logger.debug(`Start upsertUserInfo chatId: ${id}`);
+
+        const db = Database.instance();
+        await db.user.upsert({
+            where: {
+                chatId: id
+            },
+            update: {
+                firstName: first_name,
+                lastName: last_name,
+                username
+            },
+            create: {
+                chatId: id,
+                firstName: first_name,
+                lastName: last_name,
+                username
+            }
+        });
+        Logger.debug(`Finish upsertUserInfo chatId: ${id}`);
+        return ChatMemory.getUserInfo(id);
     }
 
-    static async getName(key: number): Promise<string> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            return this._id_to_name.get(key) as string;
+    static async upsertGroupInfo(chat: TelegramBot.Chat): Promise<Group> {
+        const { id, title } = chat;
+        Logger.debug(`Start upsertGroupInfo chatId: ${id}`);
+        const db = Database.instance();
+        await db.group.upsert({
+            where: {
+                chatId: id
+            },
+            update: {
+                name: title
+            },
+            create: {
+                chatId: id,
+                name: title ?? "Group Chat"
+            }
+        });
+        Logger.debug(`Finish upsertGroupInfo chatId: ${id}`);
+        return ChatMemory.getGroupInfo(id);
+    }
+
+    static async getGroupInfo(chatId: number) {
+        Logger.debug(`Start getGroupInfo chatId: ${chatId}`);
+        const db = Database.instance();
+        const result = await db.group.findUniqueOrThrow({
+            select: {
+                whitelisted: true,
+                chatId: true,
+                name: true
+            },
+            where: {
+                chatId: chatId
+            }
+        });
+
+        Logger.debug(`Finish getGroupInfo chatId: ${chatId}`);
+        return {
+            ...result,
+            chatId: Number(result.chatId),
+        };
+    }
+
+    static async storePerUserValue<T>(chatId: number, prop: string, value: T): Promise<void> {
+        Logger.debug(`Start storePerUserValue chatId: ${chatId}, prop: ${prop}, value: ${value}`);
+        const db = Database.instance();
+        if (prop === "voice-settings") {
+            await db.user.update({
+                where: {
+                    chatId
+                },
+                data: {
+                    voice: value as string
+                }
+            });
         }
-        const result = await RedisCache.get<{ name: string }>("name", `${key}`);
+
+        if (prop === "custom-bot-name") {
+            await db.user.update({
+                where: {
+                    chatId
+                },
+                data: {
+                    botName: value as string
+                }
+            });
+        }
+
+        if (prop === "custom-name") {
+            await db.user.update({
+                where: {
+                    chatId
+                },
+                data: {
+                    preferredName: value as string
+                }
+            });
+        }
+
+        Logger.debug(`Finish storePerUserValue chatId: ${chatId}`);
+    }
+
+    static async getPerUserValue<T>(chatId: number, prop: string): Promise<T | undefined> {
+        Logger.debug(`Start getPerUserValue chatId: ${chatId}`);
+
+        const db = Database.instance();
+        const result = await db.user.findUnique({
+            where: {
+                chatId
+            },
+            select: {
+                voice: true,
+                botName: true,
+                preferredName: true
+            }
+        });
+
         if (!result) {
-            return "unknown";
+            Logger.debug(`Finish getPerUserValue chatId: ${chatId}`);
+            return undefined;
         }
-        return result.name;
+
+        Logger.debug(`Finish getPerUserValue chatId: ${chatId}`);
+        if (prop === "voice-settings") {
+            return result.voice as unknown as T;
+        }
+
+        if (prop === "custom-bot-name") {
+            return result.botName as unknown as T;
+        }
+
+        if (prop === "custom-name") {
+            return result.preferredName as unknown as T;
+        }
     }
 
-    static async getNameKeys(): Promise<number[]> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            return Promise.resolve(Array.from(this._id_to_name.keys()));
-        }
-        return [];
-    }
-
-    static async setName(key: number, value: string) {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            return this._id_to_name.set(key, value);
-        }
-        return RedisCache.set("name", `${key}`, JSON.stringify({ name: value }));
-    }
-
-    static async storePerUserValue<T>(userId: number, prop: string, value: T): Promise<void> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            if (!this._map_to_map.has(prop)) {
-                this._map_to_map.set(prop, new Map<string, string>());
-            }
-
-            const map = this._map_to_map.get(prop) as Map<string, string>;
-            map.set(`${userId}`, JSON.stringify(value));
-            return;
-        }
-
-        return RedisCache.set(prop, `${userId}`, JSON.stringify(value));
-    }
-
-    static async getPerUserValue<T>(userId: number, prop: string): Promise<T | undefined> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            if (!this._map_to_map.has(prop)) {
-                this._map_to_map.set(prop, new Map<string, string>());
-            }
-
-            const map = this._map_to_map.get(prop) as Map<string, string>;
-            const stringValue = map.get(`${userId}`);
-            if (!stringValue) {
-                return undefined;
-            }
-            return JSON.parse(stringValue);
-        }
-
-        return RedisCache.get<T>(prop, `${userId}`);
-    }
-
-    static async hasPerUserValue(userId: number, prop: string): Promise<boolean> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            if (!this._map_to_map.has(prop)) {
-                this._map_to_map.set(prop, new Map<string, string>());
-            }
-
-            const map = this._map_to_map.get(prop) as Map<string, string>;
-            return map.has(`${userId}`);
-        }
-
-        return RedisCache.has(prop, `${userId}`);
+    static async hasPerUserValue(chatId: number, prop: string): Promise<boolean> {
+        Logger.debug(`Start hasPerUserValue chatId: ${chatId}`);
+        const result = await ChatMemory.getPerUserValue<string>(chatId, prop);
+        Logger.debug(`Finish hasPerUserValue chatId: ${chatId}`);
+        return result ? true : false;
     }
 
 
     static async storeSystemValue<T>(prop: string, value: T): Promise<void> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            if (!this._map_to_map.has(prop)) {
-                this._map_to_map.set(prop, new Map<string, string>());
+        const db = Database.instance();
+        await db.systemSettings.upsert({
+            where: {
+                key: prop
+            },
+            update: {
+                value: JSON.stringify(value)
+            },
+            create: {
+                key: prop,
+                value: JSON.stringify(value)
             }
-
-            const map = this._map_to_map.get(prop) as Map<string, string>;
-            map.set("system_value", JSON.stringify(value));
-            return;
-        }
-
-        return RedisCache.set(prop, "system_value", JSON.stringify(value));
+        });
     }
 
     static async getSystemValue<T>(prop: string): Promise<T | undefined> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            if (!this._map_to_map.has(prop)) {
-                this._map_to_map.set(prop, new Map<string, string>());
+        const db = Database.instance();
+        const result = await db.systemSettings.findUnique({
+            select: {
+                value: true
+            },
+            where: {
+                key: prop
             }
+        });
 
-            const map = this._map_to_map.get(prop) as Map<string, string>;
-            const stringValue = map.get("system_value");
-            if (!stringValue) {
-                return undefined;
-            }
-            return JSON.parse(stringValue);
+        if (!result) {
+            return undefined;
         }
 
-        return RedisCache.get<T>(prop, "system_value");
+        return JSON.parse(result.value) as T;
     }
 
     static async hasSystemValue(prop: string): Promise<boolean> {
-        if (!Config.USE_PERSISTANT_CACHE) {
-            if (!this._map_to_map.has(prop)) {
-                this._map_to_map.set(prop, new Map<string, string>());
+        const db = Database.instance();
+        const result = await db.systemSettings.findUnique({
+            select: {
+                value: true
+            },
+            where: {
+                key: prop
             }
+        });
 
-            const map = this._map_to_map.get(prop) as Map<string, string>;
-            return map.has("system_value");
-        }
-
-        return RedisCache.has(prop, "system_value");
+        return result ? true : false;
     }
-}
-
-function encrypt(key: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    if (!Config.CRYPTO_ENABLED) {
-        return messages;
-    }
-
-    const encrypted = messages.map((entry) => {
-        if (!entry.content) {
-            return entry;
-        }
-
-        if (typeof entry.content !== "string") {
-            return entry;
-        }
-
-        const cipher = crypto.createCipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
-        const encrypted = cipher.update(entry.content, "utf8", "hex") + cipher.final("hex");
-        return {
-            ...entry,
-            content: encrypted
-        };
-    });
-
-    return encrypted;
-}
-
-function decrypt(key: number, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    if (!Config.CRYPTO_ENABLED) {
-        return messages;
-    }
-
-    const plain = messages.map((entry) => {
-        if (!entry.content) {
-            return entry;
-        }
-
-        if (typeof entry.content !== "string") {
-            return entry;
-        }
-
-        const decipher = crypto.createDecipheriv(Config.CRYPTO_ALGO, secret(key), Config.CRYPTO_IV);
-        const decrypted = decipher.update(entry.content, "hex", "utf8") + decipher.final("utf8");
-        return {
-            ...entry,
-            content: decrypted,
-        };
-    });
-
-    return plain;
-}
-
-
-
-function secret(input: number): Buffer {
-    const buffer = Buffer.from(String(input), "utf8");
-    const key = Buffer.alloc(32, 0);
-    buffer.copy(key, 0, 0, 32);
-    return key;
 }

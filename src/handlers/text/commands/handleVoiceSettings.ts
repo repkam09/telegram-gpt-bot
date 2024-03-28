@@ -3,6 +3,8 @@ import { BotInstance } from "../../../singletons/telegram";
 import { ValidTTSNames, getUserVoicePreference, setUserVoicePreference } from "../../voice";
 import { OpenAIWrapper } from "../../../singletons/openai";
 import { sendVoiceMemoWrapper } from "../../../utils";
+import { Logger } from "../../../singletons/logger";
+import { User } from "../../../singletons/memory";
 
 type MessageWithText = TelegramBot.Message & { text: string }
 
@@ -16,7 +18,8 @@ export async function handleVoiceSettingsCallback(chatId: number, queryId: strin
             text: "Future audio messages will use the " + name + " voice."
         });
         bot.sendMessage(chatId, "Configuration saved. Future audio messages will use the " + name + " voice.");
-    }).catch(() => {
+    }).catch((err: unknown) => {
+        Logger.error(`Error while updating voice settings for user ${chatId}`, err);
         bot.answerCallbackQuery(queryId, {
             text: "There was an error while updating your voice settings"
         });
@@ -71,11 +74,10 @@ export async function handleVoiceSettingsCommand(msg: MessageWithText) {
     return sendVoiceSettingsPrompt(msg.chat.id);
 }
 
-export async function handleVoiceReadCommand(msg: MessageWithText) {
-    const chatId = msg.chat.id;
-    const text = msg.text.replace("/read", "").trim();
+export async function handleVoiceReadCommand(user: User, text: string) {
+    text = text.replace("/read", "").trim();
     if (text) {
-        const voice = await getUserVoicePreference(chatId);
+        const voice = await getUserVoicePreference(user.chatId);
         const result = await OpenAIWrapper.instance().audio.speech.create({
             model: "tts-1",
             voice: voice,
@@ -86,6 +88,6 @@ export async function handleVoiceReadCommand(msg: MessageWithText) {
         const arrayBuffer = await result.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        await sendVoiceMemoWrapper(chatId, buffer);
+        await sendVoiceMemoWrapper(user.chatId, buffer);
     }
 }

@@ -1,10 +1,8 @@
 import TelegramBot from "node-telegram-bot-api";
 import { BotInstance } from "../../../singletons/telegram";
 import { registerInputCallback } from "..";
-import { ChatMemory } from "../../../singletons/memory";
+import { ChatMemory, User } from "../../../singletons/memory";
 import { sendVoiceSettingsPrompt } from "./handleVoiceSettings";
-
-type MessageWithText = TelegramBot.Message & { text: string }
 
 export async function handleGeneralSettingsCallback(chatId: number, queryId: string, data: string) {
     const bot = BotInstance.instance();
@@ -43,7 +41,7 @@ export async function handleGeneralSettingsCallback(chatId: number, queryId: str
     }
 }
 
-export async function handleGeneralSettingsCommand(msg: MessageWithText) {
+export async function handleGeneralSettingsCommand(user: User) {
     const opts: TelegramBot.SendMessageOptions = {
         reply_markup: {
             resize_keyboard: true,
@@ -72,5 +70,5 @@ export async function handleGeneralSettingsCommand(msg: MessageWithText) {
     };
 
     const bot = BotInstance.instance();
-    bot.sendMessage(msg.chat.id, "You can customize parts of Hennos by using the options below. What would you like to change? ", opts);
+    bot.sendMessage(user.chatId, "You can customize parts of Hennos by using the options below. What would you like to change? ", opts);
 }

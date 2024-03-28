@@ -1,13 +1,11 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../../singletons/config";
 import { ChatMemory } from "../../singletons/memory";
-import { isOnWhitelist, sendMessageWrapper, sendAdminMessage, isOnBlacklist } from "../../utils";
+import { sendMessageWrapper } from "../../utils";
 import OpenAI from "openai";
-import { updateChatContext, processChatCompletion, processUserTextInput, processLimitedUserTextInput, moderateLimitedUserTextInput, processChatCompletionLocal } from "./common";
-import { Logger } from "../../singletons/logger";
+import { updateChatContext, processChatCompletion, processUserTextInput, processLimitedUserTextInput, moderateLimitedUserTextInput, processChatCompletionLimited } from "./common";
 
 export async function handleGroupMessage(msg: TelegramBot.Message) {
-    const chatId = msg.chat.id;
     if (!msg.from || !msg.text) {
         return;
     }
@@ -16,58 +14,42 @@ export async function handleGroupMessage(msg: TelegramBot.Message) {
         return;
     }
 
-    if (isOnBlacklist(chatId)) {
-        Logger.trace("blacklist", msg);
-        return;
-    }
-
-    Logger.trace("text_group", msg);
-
     // If the user did @ the bot, strip out that @ prefix before sending the message
     msg.text = msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, "");
 
+    const group = await ChatMemory.upsertGroupInfo(msg.chat);
+    await ChatMemory.upsertUserInfo(msg.from);
 
-    const { first_name, last_name, username, id } = msg.from;
-    const { title } = msg.chat;
+    if (!group.whitelisted) {
+        const prompt = buildLimitedTierPrompt(group.name);
+        const message = await processLimitedUserTextInput(group.chatId, msg.text);
 
-    if (!await ChatMemory.hasName(chatId)) {
-        await ChatMemory.setName(chatId, `${title} [${chatId}]`);
-    }
-
-    if (!isOnWhitelist(chatId)) {
-        if (Config.OLLAMA_LLM) {
-            const prompt = buildLimitedTierPrompt(title || "Group Chat");
-            const message = await processLimitedUserTextInput(chatId, msg.text);
-            const flagged = await moderateLimitedUserTextInput(chatId, msg.text);
-            if (flagged) {
-                return await sendMessageWrapper(chatId, "Sorry, I can't help with that. Your message appears to violate OpenAI's Content Policy.");
-            }
-            const response = await processChatCompletionLocal(chatId, [
-                ...prompt,
-                {
-                    content: message,
-                    role: "user",
-                }
-            ]);
-            return await sendMessageWrapper(chatId, response);
+        const flagged = await moderateLimitedUserTextInput(group.chatId, msg.text);
+        if (flagged) {
+            return await sendMessageWrapper(group.chatId, "Sorry, I can't help with that. Your message appears to violate OpenAI's Content Policy.");
         }
 
-        await sendMessageWrapper(chatId, `Sorry, this group chat has not been whitelisted to use this bot. Please request access and provide the group identifier: ${chatId}`);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message from group chat '${title} [${chatId}]' but the group is not whitelisted`);
-        return;
+        const response = await processChatCompletionLimited(group.chatId, [
+            ...prompt,
+            {
+                content: message,
+                role: "user",
+            }
+        ]);
+        return await sendMessageWrapper(group.chatId, response);
     }
 
-    const prompt = buildPrompt(title || "Group Chat");
-    const message = await processUserTextInput(chatId, msg.text);
-    const context = await updateChatContext(chatId, "user", message);
+    const prompt = buildPrompt(group.name);
+    const message = await processUserTextInput(group.chatId, msg.text);
+    const context = await updateChatContext(group.chatId, "user", message);
 
-    const response = await processChatCompletion(chatId, [
+    const response = await processChatCompletion(group.chatId, [
         ...prompt,
         ...context
     ]);
 
-    await updateChatContext(chatId, "assistant", response);
-    await sendMessageWrapper(chatId, response, { reply_to_message_id: msg.message_id });
+    await updateChatContext(group.chatId, "assistant", response);
+    await sendMessageWrapper(group.chatId, response, { reply_to_message_id: msg.message_id });
     return;
 }
 
@@ -105,6 +87,10 @@ function buildLimitedTierPrompt(title: string,): OpenAI.Chat.ChatCompletionMessa
         {
             role: "system",
             content: `You are currently assisting users within a group chat setting. The group chat is called '${title}'.`
+        },
+        {
+            role: "system",
+            content: "This group is not whitelisted on the service and is getting basic, limited, tier access. Their message history will not be stored after this response."
         }
     ];
 
