@@ -52,6 +52,19 @@
             "program": "${workspaceFolder}/build/scripts/import.js",
             "sourceMaps": true,
             "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
+            "name": "Launch Context",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/context.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
         }
     ]
 }

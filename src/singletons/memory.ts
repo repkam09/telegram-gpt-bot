@@ -50,13 +50,14 @@ export class ChatMemory {
                 role: true
             },
             orderBy: {
-                datetime: "asc"
-            }
+                id: "desc"
+            },
+            take: 50
         });
 
         Logger.debug(`Finish getContext chatId: ${chatId}`);
 
-        return result.map((entry) => {
+        return result.reverse().map((entry) => {
             if (entry.role === "system") {
                 return {
                     content: entry.content,

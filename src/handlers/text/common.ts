@@ -182,8 +182,6 @@ export async function updateChatContext(chatId: number, role: "user" | "assistan
     let totalTokens = getChatContextTokenCount(currentChatContext);
 
     while (totalTokens > Config.HENNOS_MAX_TOKENS) {
-        Logger.info(`ChatId ${chatId} Started cleaning up old message context. (Tokens: ${totalTokens}/${Config.HENNOS_MAX_TOKENS}).`);
-
         if (currentChatContext.length === 0) {
             throw new Error("Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
         }
