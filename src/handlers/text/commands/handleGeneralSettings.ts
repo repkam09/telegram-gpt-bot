@@ -1,57 +1,51 @@
 import TelegramBot from "node-telegram-bot-api";
-import { BotInstance } from "../../../singletons/telegram";
-import { registerInputCallback } from "..";
-import { ChatMemory, User } from "../../../singletons/memory";
+import { BotInstance, registerInputCallback } from "../../../singletons/telegram";
 import { sendVoiceSettingsPrompt } from "./handleVoiceSettings";
+import { HennosUser } from "../../../singletons/user";
 
-export async function handleGeneralSettingsCallback(chatId: number, queryId: string, data: string) {
+export async function handleGeneralSettingsCallback(user: HennosUser, queryId: string, data: string) {
     const bot = BotInstance.instance();
 
     // Set the voice and return to the user.
     const command = data.replace("customize-", "").trim();
     if (command === "personality") {
         bot.answerCallbackQuery(queryId);
-        bot.sendMessage(chatId, "This feature is not available yet, but is coming soon.");
+        bot.sendMessage(user.chatId, "This feature is not available yet, but is coming soon.");
     }
 
     if (command === "my-name") {
         bot.answerCallbackQuery(queryId);
-        registerInputCallback(chatId, (msg: TelegramBot.Message) => {
+        registerInputCallback(user, (msg: TelegramBot.Message) => {
             const name = msg.text as string;
-            ChatMemory.storePerUserValue(chatId, "custom-name", name);
-            bot.sendMessage(chatId, "Thanks! I'll call you " + name + " going forward.");
+            user.setPreferredName(name);
+            bot.sendMessage(user.chatId, "Thanks! I'll call you " + name + " going forward.");
         });
-        bot.sendMessage(chatId, "What would you like me to call you?");
+        bot.sendMessage(user.chatId, "What would you like me to call you?");
+    }
+
+    if (command === "bot-name") {
+        bot.answerCallbackQuery(queryId);
+        registerInputCallback(user, (msg: TelegramBot.Message) => {
+            const name = msg.text as string;
+            user.setPreferredBotName(name);
+            bot.sendMessage(user.chatId, "Thanks, I'll use that going forward.");
+        });
+        bot.sendMessage(user.chatId, "What would you like to call me?");
     }
 
     if (command === "bot-voice") {
         bot.answerCallbackQuery(queryId);
-        sendVoiceSettingsPrompt(chatId);
-    }
-
-
-    if (command === "bot-name") {
-        bot.answerCallbackQuery(queryId);
-        registerInputCallback(chatId, (msg: TelegramBot.Message) => {
-            const name = msg.text as string;
-            ChatMemory.storePerUserValue(chatId, "custom-bot-name", name);
-            bot.sendMessage(chatId, "Thanks, I'll use that going forward.");
-        });
-        bot.sendMessage(chatId, "What would you like to call me?");
+        sendVoiceSettingsPrompt(user);
     }
 }
 
-export async function handleGeneralSettingsCommand(user: User) {
+export async function handleGeneralSettingsCommand(user: HennosUser) {
     const opts: TelegramBot.SendMessageOptions = {
         reply_markup: {
             resize_keyboard: true,
             one_time_keyboard: true,
             inline_keyboard: [
                 [
-                    // {
-                    //     text: "Personality",
-                    //     callback_data: "customize-personality"
-                    // },
                     {
                         text: "Voice",
                         callback_data: "customize-bot-voice",

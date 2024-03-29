@@ -1,18 +1,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { Logger } from "./logger";
-
 export class Config {
-    static validate() {
-        Logger.info(`OPENAI_API_LLM: ${Config.OPENAI_API_LLM}`);
-        Logger.info(`OLLAMA_LLM: ${Config.OLLAMA_LLM}`);
-
-        Logger.info(`HENNOS_MAX_TOKENS: ${Config.HENNOS_MAX_TOKENS}`);
-        Logger.info(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
-        Logger.info(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
-    }
-
     static get HENNOS_MAX_TOKENS(): number {
         if (!process.env.HENNOS_MAX_TOKENS) {
             return 4096;
@@ -25,6 +14,22 @@ export class Config {
         }
 
         return limit;
+    }
+
+    static get HENNOS_DEVELOPMENT_SINGLE_USER_MODE(): boolean {
+        if (!process.env.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
+            return false;
+        }
+
+        if (process.env.HENNOS_DEVELOPMENT_SINGLE_USER_MODE !== "true") {
+            return false;
+        }
+
+        if (Config.TELEGRAM_BOT_ADMIN === -1) {
+            throw new Error("Missing TELEGRAM_BOT_ADMIN for HENNOS_DEVELOPMENT_SINGLE_USER_MODE");
+        }
+
+        return true;
     }
 
     static get HENNOS_DEVELOPMENT_MODE(): boolean {

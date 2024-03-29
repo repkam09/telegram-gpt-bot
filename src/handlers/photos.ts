@@ -1,30 +1,52 @@
-import { ChatMemory } from "../singletons/memory";
-import { BotInstance } from "../singletons/telegram";
-import { sendMessageWrapper } from "../utils";
-import TelegramBot from "node-telegram-bot-api";
-import { NotWhitelistedMessage, processUserImageInput, updateChatContext } from "./text/common";
+import OpenAI from "openai";
+import { OpenAIWrapper } from "../singletons/openai";
+import { HennosUser } from "../singletons/user";
+import { Logger } from "../singletons/logger";
 
-export function listen() {
-    BotInstance.instance().on("photo", handlePhoto);
-}
+export async function handleImageMesssage(user: HennosUser, url: string, query?: string): Promise<string> {
+    Logger.info(user, "handleImageMesssage Start (gpt-4-vision-preview)");
 
-async function handlePhoto(msg: TelegramBot.Message) {
-    if (msg.chat.type !== "private" || !msg.from || !msg.photo) {
-        return;
+    const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
+        {
+            type: "text",
+            text: query ? query : "Describe this image in as much detail as posible"
+        },
+        {
+            type: "image_url",
+            image_url: {
+                detail: "low",
+                url
+            }
+        }
+    ];
+
+    const completion = await OpenAIWrapper.instance().chat.completions.create({
+        model: "gpt-4-vision-preview",
+        max_tokens: 2000,
+        messages: [
+            {
+                role: "user",
+                content
+            },
+        ],
+    });
+
+    const response = completion.choices[0].message.content;
+    if (!response) {
+        Logger.info(user, "handleImageMesssage End");
+        return "No information available about this image";
     }
 
-    const user = await ChatMemory.upsertUserInfo(msg.from);
-    if (!user.whitelisted) {
-        return sendMessageWrapper(user.chatId, NotWhitelistedMessage);
+    if (query) {
+        await user.updateChatContext("system", "The user sent an image message.");
+        await user.updateChatContext("user", query);
+        await user.updateChatContext("assistant", response);
     }
 
-    const message = await processUserImageInput(user.chatId, msg.photo, msg.caption);
-    if (!msg.caption) {
-        await updateChatContext(user.chatId, "system", `The user sent an image. Here is a description of the image: ${message}`);
-    } else {
-        await updateChatContext(user.chatId, "system", "The user sent an image.");
-        await updateChatContext(user.chatId, "user", msg.caption);
-        await updateChatContext(user.chatId, "assistant", message);
+    if (!query) {
+        await user.updateChatContext("system", `The user sent an image message. Here is a description of the image: ${response}`);
     }
-    await sendMessageWrapper(user.chatId, message);
+
+    Logger.info(user, "handleImageMesssage End");
+    return response;
 }

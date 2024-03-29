@@ -6,3 +6,4 @@ services:
     image: hennos-gpt:latest
     volumes:
       - '.env:/app/hennos/.env'
+      - 'data:/app/hennos/prisma/data'

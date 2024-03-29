@@ -1,8 +1,8 @@
 import { BotInstance } from "../../../singletons/telegram";
-import { User } from "../../../singletons/memory";
 import { Database } from "../../../singletons/sqlite";
+import { HennosUser } from "../../../singletons/user";
 
-export async function handleWhitelistCommand(user: User, text: string) {
+export async function handleWhitelistCommand(user: HennosUser, text: string) {
     const trimmed = text.replace("/whitelist", "").trim();
     const bot = BotInstance.instance();
     const db = Database.instance();
@@ -14,16 +14,7 @@ export async function handleWhitelistCommand(user: User, text: string) {
         }
 
         // Check if we have a user with that chatId.
-        const exists = await db.user.findUnique({
-            select: {
-                chatId: true,
-                whitelisted: true
-            },
-            where: {
-                chatId: input
-            }
-        });
-
+        const exists = await HennosUser.exists(input);
         if (!exists) {
             return bot.sendMessage(user.chatId, `ChatId ${input} is not a known user.`);
         }
@@ -32,15 +23,7 @@ export async function handleWhitelistCommand(user: User, text: string) {
             return bot.sendMessage(user.chatId, `ChatId ${input} is already whitelisted.`);
         }
 
-        await db.user.update({
-            where: {
-                chatId: input
-            },
-            data: {
-                whitelisted: true
-            }
-        });
-
+        await HennosUser.setWhitelisted(exists, true);
         return bot.sendMessage(user.chatId, `ChatId ${input} has been whitelisted.`);
     }
 

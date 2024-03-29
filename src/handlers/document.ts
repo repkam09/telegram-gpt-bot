@@ -1,8 +1,3 @@
-import { ChatMemory } from "../singletons/memory";
-import { BotInstance } from "../singletons/telegram";
-import { sendMessageWrapper } from "../utils";
-import TelegramBot from "node-telegram-bot-api";
-import { NotWhitelistedMessage } from "./text/common";
 import {
     SimpleNodeParser,
     SummaryIndex,
@@ -15,26 +10,29 @@ import {
     SimpleDirectoryReader
 } from "llamaindex";
 import { Logger } from "../singletons/logger";
+import { HennosUser } from "../singletons/user";
 
-export function listen() {
-    BotInstance.instance().on("document", handleDocument);
-}
-
-async function handleDocument(msg: TelegramBot.Message) {
-    if (msg.chat.type !== "private" || !msg.from || !msg.document) {
-        return;
+export async function isSupportedDocumentType(mime_type: string): Promise<boolean> {
+    if (mime_type === "text/plain") {
+        return true;
     }
 
-    const user = await ChatMemory.upsertUserInfo(msg.from);
-    if (!user.whitelisted) {
-        return sendMessageWrapper(user.chatId, NotWhitelistedMessage);
-    }
-
-    return sendMessageWrapper(user.chatId, `This document seems to be a ${msg.document.mime_type} which is not yet supported.`);
+    return false;
 }
 
-export async function handlePlainTextDocument(chatId: number, path: string, tg: TelegramBot.Document): Promise<string> {
-    Logger.info(`Processing document ${tg.file_name} for chat ${chatId}`);
+export async function handleDocumentMessage(user: HennosUser, path: string, mime_type: string, uuid: string): Promise<string> {
+    switch(mime_type) {
+    case "text/plain":
+        return handlePlainTextDocument(user, path, uuid);
+    default:
+        return `This document seems to be a ${mime_type} which is not yet supported.`;
+    }
+}
+
+
+export async function handlePlainTextDocument(user: HennosUser, path: string, uuid: string): Promise<string> {
+    Logger.info(user, `Processing document at path: ${path} with UUID: ${uuid}.`);
+    
     const dir = new SimpleDirectoryReader();
     const documents = await dir.loadData({
         directoryPath: path

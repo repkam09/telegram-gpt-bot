@@ -8,6 +8,8 @@ COPY package.json package.json
 COPY package-lock.json package-lock.json
 COPY tsconfig.json tsconfig.json
 COPY .eslintrc.json .eslintrc.json
+COPY prisma/schema.prisma prisma/schema.prisma
+COPY prisma/migrations prisma/migrations
 
 # Install dependencies
 RUN npm install

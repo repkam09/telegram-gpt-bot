@@ -1,26 +1,15 @@
 import path from "path";
 import { Config } from "../singletons/config";
 import { handlePlainTextDocument } from "../handlers/document";
-import TelegramBot from "node-telegram-bot-api";
+import { HennosUser } from "../singletons/user";
 
 async function test() {
-    Config.validate();
-
-    const chatId = 89941288;
-    const filePath = path.join("documents", "89941288");
-
-    const document: TelegramBot.Document = {
-        file_name: "file_name",
-        file_size: 0,
-        mime_type: "text/plain",
-        file_id: "file_id",
-        file_unique_id: "file_unique_id",
-        thumb: undefined
-    };
+    const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
+    const filePath = path.join("documents", Config.TELEGRAM_BOT_ADMIN.toString());
 
     const startTime = Date.now();
     try {
-        const result = await handlePlainTextDocument(chatId, filePath, document);
+        const result = await handlePlainTextDocument(user, filePath, "file_unique_id");
         const endTime = Date.now();
         console.log(result, `Execution time: ${endTime - startTime}ms`);
     } catch (err) {

@@ -1,8 +1,7 @@
 import Koa, { Context } from "koa";
 import Router from "@koa/router";
-import { processChatCompletion, updateChatContext } from "../../handlers/text/common";
-import { buildPrompt } from "../../handlers/text/private";
-import { Database } from "../../singletons/sqlite";
+import { handlePrivateMessage } from "../../handlers/text/private";
+import { HennosUser } from "../../singletons/user";
 
 interface KoaContext extends Context {
     request: KoaRequest;
@@ -17,12 +16,21 @@ interface ChatRequestBody {
 }
 
 export function routes(router: Router) {
-    router.post("/chat/:id", async (ctx: KoaContext): Promise<void> => {
+    router.post("/chat/:id", async (ctx: KoaContext, next: Koa.Next): Promise<void> => {
         const { id } = ctx.params;
         const { message }: ChatRequestBody = ctx.request.body;
 
         const chatId = Number.parseInt(id);
-        const result = await handlePrivateMessage(chatId, message);
+        const user = await HennosUser.exists(chatId);
+        if (!user || !user.whitelisted) {
+            ctx.body = {
+                error: true,
+                message: "Invalid User Id"
+            };
+            return next();
+        }
+
+        const result = await handlePrivateMessage(user, message);
 
         ctx.body = {
             id,
@@ -30,18 +38,4 @@ export function routes(router: Router) {
             error: false
         };
     });
-}
-
-async function handlePrivateMessage(chatId: number, message: string): Promise<string> {
-    const db = Database.instance();
-    const user = await db.user.findUniqueOrThrow({ where: { chatId: chatId } });
-
-    const prompt = await buildPrompt(chatId, user.firstName);
-    const context = await updateChatContext(chatId, "user", message);
-    const response = await processChatCompletion(chatId, [
-        ...prompt,
-        ...context
-    ]);
-    await updateChatContext(chatId, "assistant", response);
-    return response;
 }

@@ -1,15 +1,16 @@
 import { Config } from "../singletons/config";
 import readline from "node:readline";
 import axios from "axios";
-import { processChatCompletionLocal } from "../handlers/text/common";
+import { processChatCompletionLocal } from "../singletons/completions";
 import OpenAI from "openai";
 import { convert } from "html-to-text";
+import { HennosUser } from "../singletons/user";
 
 async function search(query: string) {
-    Config.validate();
+    const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
 
-    const processed = buildQueryParsePrompt(-1, query);
-    const result = await processChatCompletionLocal(-1, processed);
+    const processed = buildQueryParsePrompt(user, query);
+    const result = await processChatCompletionLocal(user, processed);
 
     let queries: string[] = [query];
     try {
@@ -58,12 +59,11 @@ async function search(query: string) {
         context.push(r);
     });
 
-    const chatId = -1;
-    const prompt = buildSearchResponsePrompt(chatId, query, context);
+    const prompt = buildSearchResponsePrompt(user, query, context);
 
     console.log(prompt);
 
-    const completion = await processChatCompletionLocal(chatId, prompt);
+    const completion = await processChatCompletionLocal(user, prompt);
     console.log(completion);
 }
 
@@ -94,7 +94,7 @@ async function getHTMLSearchResults(url: string): Promise<string> {
     return html.data;
 }
 
-function buildQueryParsePrompt(chatId: number, query: string): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+function buildQueryParsePrompt(user: HennosUser, query: string): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",
@@ -121,7 +121,7 @@ function buildQueryParsePrompt(chatId: number, query: string): OpenAI.Chat.Compl
     return prompt;
 }
 
-function buildSearchResponsePrompt(chatId: number, query: string, context: { term: string, result: string }[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+function buildSearchResponsePrompt(user: HennosUser, query: string, context: { term: string, result: string }[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
             role: "system",

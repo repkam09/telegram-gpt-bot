@@ -7,10 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Chat {
-  chatId BigInt @id
-}
-
 model User {
   chatId        BigInt  @id
   firstName     String
@@ -20,6 +16,8 @@ model User {
   voice         String?
   preferredName String?
   botName       String?
+  latitude      Float?
+  longitude     Float?
 }
 
 model Group {
@@ -34,10 +32,4 @@ model Messages {
   content  String
   datetime DateTime @default(now())
   role     String
-}
-
-model SystemSettings {
-  id    Int    @id @default(autoincrement())
-  key   String @unique
-  value String
 }

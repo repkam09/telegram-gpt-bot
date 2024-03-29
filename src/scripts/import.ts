@@ -1,4 +1,3 @@
-import { Config } from "../singletons/config";
 import { createClient } from "redis";
 import dotenv from "dotenv";
 import { Database } from "../singletons/sqlite";
@@ -19,7 +18,6 @@ const client = createClient({
 });
 
 async function database() {
-    Config.validate();
     await Database.init();
     await client.connect();
 
