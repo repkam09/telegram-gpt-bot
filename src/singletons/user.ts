@@ -154,7 +154,7 @@ export class HennosUser {
                 firstName,
                 lastName,
                 username,
-                whitelisted: false
+                whitelisted: this.isAdmin()
             }
         });
         this.whitelisted = record.whitelisted;

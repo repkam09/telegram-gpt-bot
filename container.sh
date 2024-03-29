@@ -1,1 +1,1 @@
-docker build -t hennos-gpt . 
+docker build -t hennos-gpt:latest . 
