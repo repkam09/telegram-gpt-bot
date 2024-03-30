@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createClient } from "redis";
 import dotenv from "dotenv";
 import { Database } from "../singletons/sqlite";
+import { HennosUser } from "../singletons/user";
+import { HennosGroup } from "../singletons/group";
 
 dotenv.config();
 
@@ -21,87 +24,67 @@ async function database() {
     await Database.init();
     await client.connect();
 
-    const db = Database.instance();
-
     // Grab all the keys with the prefix 'hennos'
     const result = await client.keys("hennos:*");
+
+    // Do all the Group and User imports first
     for (const key of result) {
-        const parts = key.split(":");
-        const id = parts[1].trim();
-        const type = parts[2].trim();
-
-        console.log(`Importing ${type} for ${id}`);
-
-        if (type === "context") {
-            await handleContextImport(id, key);
-        }
-
+        const [_, id, type] = key.split(":").map((part) => part.trim());
         if (type === "name") {
             await handleNameImport(id, key);
         }
     }
 
+    // Next, import all the messages and chat context
     for (const key of result) {
-        const parts = key.split(":");
-        const id = parts[1].trim();
-        const type = parts[2].trim();
-
-        if (type === "custom-bot-name") {
-            const chatId = parseInt(id);
-            const rawBotName = await client.get(key) as string;
-            const botName = JSON.parse(rawBotName);
-            try {
-                await db.user.update({
-                    where: {
-                        chatId,
-                    },
-                    data: {
-                        botName: botName
-                    }
-                });
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        if (type === "custom-name") {
-            const chatId = parseInt(id);
-            const rawCustomName = await client.get(key) as string;
-            const customName = JSON.parse(rawCustomName);
-            try {
-                await db.user.update({
-                    where: {
-                        chatId,
-                    },
-                    data: {
-                        preferredName: customName
-                    }
-                });
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        if (type === "voice-settings") {
-            const chatId = parseInt(id);
-            const rawVoice = await client.get(key) as string;
-            const voice = JSON.parse(rawVoice);
-            try {
-                await db.user.update({
-                    where: {
-                        chatId,
-                    },
-                    data: {
-                        voice: voice
-                    }
-                });
-            } catch (e) {
-                console.error(e);
-            }
+        const [_, id, type] = key.split(":").map((part) => part.trim());
+        if (type === "context") {
+            await handleContextImport(id, key);
         }
     }
 
+    // Import all the custom user preferences
+    for (const key of result) {
+        const [_, id, type] = key.split(":").map((part) => part.trim());
+
+        if (type === "custom-bot-name") {
+            const raw = await client.get(key) as string;
+            const user = await HennosUser.exists(parseInt(id));
+            if (!user) {
+                throw new Error(`User does not exist: ${id}`);
+            }
+
+            console.log(`${id} setPreferredBotName ${raw}`);
+            await user.setPreferredBotName(JSON.parse(raw));
+        }
+
+        if (type === "custom-name") {
+            const raw = await client.get(key) as string;
+            const user = await HennosUser.exists(parseInt(id));
+            if (!user) {
+                throw new Error(`User does not exist: ${id}`);
+            }
+
+            console.log(`${id} setPreferredName ${raw}`);
+            await user.setPreferredName(JSON.parse(raw));
+        }
+
+        if (type === "voice-settings") {
+            const raw = await client.get(key) as string;
+            const user = await HennosUser.exists(parseInt(id));
+            if (!user) {
+                throw new Error(`User does not exist: ${id}`);
+            }
+
+            console.log(`${id} setPreferredVoice ${raw}`);
+            await user.setPreferredVoice(JSON.parse(raw));
+        }
+    }
+
+    // Import the whitelist into the user and groups 
     await handleWhitelistImport("hennos:system_value:whitelist");
+
+    // Quit!
     await client.disconnect();
 }
 
@@ -133,25 +116,15 @@ async function handleContextImport(id: string, key: string) {
 async function handleWhitelistImport(key: string) {
     const db = Database.instance();
 
-    const value = await client.get(key) as string;
-    const parsed = JSON.parse(value) as number[];
+    const raw = await client.get(key) as string;
+    const parsed = JSON.parse(raw) as number[];
 
     for (const chatId of parsed) {
         if (chatId > 0) {
-            const exists = await db.user.findUnique({
-                where: {
-                    chatId
-                }
-            });
-            if (exists) {
-                await db.user.update({
-                    where: {
-                        chatId
-                    },
-                    data: {
-                        whitelisted: true
-                    }
-                });
+            const user = await HennosUser.exists(chatId);
+            if (user) {
+                console.log(`User ${chatId} setWhitelisted true`);
+                await HennosUser.setWhitelisted(user, true);
             }
         }
 
@@ -162,6 +135,7 @@ async function handleWhitelistImport(key: string) {
                 }
             });
             if (exists) {
+                console.log(`Group ${chatId} setWhitelisted true`);
                 await db.group.update({
                     where: {
                         chatId
@@ -176,7 +150,6 @@ async function handleWhitelistImport(key: string) {
 }
 
 async function handleNameImport(id: string, key: string) {
-    const db = Database.instance();
     const chatId = parseInt(id);
     if (isNaN(chatId)) {
         throw new Error(`Invalid chat ID: ${id}`);
@@ -212,23 +185,10 @@ async function handleNameImport(id: string, key: string) {
         }
 
         const firstName = reversed.join(" ");
-        await db.user.upsert({
-            where: {
-                chatId
-            },
-            create: {
-                chatId,
-                username,
-                firstName,
-                lastName,
-                whitelisted: false
-            },
-            update: {
-                username,
-                firstName,
-                lastName
-            }
-        });
+
+        const user = new HennosUser(chatId);
+        console.log("Creating User: ", chatId, firstName, lastName, username);
+        await user.setBasicInfo(firstName, lastName, username);
     }
 
     if (chatId < 0) {
@@ -245,19 +205,9 @@ async function handleNameImport(id: string, key: string) {
             throw new Error(`Chat ID mismatch: ${groupId} !== ${chatId}`);
         }
 
-        await db.group.upsert({
-            where: {
-                chatId
-            },
-            create: {
-                chatId,
-                name: chatName,
-                whitelisted: false
-            },
-            update: {
-                name: chatName
-            }
-        });
+        const group = new HennosGroup(chatId);
+        console.log("Creating Group: ", chatId, chatName);
+        await group.setBasicInfo(chatName);
     }
 
 }
