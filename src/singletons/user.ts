@@ -57,6 +57,24 @@ export class HennosUser {
         return instance;
     }
 
+    static async byPairingToken(token: string): Promise<HennosUser | null> {
+        const db = Database.instance();
+        const result = await db.pairingToken.findUnique({
+            select: {
+                chatId: true
+            },
+            where: {
+                id: token
+            }
+        });
+
+        if (!result) {
+            return null;
+        }
+
+        return HennosUser.exists(Number(result.chatId));
+    }
+
     public async getBasicInfo() {
         const result = await this.db.user.findUniqueOrThrow({
             select: {
@@ -206,5 +224,23 @@ export class HennosUser {
                 chatId: this.chatId
             }
         });
+    }
+
+    public async createPairingToken(): Promise<string> {
+        await this.db.pairingToken.deleteMany({
+            where: {
+                chatId: this.chatId
+            }
+        });
+        const result = await this.db.pairingToken.create({
+            data: {
+                chatId: this.chatId
+            },
+            select: {
+                id: true
+            }
+        });
+
+        return result.id;
     }
 }

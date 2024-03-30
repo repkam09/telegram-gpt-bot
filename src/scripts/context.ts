@@ -12,10 +12,8 @@ dotenv.config();
 async function context() {
     await Database.init();
 
-    const user = await HennosUser.exists(Config.TELEGRAM_BOT_ADMIN);
-    if (!user) {
-        throw new Error("User does not exist");
-    }
+    const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
+    await user.setBasicInfo("Test");
 
     const rl = readline.createInterface({
         input: process.stdin,
@@ -24,6 +22,9 @@ async function context() {
 
     const userInfo = await user.getBasicInfo();
     console.log(JSON.stringify(userInfo, null, 4));
+
+    const token = await user.createPairingToken();
+    console.log(`Pairing token: ${token}`);
 
     let input;
 

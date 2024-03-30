@@ -5,8 +5,11 @@ import BodyParser from "koa-bodyparser";
 import { routes as chatPostRoutes } from "../routes/post/chat";
 import { routes as chatGetRoutes } from "../routes/get/chat";
 import { routes as rootGetRoutes } from "../routes/get/root";
+import { Database } from "../singletons/sqlite";
 
-export function server() {
+export async function server() {
+    await Database.init();
+
     const app = new Koa();
     const router = new Router({
         prefix: "/api/hennos"
@@ -30,3 +33,5 @@ export function server() {
 
     return app;
 }
+
+server();
