@@ -1,37 +1,77 @@
+import {
+    SimpleNodeParser,
+    SummaryIndex,
+    SummaryRetrieverMode,
+    serviceContextFromDefaults,
+    Ollama,
+    OllamaEmbedding,
+    ResponseSynthesizer,
+    MetadataMode,
+    SimpleDirectoryReader
+} from "llamaindex";
 import { Logger } from "../singletons/logger";
-import { ChatMemory } from "../singletons/memory";
-import { BotInstance } from "../singletons/telegram";
-import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
-import TelegramBot from "node-telegram-bot-api";
-import { NotWhitelistedMessage } from "./text/common";
+import { HennosUser } from "../singletons/user";
 
-export function listen() {
-    BotInstance.instance().on("document", handleDocument);
+export async function isSupportedDocumentType(mime_type: string): Promise<boolean> {
+    if (mime_type === "text/plain") {
+        return true;
+    }
+
+    return false;
 }
 
-async function handleDocument(msg: TelegramBot.Message) {    
-    const chatId = msg.chat.id;
-    if (msg.chat.type !== "private" || !msg.from || !msg.document) {
-        return;
+export async function handleDocumentMessage(user: HennosUser, path: string, mime_type: string, uuid: string): Promise<string> {
+    switch(mime_type) {
+    case "text/plain":
+        return handlePlainTextDocument(user, path, uuid);
+    default:
+        return `This document seems to be a ${mime_type} which is not yet supported.`;
     }
+}
 
-    if (isOnBlacklist(chatId)) {
-        Logger.trace("blacklist", msg);
-        return;
-    }
 
-    Logger.trace("document", msg);
+export async function handlePlainTextDocument(user: HennosUser, path: string, uuid: string): Promise<string> {
+    Logger.info(user, `Processing document at path: ${path} with UUID: ${uuid}.`);
+    
+    const dir = new SimpleDirectoryReader();
+    const documents = await dir.loadData({
+        directoryPath: path
+    });
 
-    const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
-    }
+    const serviceContext = serviceContextFromDefaults({
+        llm: new Ollama({
+            model: "mistral:text",
+            requestTimeout: 600000,
+            contextWindow: 4096
+        }),
+        embedModel: new OllamaEmbedding({
+            contextWindow: 4096,
+            model: "nomic-embed-text:latest",
+            requestTimeout: 600000
+        }),
+        nodeParser: new SimpleNodeParser({
+            chunkSize: 512,
+            chunkOverlap: 128
+        })
+    });
 
-    if (!isOnWhitelist(id)) {
-        await sendMessageWrapper(id, NotWhitelistedMessage);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
-        return;
-    }
+    const index = await SummaryIndex.fromDocuments(documents, {
+        serviceContext
+    });
 
-    await sendMessageWrapper(chatId, "Error: Documents and Files are not yet supported.");
+    const queryEngine = index.asQueryEngine({
+        responseSynthesizer: new ResponseSynthesizer({
+            metadataMode: MetadataMode.ALL,
+            serviceContext
+        }),
+        retriever: index.asRetriever({
+            mode: SummaryRetrieverMode.DEFAULT,
+        })
+    });
+
+    const response = await queryEngine.query({
+        query: "What was included in the appliance order?"
+    });
+
+    return response.toString();
 }

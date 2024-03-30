@@ -1,30 +1,30 @@
 import TelegramBot from "node-telegram-bot-api";
 import { BotInstance } from "../../../singletons/telegram";
-import { ValidTTSNames, getUserVoicePreference, setUserVoicePreference } from "../../voice";
+import { ValidTTSNames } from "../../voice";
 import { OpenAIWrapper } from "../../../singletons/openai";
-import { sendVoiceMemoWrapper } from "../../../utils";
+import { Logger } from "../../../singletons/logger";
+import { HennosUser } from "../../../singletons/user";
 
-type MessageWithText = TelegramBot.Message & { text: string }
-
-export async function handleVoiceSettingsCallback(chatId: number, queryId: string, data: string) {
+export async function handleVoiceSettingsCallback(user: HennosUser, queryId: string, data: string) {
     // Set the voice and return to the user.
     const name = data.replace("voice-settings-", "").trim();
 
     const bot = BotInstance.instance();
-    setUserVoicePreference(chatId, name as ValidTTSNames).then(() => {
+    user.setPreferredVoice(name as ValidTTSNames).then(() => {
         bot.answerCallbackQuery(queryId, {
             text: "Future audio messages will use the " + name + " voice."
         });
-        bot.sendMessage(chatId, "Configuration saved. Future audio messages will use the " + name + " voice.");
-    }).catch(() => {
+        bot.sendMessage(user.chatId, "Configuration saved. Future audio messages will use the " + name + " voice.");
+    }).catch((err: unknown) => {
+        Logger.error(user, "Error while updating voice settings", err);
         bot.answerCallbackQuery(queryId, {
             text: "There was an error while updating your voice settings"
         });
-        bot.sendMessage(chatId, "There was an error while updating your voice settings");
+        bot.sendMessage(user.chatId, "There was an error while updating your voice settings");
     });
 }
 
-export async function sendVoiceSettingsPrompt(chatId: number) {
+export async function sendVoiceSettingsPrompt(user: HennosUser) {
     const opts: TelegramBot.SendMessageOptions = {
         reply_markup: {
             resize_keyboard: true,
@@ -64,21 +64,16 @@ export async function sendVoiceSettingsPrompt(chatId: number) {
     };
 
     const bot = BotInstance.instance();
-    bot.sendMessage(chatId, "You can customize the voice that Hennos uses when sending audio messages. Select one of the options below:  ", opts);
+    bot.sendMessage(user.chatId, "You can customize the voice that Hennos uses when sending audio messages. Select one of the options below:  ", opts);
 }
 
-export async function handleVoiceSettingsCommand(msg: MessageWithText) {
-    return sendVoiceSettingsPrompt(msg.chat.id);
-}
-
-export async function handleVoiceReadCommand(msg: MessageWithText) {
-    const chatId = msg.chat.id;
-    const text = msg.text.replace("/read", "").trim();
+export async function handleVoiceReadCommand(user: HennosUser, text: string) {
+    text = text.replace("/read", "").trim();
     if (text) {
-        const voice = await getUserVoicePreference(chatId);
+        const { voice } = await user.getPreferences();
         const result = await OpenAIWrapper.instance().audio.speech.create({
             model: "tts-1",
-            voice: voice,
+            voice: voice as ValidTTSNames,
             input: text,
             response_format: "opus"
         });
@@ -86,6 +81,6 @@ export async function handleVoiceReadCommand(msg: MessageWithText) {
         const arrayBuffer = await result.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        await sendVoiceMemoWrapper(chatId, buffer);
+        await BotInstance.sendVoiceMemoWrapper(user.chatId, buffer);
     }
 }

@@ -1,34 +1,24 @@
 import { Config } from "./singletons/config";
-import * as handlers from "./handlers";
-import { BotInstance } from "./singletons/telegram";
+import { Database } from "./singletons/sqlite";
 import { OpenAIWrapper } from "./singletons/openai";
-import { RedisCache } from "./singletons/redis";
+import { BotInstance } from "./singletons/telegram";
+import { Vector } from "./singletons/vector";
 
 async function start() {
     // Check that all the right environment variables are set
-    Config.validate();
+    console.log(`OPENAI_API_LLM: ${Config.OPENAI_API_LLM}`);
+    console.log(`OLLAMA_LLM: ${Config.OLLAMA_LLM}`);
+    console.log(`HENNOS_MAX_TOKENS: ${Config.HENNOS_MAX_TOKENS}`);
+    console.log(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
+    console.log(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
 
     // Create an OpenAI Instance
     OpenAIWrapper.instance();
 
-    if (Config.USE_PERSISTANT_CACHE) {
-        await RedisCache.init();
-    }
+    await Database.init();
+    await Vector.init();
 
-    await Config.sync();
-
-    // Create a Telegram Bot Instance
-    BotInstance.instance();
-
-    // Attach the Telegram message handlers
-    handlers.audio();
-    handlers.contact();
-    handlers.document();
-    handlers.location();
-    handlers.photos();
-    handlers.text();
-    handlers.voice();
-    handlers.sticker();
+    BotInstance.init();
 }
 
 // Kick off the async function

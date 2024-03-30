@@ -1,46 +1,52 @@
+import OpenAI from "openai";
+import { OpenAIWrapper } from "../singletons/openai";
+import { HennosUser } from "../singletons/user";
 import { Logger } from "../singletons/logger";
-import { ChatMemory } from "../singletons/memory";
-import { BotInstance } from "../singletons/telegram";
-import { isOnBlacklist, isOnWhitelist, sendAdminMessage, sendMessageWrapper } from "../utils";
-import TelegramBot from "node-telegram-bot-api";
-import { NotWhitelistedMessage, processUserImageInput, updateChatContext } from "./text/common";
 
-export function listen() {
-    BotInstance.instance().on("photo", handlePhoto);
-}
+export async function handleImageMesssage(user: HennosUser, url: string, query?: string): Promise<string> {
+    Logger.info(user, "handleImageMesssage Start (gpt-4-vision-preview)");
 
-async function handlePhoto(msg: TelegramBot.Message) {
-    const chatId = msg.chat.id;
-    if (msg.chat.type !== "private" || !msg.from || !msg.photo) {
-        return;
+    const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
+        {
+            type: "text",
+            text: query ? query : "Describe this image in as much detail as posible"
+        },
+        {
+            type: "image_url",
+            image_url: {
+                detail: "low",
+                url
+            }
+        }
+    ];
+
+    const completion = await OpenAIWrapper.instance().chat.completions.create({
+        model: "gpt-4-vision-preview",
+        max_tokens: 2000,
+        messages: [
+            {
+                role: "user",
+                content
+            },
+        ],
+    });
+
+    const response = completion.choices[0].message.content;
+    if (!response) {
+        Logger.info(user, "handleImageMesssage End");
+        return "No information available about this image";
     }
 
-    if (isOnBlacklist(chatId)) {
-        Logger.trace("blacklist", msg);
-        return;
+    if (query) {
+        await user.updateChatContext("system", "The user sent an image message.");
+        await user.updateChatContext("user", query);
+        await user.updateChatContext("assistant", response);
     }
 
-    Logger.trace("photo_private", msg);
-
-    const { first_name, last_name, username, id } = msg.from;
-    if (!await ChatMemory.hasName(id)) {
-        await ChatMemory.setName(id, `${first_name} ${last_name} [${username}] [${id}]`);
+    if (!query) {
+        await user.updateChatContext("system", `The user sent an image message. Here is a description of the image: ${response}`);
     }
 
-    if (!isOnWhitelist(id)) {
-        await sendMessageWrapper(id, NotWhitelistedMessage);
-        await sendAdminMessage(`${first_name} ${last_name} [${username}] [${id}] sent a message but is not whitelisted`);
-        return;
-    }
-
-    const message = await processUserImageInput(chatId, msg.photo, msg.caption);
-    if (!msg.caption) {
-        await updateChatContext(chatId, "system", `The user sent an image. Here is a description of the image: ${message}`);
-    } else {
-        await updateChatContext(chatId, "system", "The user sent an image.");
-        await updateChatContext(chatId, "user", msg.caption);
-        await updateChatContext(chatId, "assistant", message);
-    }
-    await sendMessageWrapper(chatId, message);
-    return;
+    Logger.info(user, "handleImageMesssage End");
+    return response;
 }

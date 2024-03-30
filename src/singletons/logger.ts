@@ -2,17 +2,19 @@
 
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "./config";
+import { HennosUser } from "./user";
+import { HennosGroup } from "./group";
 
 export class Logger {
-    static info(message?: any, ...optionalParams: any[]): void {
+    static info(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
         console.log(new Date().toISOString(), message, ...optionalParams);
     }
 
-    static warn(message?: any, ...optionalParams: any[]): void {
+    static warn(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
         console.warn(new Date().toISOString(), message, ...optionalParams);
     }
 
-    static error(message?: any, ...optionalParams: any[]): void {
+    static error(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
         console.error(new Date().toISOString(), message, ...optionalParams);
     }
 
@@ -22,7 +24,7 @@ export class Logger {
         }
     }
 
-    static trace(type: string, msg: TelegramBot.Message) {
-        console.log(`${new Date().toISOString()}: first_name=${msg.from?.first_name}, last_name=${msg.from?.last_name}, username=${msg.from?.username}, userId=${msg.from?.id}, chatId=${msg.chat.id}, messageId=${msg.message_id}, type=${type}`);
+    static trace(context: string, msg: TelegramBot.Message) {
+        console.log(`${new Date().toISOString()}: first_name=${msg.from?.first_name}, last_name=${msg.from?.last_name}, username=${msg.from?.username}, userId=${msg.from?.id}, chatId=${msg.chat.id}, messageId=${msg.message_id}, context=${context}`);
     }
 }
