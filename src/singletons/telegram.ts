@@ -87,10 +87,6 @@ export class BotInstance {
 
     static init() {
         const bot = BotInstance.instance();
-        bot.on("message", (msg) => {
-            Logger.trace("trace", msg);
-        });
-
         bot.on("text", async (msg) => {
             if (!msg.from || !msg.text) {
                 return;
@@ -106,6 +102,7 @@ export class BotInstance {
             await user.setBasicInfo(msg.from.first_name, msg.from.last_name, msg.from.username);
 
             if (msg.text.startsWith("/")) {
+                Logger.trace("text_command", msg);
                 return handleTelegramCommandMessage(user, msg as MessageWithText);
             }
 
@@ -127,30 +124,37 @@ export class BotInstance {
         });
 
         bot.on("audio", async (msg) => {
+            Logger.trace("audio", msg);
             return validateIncomingMessage(msg, ["audio"], handleTelegramAudioMessage);
         });
 
         bot.on("contact", async (msg) => {
+            Logger.trace("contact", msg);
             return validateIncomingMessage(msg, ["contact"], handleTelegramContactMessage);
         });
 
         bot.on("document", async (msg) => {
+            Logger.trace("document", msg);
             return validateIncomingMessage(msg, ["document"], handleTelegramDocumentMessage);
         });
 
         bot.on("location", async (msg) => {
+            Logger.trace("location", msg);
             return validateIncomingMessage(msg, ["location"], handleTelegramLocationMessage);
         });
 
         bot.on("photo", async (msg) => {
+            Logger.trace("photo", msg);
             return validateIncomingMessage(msg, ["photo"], handleTelegramPhotoMessage);
         });
 
         bot.on("voice", async (msg) => {
+            Logger.trace("voice", msg);
             return validateIncomingMessage(msg, ["voice"], handleTelegramVoiceMessage);
         });
 
         bot.on("sticker", async (msg) => {
+            Logger.trace("sticker", msg);
             return handleTelegramStickerMessage(msg as TelegramBot.Message & { sticker: TelegramBot.Sticker });
         });
 
@@ -180,6 +184,8 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     if (!msg.text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
         return;
     }
+
+    Logger.trace("text_group", msg);
 
     if (!group.whitelisted && !user.whitelisted) {
         return;
@@ -214,6 +220,7 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
         if (!messages) return;
 
         // If we have one or more messages, process them
+        Logger.trace("text_private", msg);
         const response = await handlePrivateMessage(user, messages.length === 1 ? messages[0] : messages.join("\n"));
 
         // Send the response to the user
