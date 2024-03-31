@@ -7,15 +7,15 @@ import { HennosGroup } from "./group";
 
 export class Logger {
     static info(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
-        console.log(new Date().toISOString(), message, ...optionalParams);
+        console.log(new Date().toISOString(), user.toString(), message, ...optionalParams);
     }
 
     static warn(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
-        console.warn(new Date().toISOString(), message, ...optionalParams);
+        console.warn(new Date().toISOString(), user.toString(), message, ...optionalParams);
     }
 
     static error(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
-        console.error(new Date().toISOString(), message, ...optionalParams);
+        console.error(new Date().toISOString(), user.toString(), message, ...optionalParams);
     }
 
     static debug(message?: any, ...optionalParams: any[]): void {

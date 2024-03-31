@@ -5,6 +5,7 @@ import { processChatCompletionLocal } from "../singletons/completions";
 import OpenAI from "openai";
 import { convert } from "html-to-text";
 import { HennosUser } from "../singletons/user";
+import { getHTMLSearchResults } from "../singletons/tools";
 
 async function search(query: string) {
     const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
@@ -76,19 +77,6 @@ async function getSearchResults(url: string) {
         method: "get",
         url: url,
         responseType: "json"
-    });
-
-    return html.data;
-}
-
-async function getHTMLSearchResults(url: string): Promise<string> {
-    const html = await axios({
-        headers: {
-            "User-Agent": "HennosBot/1.0"
-        },
-        method: "get",
-        url: url,
-        responseType: "text"
     });
 
     return html.data;

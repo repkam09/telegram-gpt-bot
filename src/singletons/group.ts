@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { Database } from "./sqlite";
 import OpenAI from "openai";
+import { Config } from "./config";
 
 export class HennosGroup {
     public chatId: number;
@@ -16,7 +17,11 @@ export class HennosGroup {
     }
 
     public toString(): string {
-        return String(this.chatId);
+        return `HennosGroup ${String(this.chatId)}`;
+    }
+
+    public allowFunctionCalling(): boolean {
+        return Config.TELEGRAM_BOT_ADMIN === this.chatId;
     }
 
     public async setBasicInfo(name: string | undefined) {

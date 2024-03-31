@@ -4,6 +4,10 @@ import { Logger } from "./logger";
 import { OpenAIWrapper } from "./openai";
 import { HennosUser } from "./user";
 import { HennosGroup } from "./group";
+import {
+    duck_duck_go_search_tool,
+    process_tool_calls
+} from "./tools";
 
 export async function processChatCompletionLocal(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -77,7 +81,7 @@ export async function processChatCompletionLimited(user: HennosUser, prompt: Ope
     }
 }
 
-export async function processChatCompletion(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
+export async function processChatCompletion(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth = 0): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
         return processChatCompletionLocal(req, prompt);
     }
@@ -86,8 +90,16 @@ export async function processChatCompletion(req: HennosUser | HennosGroup, promp
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
         model: model,
         messages: prompt,
-        stream: false
+        stream: false,
+        tool_choice: "none"
     };
+
+    if (req.allowFunctionCalling()) {
+        options.tool_choice = "auto";
+        options.tools = [
+            duck_duck_go_search_tool
+        ];
+    }
 
     try {
         Logger.info(req, `createChatCompletion Start (${Config.OPENAI_API_LLM})`);
@@ -103,6 +115,17 @@ export async function processChatCompletion(req: HennosUser | HennosGroup, promp
         const { message } = response.choices[0];
         if (!message || !message.role) {
             throw new Error("Unexpected createChatCompletion Result: Bad Message Content Role");
+        }
+
+        if (message.tool_calls) {
+            if (depth > 3) throw new Error("processChatCompletion recursion depth exceeded");
+
+            const tool_messages = await process_tool_calls(req, message.tool_calls);
+            return processChatCompletion(req, [
+                ...prompt,
+                message,
+                ...tool_messages
+            ], depth + 1);
         }
 
         if (message.content) {

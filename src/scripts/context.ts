@@ -12,10 +12,8 @@ dotenv.config();
 async function context() {
     await Database.init();
 
-    const user = await HennosUser.exists(Config.TELEGRAM_BOT_ADMIN);
-    if (!user) {
-        throw new Error("User does not exist");
-    }
+    const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
+    await user.setBasicInfo("Test");
 
     const rl = readline.createInterface({
         input: process.stdin,

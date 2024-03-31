@@ -22,7 +22,11 @@ export class HennosUser {
     }
 
     public toString(): string {
-        return String(this.chatId);
+        return `HennosUser ${String(this.chatId)}`;
+    }
+
+    public allowFunctionCalling(): boolean {
+        return Config.TELEGRAM_BOT_ADMIN === this.chatId;
     }
 
     static setWhitelisted(user: HennosUser, whitelisted: boolean) {
