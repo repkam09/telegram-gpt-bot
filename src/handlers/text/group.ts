@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { processChatCompletion } from "../../singletons/completions";
 import { HennosGroup } from "../../singletons/group";
 import { getSizedChatContext } from "../../singletons/context";
+import { Logger } from "../../singletons/logger";
 
 export async function handleWhitelistedGroupMessage(group: HennosGroup, text: string): Promise<string> {
     const { name } = await group.getBasicInfo();
@@ -23,11 +24,23 @@ export async function handleWhitelistedGroupMessage(group: HennosGroup, text: st
         }
     ];
 
-    await group.updateChatContext("user", text);
+    const context = await group.getChatContext();
 
-    const messages = await getSizedChatContext(group, prompt);
-    const response = await processChatCompletion(group, messages);
+    context.push({
+        role: "user",
+        content: text
+    });
 
-    await group.updateChatContext("assistant", response);
-    return response;
+    const messages = await getSizedChatContext(group, prompt, context);
+
+    try {
+        const response = await processChatCompletion(group, messages);
+        await group.updateChatContext("user", text);
+        await group.updateChatContext("assistant", response);
+        return response;
+    } catch (err) {
+        const error = err as Error;
+        Logger.error(group, `Error processing chat completion: ${error.message}`, error.stack);
+        return "Sorry, I was unable to process your message";
+    }
 }

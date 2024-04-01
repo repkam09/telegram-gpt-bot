@@ -96,6 +96,14 @@ export class Config {
         return process.env.OPENAI_API_LLM;
     }
 
+    static get OPENAI_API_LIMITED_LLM() {
+        if (!process.env.OPENAI_API_LIMITED_LLM) {
+            return "gpt-3.5-turbo";
+        }
+
+        return process.env.OPENAI_API_LIMITED_LLM;
+    }
+
     static get OLLAMA_LLM(): string {
         if (!process.env.OLLAMA_LLM) {
             return "mistral:7b";

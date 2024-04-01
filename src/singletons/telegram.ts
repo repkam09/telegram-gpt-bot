@@ -124,33 +124,27 @@ export class BotInstance {
         });
 
         bot.on("audio", async (msg) => {
-            Logger.trace("audio", msg);
-            return validateIncomingMessage(msg, ["audio"], handleTelegramAudioMessage);
+            return validateIncomingMessage(msg, "audio", handleTelegramAudioMessage);
         });
 
         bot.on("contact", async (msg) => {
-            Logger.trace("contact", msg);
-            return validateIncomingMessage(msg, ["contact"], handleTelegramContactMessage);
+            return validateIncomingMessage(msg, "contact", handleTelegramContactMessage);
         });
 
         bot.on("document", async (msg) => {
-            Logger.trace("document", msg);
-            return validateIncomingMessage(msg, ["document"], handleTelegramDocumentMessage);
+            return validateIncomingMessage(msg, "document", handleTelegramDocumentMessage);
         });
 
         bot.on("location", async (msg) => {
-            Logger.trace("location", msg);
-            return validateIncomingMessage(msg, ["location"], handleTelegramLocationMessage);
+            return validateIncomingMessage(msg, "location", handleTelegramLocationMessage);
         });
 
         bot.on("photo", async (msg) => {
-            Logger.trace("photo", msg);
-            return validateIncomingMessage(msg, ["photo"], handleTelegramPhotoMessage);
+            return validateIncomingMessage(msg, "photo", handleTelegramPhotoMessage);
         });
 
         bot.on("voice", async (msg) => {
-            Logger.trace("voice", msg);
-            return validateIncomingMessage(msg, ["voice"], handleTelegramVoiceMessage);
+            return validateIncomingMessage(msg, "voice", handleTelegramVoiceMessage);
         });
 
         bot.on("sticker", async (msg) => {
@@ -307,7 +301,7 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function validateIncomingMessage(msg: unknown, requiredProperties: (keyof TelegramBot.Message)[], handler: (user: HennosUser, msg: any) => Promise<void>): Promise<void> {
+async function validateIncomingMessage(msg: unknown, requiredProperty: keyof TelegramBot.Message, handler: (user: HennosUser, msg: any) => Promise<void>): Promise<void> {
     const message = msg as TelegramBot.Message;
     if (message.chat.type !== "private" || !message.from) {
         return;
@@ -319,19 +313,18 @@ async function validateIncomingMessage(msg: unknown, requiredProperties: (keyof 
         }
     }
 
-
-    requiredProperties.forEach((property) => {
-        if (!message[property]) {
-            return;
-        }
-    });
+    if (!message[requiredProperty]) {
+        return;
+    }
 
     const user = new HennosUser(message.from.id);
     await user.setBasicInfo(message.from.first_name, message.from.last_name, message.from.username);
     if (!user.whitelisted) {
+        Logger.trace(`${requiredProperty} [but not whitelisted]`, message);
         return BotInstance.sendMessageWrapper(user, "Sorry, you have not been whitelisted to use this feature.");
     }
 
+    Logger.trace(requiredProperty, message);
     return handler(user, message);
 }
 

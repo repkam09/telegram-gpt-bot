@@ -43,19 +43,79 @@ export async function processChatCompletionLocal(req: HennosUser | HennosGroup, 
     }
 }
 
+async function toolCallsApplicable(req: HennosUser | HennosGroup, message: OpenAI.Chat.Completions.ChatCompletionMessageParam): Promise<string[] | false> {
+    if (!req.allowFunctionCalling()) {
+        return false;
+    }
+
+    const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+        model: Config.OPENAI_API_LIMITED_LLM,
+        messages: [
+            {
+                role: "system",
+                content: "You are a helpful chat asistant that answers questions and provides information."
+            },
+            {
+                role: "system",
+                content: "Use any tools and functions available to you to provide the best possible answer."
+            },
+            message
+        ],
+        stream: false,
+        tool_choice: "auto",
+        tools: [
+            duck_duck_go_search_tool
+        ]
+    };
+
+    try {
+        Logger.info(req, `toolCallsApplicable Start (${Config.OPENAI_API_LIMITED_LLM})`);
+
+        const response = await OpenAIWrapper.limited_instance().chat.completions.create(options);
+
+        Logger.info(req, "toolCallsApplicable End");
+
+        if (!response || !response.choices) {
+            throw new Error("Unexpected toolCallsApplicable Result: Bad Response Data Choices");
+        }
+
+        const called_tools: string[] = [];
+        for (const choice of response.choices) {
+            if (choice.message && choice.message.tool_calls) {
+                for (const tool_call of choice.message.tool_calls) {
+                    if (tool_call.function) {
+                        called_tools.push(tool_call.function.name);
+                    }
+                }
+            }
+        }
+
+        if (called_tools.length > 0) {
+            return called_tools;
+        }
+
+        return false;
+    } catch (err) {
+        const error = err as Error;
+        Logger.error(req, "toolCallsApplicable Error:", error.message, error.stack, options);
+        return false;
+    }
+}
+
+
 export async function processChatCompletionLimited(user: HennosUser, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     if (Config.HENNOS_DEVELOPMENT_MODE) {
         return processChatCompletionLocal(user, prompt);
     }
 
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-        model: "gpt-3.5-turbo",
+        model: Config.OPENAI_API_LIMITED_LLM,
         messages: prompt,
         stream: false
     };
 
     try {
-        Logger.info(user, "createChatCompletion Limited Start (gpt-3.5-turbo)");
+        Logger.info(user, `createChatCompletion Limited Start (${Config.OPENAI_API_LIMITED_LLM})`);
 
         const response = await OpenAIWrapper.limited_instance().chat.completions.create(options);
 
@@ -94,47 +154,44 @@ export async function processChatCompletion(req: HennosUser | HennosGroup, promp
     };
 
     if (req.allowFunctionCalling()) {
-        options.tool_choice = "auto";
-        options.tools = [
-            duck_duck_go_search_tool
-        ];
+        const tool_calls = await toolCallsApplicable(req, prompt[prompt.length - 1]);
+        if (tool_calls) {
+            options.tool_choice = "auto";
+            options.tools = [
+                duck_duck_go_search_tool
+            ];
+        }
     }
 
-    try {
-        Logger.info(req, `createChatCompletion Start (${Config.OPENAI_API_LLM})`);
+    Logger.info(req, `createChatCompletion Start (${Config.OPENAI_API_LLM})`);
 
-        const response = await OpenAIWrapper.instance().chat.completions.create(options);
+    const response = await OpenAIWrapper.instance().chat.completions.create(options);
 
-        Logger.info(req, "createChatCompletion End");
+    Logger.info(req, "createChatCompletion End");
 
-        if (!response || !response.choices) {
-            throw new Error("Unexpected createChatCompletion Result: Bad Response Data Choices");
-        }
-
-        const { message } = response.choices[0];
-        if (!message || !message.role) {
-            throw new Error("Unexpected createChatCompletion Result: Bad Message Content Role");
-        }
-
-        if (message.tool_calls) {
-            if (depth > 3) throw new Error("processChatCompletion recursion depth exceeded");
-
-            const tool_messages = await process_tool_calls(req, message.tool_calls);
-            return processChatCompletion(req, [
-                ...prompt,
-                message,
-                ...tool_messages
-            ], depth + 1);
-        }
-
-        if (message.content) {
-            return message.content;
-        }
-
-        throw new Error("Unexpected createChatCompletion Result: Bad Message Format");
-    } catch (err: unknown) {
-        const error = err as Error;
-        Logger.error(req, "CreateChatCompletion Error:", error.message, error.stack, options);
-        return "Sorry, I was unable to process your message";
+    if (!response || !response.choices) {
+        throw new Error("Unexpected createChatCompletion Result: Bad Response Data Choices");
     }
+
+    const { message } = response.choices[0];
+    if (!message || !message.role) {
+        throw new Error("Unexpected createChatCompletion Result: Bad Message Content Role");
+    }
+
+    if (message.tool_calls) {
+        if (depth > 3) throw new Error("processChatCompletion recursion depth exceeded");
+
+        const tool_messages = await process_tool_calls(req, message.tool_calls);
+        return processChatCompletion(req, [
+            ...prompt,
+            message,
+            ...tool_messages
+        ], depth + 1);
+    }
+
+    if (message.content) {
+        return message.content;
+    }
+
+    throw new Error("Unexpected createChatCompletion Result: Bad Message Format");
 }

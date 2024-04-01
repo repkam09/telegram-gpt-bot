@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { HennosUser } from "../../singletons/user";
 import { getSizedChatContext } from "../../singletons/context";
 import { moderateLimitedUserTextInput } from "../../singletons/moderation";
+import { Logger } from "../../singletons/logger";
 
 export async function handlePrivateMessage(user: HennosUser, text: string): Promise<string> {
     if (user.whitelisted) {
@@ -13,14 +14,25 @@ export async function handlePrivateMessage(user: HennosUser, text: string): Prom
 }
 
 async function handleWhitelistedPrivateMessage(user: HennosUser, text: string): Promise<string> {
-    await user.updateChatContext("user", text);
-
     const prompt = await buildPrompt(user);
-    const messages = await getSizedChatContext(user, prompt);
-    const response = await processChatCompletion(user, messages);
+    const context = await user.getChatContext();
 
-    await user.updateChatContext("assistant", response);
-    return response;
+    context.push({
+        role: "user",
+        content: text
+    });
+
+    const messages = await getSizedChatContext(user, prompt, context);
+    try {
+        const response = await processChatCompletion(user, messages);
+        await user.updateChatContext("user", text);
+        await user.updateChatContext("assistant", response);
+        return response;
+    } catch (err) {
+        const error = err as Error;
+        Logger.error(user, `Error processing chat completion: ${error.message}`, error.stack);
+        return "Sorry, I was unable to process your message";
+    }
 }
 
 async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): Promise<string> {
@@ -101,7 +113,5 @@ export async function buildPrompt(user: HennosUser): Promise<OpenAI.Chat.Complet
         });
         break;
     }
-
-
     return prompt;
 }

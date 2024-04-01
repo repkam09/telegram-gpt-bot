@@ -4,11 +4,9 @@ import { Config } from "./config";
 import OpenAI from "openai";
 import { HennosGroup } from "./group";
 
-export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], currentChatContext: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
     const promptTokens = getChatContextTokenCount(prompt);
-
-    const currentChatContext = await req.getChatContext();
-
+    
     let totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
     while (totalTokens > Config.HENNOS_MAX_TOKENS) {
         if (currentChatContext.length === 0) {

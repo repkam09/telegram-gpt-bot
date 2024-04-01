@@ -7,6 +7,7 @@ import { Vector } from "./singletons/vector";
 async function start() {
     // Check that all the right environment variables are set
     console.log(`OPENAI_API_LLM: ${Config.OPENAI_API_LLM}`);
+    console.log(`OPENAI_API_LIMITED_LLM: ${Config.OPENAI_API_LIMITED_LLM}`);
     console.log(`OLLAMA_LLM: ${Config.OLLAMA_LLM}`);
     console.log(`HENNOS_MAX_TOKENS: ${Config.HENNOS_MAX_TOKENS}`);
     console.log(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
