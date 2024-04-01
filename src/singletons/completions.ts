@@ -90,8 +90,7 @@ export async function processChatCompletion(req: HennosUser | HennosGroup, promp
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
         model: model,
         messages: prompt,
-        stream: false,
-        tool_choice: "none"
+        stream: false
     };
 
     if (req.allowFunctionCalling()) {
