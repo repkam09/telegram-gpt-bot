@@ -88,6 +88,34 @@ export class HennosUser {
         };
     }
 
+    public async getOpenAIKey(): Promise<string | null> {
+        const result = await this.db.openAI.findUnique({
+            select: {
+                api: true
+            },
+            where: {
+                chatId: this.chatId
+            }
+        });
+        
+        return result ? result.api : null;
+    }
+
+    public async setApiKey(apiKey: string): Promise<void> {
+        await this.db.openAI.upsert({
+            where: {
+                chatId: this.chatId
+            },
+            update: {
+                api: apiKey
+            },
+            create: {
+                chatId: this.chatId,
+                api: apiKey
+            }
+        });
+    }
+
     public async getPreferences() {
         const result = await this.db.user.findUniqueOrThrow({
             select: {

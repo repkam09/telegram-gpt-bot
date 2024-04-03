@@ -1,13 +1,29 @@
 import OpenAI from "openai";
 import { Config } from "./config";
+import { HennosGroup } from "./group";
+import { HennosUser } from "./user";
 
 export class OpenAIWrapper {
     private static _instance: OpenAI;
     private static _limited_instance: OpenAI;
     private static _limited_instance_ollama: OpenAI;
-    private static _models: OpenAI.Models;
 
-    static instance(): OpenAI {
+    private static async personal(req?: HennosUser | HennosGroup): Promise<OpenAI | null> {
+        if (!req) {
+            return null;
+        }
+
+        const custom = await req.getOpenAIKey();
+        if (!custom) {
+            return null;
+        }
+
+        return new OpenAI({
+            apiKey: custom,
+        });
+    }
+
+    static async instance(req?: HennosUser | HennosGroup): Promise<OpenAI> {
         if (!OpenAIWrapper._instance) {
             OpenAIWrapper._instance = new OpenAI({
                 organization: Config.OPENAI_API_ORG,
@@ -15,16 +31,13 @@ export class OpenAIWrapper {
             });
         }
 
-        return OpenAIWrapper._instance;
+        const personal = await this.personal(req);
+        return personal ?? OpenAIWrapper._instance;
     }
 
-    public static async models(): Promise<OpenAI.Models> {
-        if (!OpenAIWrapper._models) {
-            const temp = await OpenAIWrapper._instance.models;
-            OpenAIWrapper._models = temp;
-        }
-
-        return OpenAIWrapper._models;
+    public static async models(req?: HennosUser | HennosGroup): Promise<OpenAI.Models> {
+        const instance = await OpenAIWrapper.instance(req);
+        return instance.models;
     }
 
     public static limited_instance(): OpenAI {

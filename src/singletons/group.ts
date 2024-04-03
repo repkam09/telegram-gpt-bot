@@ -24,6 +24,10 @@ export class HennosGroup {
         return Config.TELEGRAM_BOT_ADMIN === this.chatId;
     }
 
+    public async getOpenAIKey(): Promise<string | null> {
+        return null;
+    }
+
     public async setBasicInfo(name: string | undefined) {
         const result = await this.db.group.upsert({
             select: {

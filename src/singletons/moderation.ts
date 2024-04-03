@@ -6,7 +6,8 @@ export async function moderateLimitedUserTextInput(user: HennosUser, text: strin
     Logger.info(user, "moderateLimitedUserTextInput Start (moderation)");
 
     try {
-        const response = await OpenAIWrapper.instance().moderations.create({
+        const instance = await OpenAIWrapper.instance(user);
+        const response = await instance.moderations.create({
             input: text
         });
 

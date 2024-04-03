@@ -8,7 +8,8 @@ export type ValidTTSNames = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shim
 
 export async function handleVoiceMessage(user: HennosUser, path: string): Promise<[string, ArrayBuffer | undefined]> {
     try {
-        const transcription = await OpenAIWrapper.instance().audio.transcriptions.create({
+        const instance = await OpenAIWrapper.instance();
+        const transcription = await instance.audio.transcriptions.create({
             model: "whisper-1",
             file: createReadStream(path)
         });
@@ -16,7 +17,7 @@ export async function handleVoiceMessage(user: HennosUser, path: string): Promis
         const response = await handlePrivateMessage(user, transcription.text);
 
         const { voice } = await user.getPreferences();
-        const result = await OpenAIWrapper.instance().audio.speech.create({
+        const result = await instance.audio.speech.create({
             model: "tts-1",
             voice: voice,
             input: response,

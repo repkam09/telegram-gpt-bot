@@ -20,7 +20,8 @@ export async function handleImageMesssage(user: HennosUser, url: string, query?:
         }
     ];
 
-    const completion = await OpenAIWrapper.instance().chat.completions.create({
+    const instance = await OpenAIWrapper.instance(user);
+    const completion = await instance.chat.completions.create({
         model: "gpt-4-vision-preview",
         max_tokens: 2000,
         messages: [
