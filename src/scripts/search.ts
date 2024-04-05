@@ -5,7 +5,8 @@ import { processChatCompletionLocal } from "../singletons/completions";
 import OpenAI from "openai";
 import { convert } from "html-to-text";
 import { HennosUser } from "../singletons/user";
-import { getHTMLSearchResults } from "../singletons/tools";
+import { getHTMLSearchResults } from "../tools/websearch";
+import { Logger } from "../singletons/logger";
 
 async function search(query: string) {
     const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
@@ -18,7 +19,7 @@ async function search(query: string) {
         const parsed = JSON.parse(result);
         if (parsed.queries && Array.isArray(parsed.queries)) {
             queries = parsed.queries;
-            console.log("Parsed queries: ", queries);
+            Logger.log("Parsed queries: ", queries);
         }
     } catch (err) {
         console.error("Failed to parse queries from result. Result: ```", result, "```");
@@ -62,10 +63,10 @@ async function search(query: string) {
 
     const prompt = buildSearchResponsePrompt(user, query, context);
 
-    console.log(prompt);
+    Logger.log(prompt);
 
     const completion = await processChatCompletionLocal(user, prompt);
-    console.log(completion);
+    Logger.log(completion);
 }
 
 
@@ -145,7 +146,7 @@ const rl = readline.createInterface({
     output: process.stdout,
 });
 
-console.log("Search DuckDuckGo");
+Logger.log("Search DuckDuckGo");
 rl.question("Query: ", query => {
     rl.close();
     search(query);

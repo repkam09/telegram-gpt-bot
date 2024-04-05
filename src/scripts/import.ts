@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { Database } from "../singletons/sqlite";
 import { HennosUser } from "../singletons/user";
 import { HennosGroup } from "../singletons/group";
+import { Logger } from "../singletons/logger";
 
 dotenv.config();
 
@@ -54,7 +55,7 @@ async function database() {
                 throw new Error(`User does not exist: ${id}`);
             }
 
-            console.log(`${id} setPreferredBotName ${raw}`);
+            Logger.log(`${id} setPreferredBotName ${raw}`);
             await user.setPreferredBotName(JSON.parse(raw));
         }
 
@@ -65,7 +66,7 @@ async function database() {
                 throw new Error(`User does not exist: ${id}`);
             }
 
-            console.log(`${id} setPreferredName ${raw}`);
+            Logger.log(`${id} setPreferredName ${raw}`);
             await user.setPreferredName(JSON.parse(raw));
         }
 
@@ -76,7 +77,7 @@ async function database() {
                 throw new Error(`User does not exist: ${id}`);
             }
 
-            console.log(`${id} setPreferredVoice ${raw}`);
+            Logger.log(`${id} setPreferredVoice ${raw}`);
             await user.setPreferredVoice(JSON.parse(raw));
         }
     }
@@ -123,7 +124,7 @@ async function handleWhitelistImport(key: string) {
         if (chatId > 0) {
             const user = await HennosUser.exists(chatId);
             if (user) {
-                console.log(`User ${chatId} setWhitelisted true`);
+                Logger.log(`User ${chatId} setWhitelisted true`);
                 await HennosUser.setWhitelisted(user, true);
             }
         }
@@ -135,7 +136,7 @@ async function handleWhitelistImport(key: string) {
                 }
             });
             if (exists) {
-                console.log(`Group ${chatId} setWhitelisted true`);
+                Logger.log(`Group ${chatId} setWhitelisted true`);
                 await db.group.update({
                     where: {
                         chatId
@@ -187,7 +188,7 @@ async function handleNameImport(id: string, key: string) {
         const firstName = reversed.join(" ");
 
         const user = new HennosUser(chatId);
-        console.log("Creating User: ", chatId, firstName, lastName, username);
+        Logger.log("Creating User: ", chatId, firstName, lastName, username);
         await user.setBasicInfo(firstName, lastName, username);
     }
 
@@ -206,7 +207,7 @@ async function handleNameImport(id: string, key: string) {
         }
 
         const group = new HennosGroup(chatId);
-        console.log("Creating Group: ", chatId, chatName);
+        Logger.log("Creating Group: ", chatId, chatName);
         await group.setBasicInfo(chatName);
     }
 

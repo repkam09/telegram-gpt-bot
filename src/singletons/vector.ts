@@ -15,12 +15,12 @@ export class Vector {
             promptHelper: new PromptHelper(),
             embedModel: new OllamaEmbedding({
                 model: "nomic-embed-text",
-                baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
+                baseURL: `http://${Config.OLLAMA_LOCAL_HOST}:${Config.OLLAMA_LOCAL_PORT}`,
                 contextWindow: 4096
             }),
             llm: new Ollama({
                 model: "tinyllama",
-                baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
+                baseURL: `http://${Config.OLLAMA_LOCAL_HOST}:${Config.OLLAMA_LOCAL_PORT}`,
             })
         });
 

@@ -26,7 +26,6 @@ export class OpenAIWrapper {
     static async instance(req?: HennosUser | HennosGroup): Promise<OpenAI> {
         if (!OpenAIWrapper._instance) {
             OpenAIWrapper._instance = new OpenAI({
-                organization: Config.OPENAI_API_ORG,
                 apiKey: Config.OPENAI_API_KEY,
             });
         }
@@ -43,7 +42,6 @@ export class OpenAIWrapper {
     public static limited_instance(): OpenAI {
         if (!OpenAIWrapper._limited_instance) {
             OpenAIWrapper._limited_instance = new OpenAI({
-                organization: Config.OPENAI_API_ORG_LIMITED,
                 apiKey: Config.OPENAI_API_KEY_LIMITED
             });
         }
@@ -53,9 +51,8 @@ export class OpenAIWrapper {
     public static limited_instance_ollama(): OpenAI {
         if (!OpenAIWrapper._limited_instance_ollama) {
             OpenAIWrapper._limited_instance_ollama = new OpenAI({
-                baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}/v1/`,
-                organization: Config.OPENAI_API_ORG_LIMITED,
-                apiKey: Config.OPENAI_API_ORG_LIMITED // This is a dummy key, it's not used for local ollama
+                baseURL: `http://${Config.OLLAMA_LOCAL_HOST}:${Config.OLLAMA_LOCAL_PORT}/v1/`,
+                apiKey: Config.OLLAMA_LOCAL_LLM // This is a dummy key, it's not used for local ollama
             });
         }
         return OpenAIWrapper._limited_instance_ollama;

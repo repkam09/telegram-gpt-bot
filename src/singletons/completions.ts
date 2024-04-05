@@ -5,19 +5,19 @@ import { OpenAIWrapper } from "./openai";
 import { HennosUser } from "./user";
 import { HennosGroup } from "./group";
 import {
-    duck_duck_go_search_tool,
     process_tool_calls
 } from "./tools";
+import { WebSearch } from "../tools/websearch";
 
 export async function processChatCompletionLocal(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-        model: Config.OLLAMA_LLM,
+        model: Config.OLLAMA_LOCAL_LLM,
         messages: prompt,
         stream: false
     };
 
     try {
-        Logger.info(req, `createChatCompletion Ollama Start (${Config.OLLAMA_LLM})`);
+        Logger.info(req, `createChatCompletion Ollama Start (${Config.OLLAMA_LOCAL_LLM})`);
 
         const response = await OpenAIWrapper.limited_instance_ollama().chat.completions.create(options);
 
@@ -64,7 +64,7 @@ async function toolCallsApplicable(req: HennosUser | HennosGroup, message: OpenA
         stream: false,
         tool_choice: "auto",
         tools: [
-            duck_duck_go_search_tool
+            WebSearch.definition
         ]
     };
 
@@ -159,7 +159,7 @@ export async function processChatCompletion(req: HennosUser | HennosGroup, promp
         if (tool_calls) {
             options.tool_choice = "auto";
             options.tools = [
-                duck_duck_go_search_tool
+                WebSearch.definition
             ];
         }
     }

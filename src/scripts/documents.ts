@@ -2,6 +2,7 @@ import path from "path";
 import { Config } from "../singletons/config";
 import { handlePlainTextDocument } from "../handlers/document";
 import { HennosUser } from "../singletons/user";
+import { Logger } from "../singletons/logger";
 
 async function test() {
     const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
@@ -11,10 +12,10 @@ async function test() {
     try {
         const result = await handlePlainTextDocument(user, filePath, "file_unique_id");
         const endTime = Date.now();
-        console.log(result, `Execution time: ${endTime - startTime}ms`);
+        Logger.log(result, `Execution time: ${endTime - startTime}ms`);
     } catch (err) {
         const endTime = Date.now();
-        console.error(err, `Execution time: ${endTime - startTime}ms`);
+        Logger.log(err, `Execution time: ${endTime - startTime}ms, with error`);
     }
 }
 
