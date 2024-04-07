@@ -13,7 +13,10 @@ export async function handleVoiceMessage(user: HennosUser, path: string): Promis
             file: createReadStream(path)
         });
 
-        const response = await handlePrivateMessage(user, transcription.text);
+        const response = await handlePrivateMessage(user, transcription.text, {
+            role: "system",
+            content: "The user sent their message via a voice recording. The voice recording has been transcribed into text for your convenience."
+        });
 
         const { voice } = await user.getPreferences();
         const result = await OpenAIWrapper.instance().audio.speech.create({

@@ -5,17 +5,22 @@ import { getSizedChatContext } from "../../singletons/context";
 import { moderateLimitedUserTextInput } from "../../singletons/moderation";
 import { Logger } from "../../singletons/logger";
 
-export async function handlePrivateMessage(user: HennosUser, text: string): Promise<string> {
+export async function handlePrivateMessage(user: HennosUser, text: string, hint?: OpenAI.Chat.Completions.ChatCompletionMessageParam): Promise<string> {
     if (user.whitelisted) {
-        return handleWhitelistedPrivateMessage(user, text);
+        return handleWhitelistedPrivateMessage(user, text, hint);
     } else {
         return handleLimitedUserPrivateMessage(user, text);
     }
 }
 
-async function handleWhitelistedPrivateMessage(user: HennosUser, text: string): Promise<string> {
+async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: OpenAI.Chat.Completions.ChatCompletionMessageParam): Promise<string> {
     const prompt = await buildPrompt(user);
     const context = await user.getChatContext();
+
+    // If a hint is provided, push it to the context right before the user message
+    if (hint) {
+        context.push(hint);
+    }
 
     context.push({
         role: "user",
