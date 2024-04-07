@@ -26,7 +26,9 @@ export class HennosUser {
     }
 
     public allowFunctionCalling(): boolean {
-        return Config.TELEGRAM_BOT_ADMIN === this.chatId;
+        // @TODO: Improve function calling before re-enabling this.
+        return false;
+        //return Config.TELEGRAM_BOT_ADMIN === this.chatId;
     }
 
     static setWhitelisted(user: HennosUser, whitelisted: boolean) {
