@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { Database } from "./sqlite";
 import OpenAI from "openai";
 import { Config } from "./config";
-import { ValidTTSNames } from "../handlers/voice";
+import { ValidTTSNames } from "./openai";
 
 export class HennosUser {
     public chatId: number;

@@ -21,7 +21,7 @@ export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt:
 }
 
 
-function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessageParam[]): number {
+export function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessageParam[]): number {
     const encoder = encoding_for_model("gpt-4");
     const total = context.reduce((acc, val) => {
         if (!val.content || typeof val.content !== "string") {

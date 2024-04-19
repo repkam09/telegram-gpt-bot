@@ -56,22 +56,6 @@ export class Config {
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
-    static get OPENAI_API_ORG(): string {
-        if (!process.env.OPENAI_API_ORG) {
-            throw new Error("Missing OPENAI_API_ORG");
-        }
-
-        return process.env.OPENAI_API_ORG;
-    }
-
-    static get OPENAI_API_ORG_LIMITED(): string {
-        if (!process.env.OPENAI_API_ORG_LIMITED) {
-            throw new Error("Missing OPENAI_API_ORG_LIMITED");
-        }
-
-        return process.env.OPENAI_API_ORG_LIMITED;
-    }
-
     static get OPENAI_API_KEY_LIMITED(): string {
         if (!process.env.OPENAI_API_KEY_LIMITED) {
             throw new Error("Missing OPENAI_API_KEY_LIMITED");

@@ -1,11 +1,10 @@
 import os from "node:os";
-import fs, { } from "node:fs";
+import fs, { createReadStream } from "node:fs";
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { handleDocumentMessage, isSupportedDocumentType } from "../handlers/document";
 import { handleImageMesssage } from "../handlers/photos";
-import { handleVoiceMessage } from "../handlers/voice";
 import { handleVoiceSettingsCallback } from "../handlers/text/commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback } from "../handlers/text/commands/handleGeneralSettings";
 import { handlePrivateMessage } from "../handlers/text/private";
@@ -13,6 +12,8 @@ import { handleWhitelistedGroupMessage } from "../handlers/text/group";
 import { handleCommandMessage } from "../handlers/text/commands";
 import { HennosUser } from "./user";
 import { HennosGroup } from "./group";
+import { OpenAIWrapper } from "./openai";
+import { Transcription } from "openai/resources/audio/transcriptions";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -61,7 +62,10 @@ export class BotInstance {
         }
 
         const bot = BotInstance.instance();
-        await bot.sendVoice(chatId, content, options);
+        await bot.sendVoice(chatId, content, options, {
+            filename: `chat-${chatId}-voice-message-${Date.now()}`,
+            contentType: "audio/ogg"
+        });
     }
 
     static async sendAdminMessage(content: string) {
@@ -226,10 +230,38 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
 
 async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Message & { voice: TelegramBot.Voice }) {
     const tempFilePath = await BotInstance.instance().downloadFile(msg.voice.file_id, os.tmpdir());
-    const [response, arrayBuffer] = await handleVoiceMessage(user, tempFilePath);
-    if (arrayBuffer) {
-        await BotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
+
+    let transcription: Transcription;
+    try {
+        transcription = await OpenAIWrapper.instance().audio.transcriptions.create({
+            model: "whisper-1",
+            file: createReadStream(tempFilePath)
+        });
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.error(user, error.message);
+        return BotInstance.sendMessageWrapper(user, "There was an error while attempting to transcribe your voice message into text.");
     }
+
+    await BotInstance.sendMessageWrapper(user, `\`\`\`\n${transcription.text}\n\`\`\``);
+
+    const response = await handlePrivateMessage(user, transcription.text, {
+        role: "system",
+        content: "The user sent their message via a voice recording. The voice recording has been transcribed into text for your convenience."
+    });
+
+    const { voice } = await user.getPreferences();
+    const result = await OpenAIWrapper.instance().audio.speech.create({
+        model: "tts-1",
+        voice: voice,
+        input: response,
+        response_format: "opus"
+    });
+
+    const arrayBuffer = await result.arrayBuffer();
+    await BotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer), {
+
+    });
 
     fs.unlink(tempFilePath, (err: Error | null) => {
         if (err) {

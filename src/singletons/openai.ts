@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import { Config } from "./config";
 
+export type ValidTTSNames = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
+
 export class OpenAIWrapper {
     private static _instance: OpenAI;
     private static _limited_instance: OpenAI;
@@ -10,7 +12,6 @@ export class OpenAIWrapper {
     static instance(): OpenAI {
         if (!OpenAIWrapper._instance) {
             OpenAIWrapper._instance = new OpenAI({
-                organization: Config.OPENAI_API_ORG,
                 apiKey: Config.OPENAI_API_KEY,
             });
         }
@@ -30,7 +31,6 @@ export class OpenAIWrapper {
     public static limited_instance(): OpenAI {
         if (!OpenAIWrapper._limited_instance) {
             OpenAIWrapper._limited_instance = new OpenAI({
-                organization: Config.OPENAI_API_ORG_LIMITED,
                 apiKey: Config.OPENAI_API_KEY_LIMITED
             });
         }
@@ -41,8 +41,7 @@ export class OpenAIWrapper {
         if (!OpenAIWrapper._limited_instance_ollama) {
             OpenAIWrapper._limited_instance_ollama = new OpenAI({
                 baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}/v1/`,
-                organization: Config.OPENAI_API_ORG_LIMITED,
-                apiKey: Config.OPENAI_API_ORG_LIMITED // This is a dummy key, it's not used for local ollama
+                apiKey: Config.TELEGRAM_BOT_KEY // This is a dummy key, it's not used for local ollama
             });
         }
         return OpenAIWrapper._limited_instance_ollama;
