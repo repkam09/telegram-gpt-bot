@@ -1,3 +1,4 @@
+import { Config } from "../../../singletons/config";
 import { BotInstance } from "../../../singletons/telegram";
 import { HennosUser } from "../../../singletons/user";
 
@@ -33,4 +34,14 @@ Whitelisted User Features:
 export async function handleResetCommand(user: HennosUser) {
     await user.clearChatContext();
     await BotInstance.sendMessageWrapper(user, "Previous chat context has been cleared. The bot will not remember anything about your previous conversation.");
+}
+
+
+export async function handleChatPairCommand(user: HennosUser) {
+    const token = await user.createPairingToken();
+    if (Config.HENNOS_API_BASE_URL) {
+        await BotInstance.sendMessageWrapper(user, `To pair with the web interface, visit ${Config.HENNOS_API_BASE_URL}/pair/${token}`);
+    } else {
+        await BotInstance.sendMessageWrapper(user, `Pairing token: \`${token}\``);
+    }
 }

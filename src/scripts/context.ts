@@ -23,6 +23,9 @@ async function context() {
     const userInfo = await user.getBasicInfo();
     console.log(JSON.stringify(userInfo, null, 4));
 
+    const token = await user.createPairingToken();
+    console.log(`Pairing token: ${token}`);
+
     let input;
 
     while (input !== "exit") {

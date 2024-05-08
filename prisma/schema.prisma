@@ -33,3 +33,8 @@ model Messages {
   datetime DateTime @default(now())
   role     String
 }
+
+model PairingToken {
+  id     String @id @default(uuid())
+  chatId BigInt
+}

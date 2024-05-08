@@ -40,12 +40,12 @@ export class Config {
         return process.env.HENNOS_DEVELOPMENT_MODE === "true";
     }
 
-    static get HTTP_SERVER_ENABLED(): boolean {
-        if (!process.env.HTTP_SERVER_ENABLED) {
+    static get HENNOS_API_BASE_URL(): string | false {
+        if (!process.env.HENNOS_API_BASE_URL) {
             return false;
         }
 
-        return process.env.HTTP_SERVER_ENABLED === "true";
+        return process.env.HENNOS_API_BASE_URL;
     }
 
     static get HENNOS_VERBOSE_LOGGING(): boolean {

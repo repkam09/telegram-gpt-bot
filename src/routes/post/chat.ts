@@ -16,26 +16,18 @@ interface ChatRequestBody {
 }
 
 export function routes(router: Router) {
-    router.post("/chat/:id", async (ctx: KoaContext, next: Koa.Next): Promise<void> => {
-        const { id } = ctx.params;
+    router.post("/chat/:token", async (ctx: KoaContext, next: Koa.Next): Promise<void> => {
         const { message }: ChatRequestBody = ctx.request.body;
-
-        const chatId = Number.parseInt(id);
-        const user = await HennosUser.exists(chatId);
-        if (!user || !user.whitelisted) {
+        const user = await HennosUser.byPairingToken(ctx.params.token);
+        if (user && user.whitelisted) {
+            const result = await handlePrivateMessage(user, message);
+            const context = await user.getChatContext();
             ctx.body = {
-                error: true,
-                message: "Invalid User Id"
+                result,
+                context,
+                error: false
             };
-            return next();
         }
-
-        const result = await handlePrivateMessage(user, message);
-
-        ctx.body = {
-            id,
-            result,
-            error: false
-        };
+        return next();
     });
 }
