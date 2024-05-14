@@ -92,8 +92,9 @@ export class BotInstance {
                 return;
             }
 
-            if (Config.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
+            if (Config.HENNOS_DEVELOPMENT_MODE) {
                 if (msg.from.id !== Config.TELEGRAM_BOT_ADMIN) {
+                    Logger.trace("development_mode", msg);
                     return;
                 }
             }
@@ -307,8 +308,9 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
         return;
     }
 
-    if (Config.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
         if (message.from.id !== Config.TELEGRAM_BOT_ADMIN) {
+            Logger.trace("development_mode", message);
             return;
         }
     }

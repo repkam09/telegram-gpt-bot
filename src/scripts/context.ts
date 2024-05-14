@@ -6,6 +6,7 @@ import { Config } from "../singletons/config";
 import { Database } from "../singletons/sqlite";
 import { HennosUser } from "../singletons/user";
 import { handlePrivateMessage } from "../handlers/text/private";
+import { Logger } from "../singletons/logger";
 
 dotenv.config();
 
@@ -21,18 +22,18 @@ async function context() {
     });
 
     const userInfo = await user.getBasicInfo();
-    console.log(JSON.stringify(userInfo, null, 4));
+    Logger.log(JSON.stringify(userInfo, null, 4));
 
     let input;
 
     while (input !== "exit") {
-        console.log("\n\n");
+        Logger.log("\n\n");
         input = await rl.question(" > ");
         if (input !== "exit") {
-            console.log("\n\n");
+            Logger.log("\n\n");
             const result = await handlePrivateMessage(user, input);
-            console.log("\n\n");
-            console.log(" < " + result);
+            Logger.log("\n\n");
+            Logger.log(" < " + result);
         }
     }
 

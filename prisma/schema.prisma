@@ -20,6 +20,12 @@ model User {
   longitude     Float?
 }
 
+model OpenAI {
+  id     Int    @id @default(autoincrement())
+  chatId BigInt @unique
+  api    String
+}
+
 model Group {
   chatId      BigInt  @id
   name        String

@@ -5,6 +5,7 @@ import BodyParser from "koa-bodyparser";
 import { routes as chatPostRoutes } from "../routes/post/chat";
 import { routes as chatGetRoutes } from "../routes/get/chat";
 import { routes as rootGetRoutes } from "../routes/get/root";
+import { Logger } from "../singletons/logger";
 
 export function server() {
     const app = new Koa();
@@ -14,7 +15,7 @@ export function server() {
 
     app.use(BodyParser());
     app.use(async (ctx: Context, next: Next) => {
-        console.log(`Request: ${ctx.method} ${ctx.url}`);
+        Logger.log(`Request: ${ctx.method} ${ctx.url}`);
         return next();
     });
 
@@ -26,7 +27,7 @@ export function server() {
     app.use(router.allowedMethods());
     app.listen(process.env.HENNOS_API_PORT || 3000);
 
-    console.log("Server running on port 3000");
+    Logger.log("Server running on port 3000");
 
     return app;
 }

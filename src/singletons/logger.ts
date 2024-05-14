@@ -19,12 +19,16 @@ export class Logger {
     }
 
     static debug(message?: any, ...optionalParams: any[]): void {
-        if (Config.HENNOS_VERBOSE_LOGGING) {
+        if (Config.HENNOS_DEVELOPMENT_MODE) {
             console.log("DEBUG:", message, ...optionalParams);
         }
     }
 
     static trace(context: string, msg: TelegramBot.Message) {
         console.log(`${new Date().toISOString()}: first_name=${msg.from?.first_name}, last_name=${msg.from?.last_name}, username=${msg.from?.username}, userId=${msg.from?.id}, chatId=${msg.chat.id}, messageId=${msg.message_id}, context=${context}`);
+    }
+
+    static log(message?: any, ...optionalParams: any[]): void {
+        console.log(message, ...optionalParams);
     }
 }

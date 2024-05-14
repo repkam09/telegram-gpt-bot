@@ -71,7 +71,8 @@ export async function handleVoiceReadCommand(user: HennosUser, text: string) {
     text = text.replace("/read", "").trim();
     if (text) {
         const { voice } = await user.getPreferences();
-        const result = await OpenAIWrapper.instance().audio.speech.create({
+        const instance = await OpenAIWrapper.instance(user);
+        const result = await instance.audio.speech.create({
             model: "tts-1",
             voice: voice as ValidTTSNames,
             input: text,

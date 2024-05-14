@@ -5,19 +5,19 @@ import { OpenAIWrapper } from "./openai";
 import { HennosUser } from "./user";
 import { HennosGroup } from "./group";
 import {
-    duck_duck_go_search_tool,
     process_tool_calls
 } from "./tools";
+import { WebSearch } from "../tools/websearch";
 
 export async function processChatCompletionLocal(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<string> {
     const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-        model: Config.OLLAMA_LLM,
+        model: Config.OLLAMA_LOCAL_LLM,
         messages: prompt,
         stream: false
     };
 
     try {
-        Logger.info(req, `createChatCompletion Ollama Start (${Config.OLLAMA_LLM})`);
+        Logger.info(req, `createChatCompletion Ollama Start (${Config.OLLAMA_LOCAL_LLM})`);
 
         const response = await OpenAIWrapper.limited_instance_ollama().chat.completions.create(options);
 
@@ -64,7 +64,7 @@ async function toolCallsApplicable(req: HennosUser | HennosGroup, message: OpenA
         stream: false,
         tool_choice: "auto",
         tools: [
-            duck_duck_go_search_tool
+            WebSearch.definition
         ]
     };
 
@@ -73,27 +73,28 @@ async function toolCallsApplicable(req: HennosUser | HennosGroup, message: OpenA
 
         const response = await OpenAIWrapper.limited_instance().chat.completions.create(options);
 
-        Logger.info(req, "toolCallsApplicable End");
-
         if (!response || !response.choices) {
             throw new Error("Unexpected toolCallsApplicable Result: Bad Response Data Choices");
         }
 
-        const called_tools: string[] = [];
+        const called_tools: Set<string> = new Set();
         for (const choice of response.choices) {
             if (choice.message && choice.message.tool_calls) {
                 for (const tool_call of choice.message.tool_calls) {
                     if (tool_call.function) {
-                        called_tools.push(tool_call.function.name);
+                        called_tools.add(tool_call.function.name);
                     }
                 }
             }
         }
 
-        if (called_tools.length > 0) {
-            return called_tools;
+        if (called_tools.size > 0) {
+            const tools = Array.from(called_tools);
+            Logger.info(req, `toolCallsApplicable End: ${tools.join(", ")}`);
+            return tools;
         }
 
+        Logger.info(req, "toolCallsApplicable End");
         return false;
     } catch (err) {
         const error = err as Error;
@@ -158,14 +159,15 @@ export async function processChatCompletion(req: HennosUser | HennosGroup, promp
         if (tool_calls) {
             options.tool_choice = "auto";
             options.tools = [
-                duck_duck_go_search_tool
+                WebSearch.definition
             ];
         }
     }
 
     Logger.info(req, `createChatCompletion Start (${Config.OPENAI_API_LLM})`);
 
-    const response = await OpenAIWrapper.instance().chat.completions.create(options);
+    const instance = await OpenAIWrapper.instance(req);
+    const response = await instance.chat.completions.create(options);
 
     Logger.info(req, "createChatCompletion End");
 
