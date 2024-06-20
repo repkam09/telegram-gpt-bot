@@ -7,7 +7,7 @@ export class OllamaWrapper {
     public static instance(): Ollama {
         if (!OllamaWrapper._instance) {
             OllamaWrapper._instance = new Ollama({
-                host: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}/v1/`
+                host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
             });
         }
         return OllamaWrapper._instance;

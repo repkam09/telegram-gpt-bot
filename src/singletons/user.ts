@@ -3,6 +3,7 @@ import { Database } from "./sqlite";
 import OpenAI from "openai";
 import { Config } from "./config";
 import { ValidTTSNames } from "../handlers/voice";
+import { Message } from "ollama";
 
 export class HennosUser {
     public chatId: number;
@@ -182,7 +183,7 @@ export class HennosUser {
         });
     }
 
-    public async getChatContext(): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+    public async getChatContext(): Promise<Message[]> {
         const result = await this.db.messages.findMany({
             where: {
                 chatId: this.chatId
@@ -197,7 +198,7 @@ export class HennosUser {
             take: 50
         });
 
-        return result.reverse() as OpenAI.Chat.ChatCompletionMessageParam[];
+        return result.reverse();
     }
 
     public async updateChatContext(role: "user" | "assistant" | "system", content: string): Promise<void> {

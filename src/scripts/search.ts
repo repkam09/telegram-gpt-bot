@@ -6,6 +6,7 @@ import OpenAI from "openai";
 import { convert } from "html-to-text";
 import { HennosUser } from "../singletons/user";
 import { getHTMLSearchResults } from "../singletons/tools";
+import { Message } from "ollama";
 
 async function search(query: string) {
     const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
@@ -82,8 +83,8 @@ async function getSearchResults(url: string) {
     return html.data;
 }
 
-function buildQueryParsePrompt(user: HennosUser, query: string): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+function buildQueryParsePrompt(user: HennosUser, query: string): Message[] {
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are an intelligent text processing AI that helps extract key information from user input."
@@ -109,8 +110,8 @@ function buildQueryParsePrompt(user: HennosUser, query: string): OpenAI.Chat.Com
     return prompt;
 }
 
-function buildSearchResponsePrompt(user: HennosUser, query: string, context: { term: string, result: string }[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+function buildSearchResponsePrompt(user: HennosUser, query: string, context: { term: string, result: string }[]): Message[] {
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are a chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."

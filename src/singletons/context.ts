@@ -1,10 +1,10 @@
 import { encoding_for_model } from "tiktoken";
 import { HennosUser } from "./user";
 import { Config } from "./config";
-import OpenAI from "openai";
 import { HennosGroup } from "./group";
+import { Message } from "ollama";
 
-export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], currentChatContext: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: Message[], currentChatContext: Message[]): Promise<Message[]> {
     const promptTokens = getChatContextTokenCount(prompt);
     
     let totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
@@ -21,7 +21,7 @@ export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt:
 }
 
 
-function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessageParam[]): number {
+function getChatContextTokenCount(context: Message[]): number {
     const encoder = encoding_for_model("gpt-3.5-turbo");
     const total = context.reduce((acc, val) => {
         if (!val.content || typeof val.content !== "string") {

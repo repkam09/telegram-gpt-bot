@@ -4,8 +4,9 @@ import { HennosUser } from "../../singletons/user";
 import { getSizedChatContext } from "../../singletons/context";
 import { moderateLimitedUserTextInput } from "../../singletons/moderation";
 import { Logger } from "../../singletons/logger";
+import { Message } from "ollama";
 
-export async function handlePrivateMessage(user: HennosUser, text: string, hint?: OpenAI.Chat.Completions.ChatCompletionMessageParam): Promise<string> {
+export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     if (user.whitelisted) {
         return handleWhitelistedPrivateMessage(user, text, hint);
     } else {
@@ -13,7 +14,7 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
     }
 }
 
-async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: OpenAI.Chat.Completions.ChatCompletionMessageParam): Promise<string> {
+async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     const prompt = await buildPrompt(user);
     const context = await user.getChatContext();
 
@@ -43,7 +44,7 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
 async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): Promise<string> {
     const { firstName } = await user.getBasicInfo();
 
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short sentences, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
@@ -73,7 +74,7 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
     return response;
 }
 
-export async function buildPrompt(user: HennosUser): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
+export async function buildPrompt(user: HennosUser): Promise<Message[]> {
     const { firstName, location } = await user.getBasicInfo();
     const { botName, preferredName, personality } = await user.getPreferences();
 
@@ -81,7 +82,7 @@ export async function buildPrompt(user: HennosUser): Promise<OpenAI.Chat.Complet
 
     const locationDetails = location ? `The user provided the location information as lat=${location.latitude}, lon=${location.latitude}` : "";
 
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."

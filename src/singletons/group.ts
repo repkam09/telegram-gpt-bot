@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { Database } from "./sqlite";
-import OpenAI from "openai";
 import { Config } from "./config";
+import { Message } from "ollama";
 
 export class HennosGroup {
     public chatId: number;
@@ -60,7 +60,7 @@ export class HennosGroup {
         };
     }
 
-    public async getChatContext(): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+    public async getChatContext(): Promise<Message[]> {
         const result = await this.db.messages.findMany({
             where: {
                 chatId: this.chatId
@@ -75,7 +75,7 @@ export class HennosGroup {
             take: 50
         });
 
-        return result.reverse() as OpenAI.Chat.ChatCompletionMessageParam[];
+        return result.reverse();
     }
 
     public async updateChatContext(role: "user" | "assistant" | "system", content: string): Promise<void> {
