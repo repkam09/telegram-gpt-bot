@@ -92,8 +92,9 @@ export class BotInstance {
                 return;
             }
 
-            if (Config.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
+            if (Config.HENNOS_DEVELOPMENT_MODE) {
                 if (msg.from.id !== Config.TELEGRAM_BOT_ADMIN) {
+                    Logger.warn(new HennosUser(msg.from.id), "Ignoring message from non-admin user due to HENNOS_DEVELOPMENT_MODE true");
                     return;
                 }
             }
@@ -245,8 +246,8 @@ async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Mes
         return (obj.width * obj.height > max.width * max.height) ? obj : max;
     });
 
-    const url = await BotInstance.instance().getFileLink(largestImage.file_id);
-    const response = await handleImageMesssage(user, url, msg.caption);
+    const tempFilePath = await BotInstance.instance().downloadFile(largestImage.file_id, os.tmpdir());
+    const response = await handleImageMesssage(user, tempFilePath, msg.caption);
     return BotInstance.sendMessageWrapper(user, response);
 }
 
@@ -307,8 +308,9 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
         return;
     }
 
-    if (Config.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
         if (message.from.id !== Config.TELEGRAM_BOT_ADMIN) {
+            Logger.warn(new HennosUser(message.from.id), "Ignoring message from non-admin user due to HENNOS_DEVELOPMENT_MODE true");
             return;
         }
     }

@@ -1,51 +1,26 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
+type HennosModelConfig = {
+    MODEL: string
+    CTX: number
+}
+
 export class Config {
-    static get HENNOS_MAX_TOKENS(): number {
-        if (!process.env.HENNOS_MAX_TOKENS) {
-            return 4096;
-        }
-
-        const limit = parseInt(process.env.HENNOS_MAX_TOKENS);
-
-        if (Number.isNaN(limit)) {
-            throw new Error("Invalid HENNOS_MAX_TOKENS value");
-        }
-
-        return limit;
-    }
-
-    static get HENNOS_DEVELOPMENT_SINGLE_USER_MODE(): boolean {
-        if (!process.env.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
-            return false;
-        }
-
-        if (process.env.HENNOS_DEVELOPMENT_SINGLE_USER_MODE !== "true") {
-            return false;
-        }
-
-        if (Config.TELEGRAM_BOT_ADMIN === -1) {
-            throw new Error("Missing TELEGRAM_BOT_ADMIN for HENNOS_DEVELOPMENT_SINGLE_USER_MODE");
-        }
-
-        return true;
-    }
-
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
             return false;
         }
 
-        return process.env.HENNOS_DEVELOPMENT_MODE === "true";
-    }
-
-    static get HTTP_SERVER_ENABLED(): boolean {
-        if (!process.env.HTTP_SERVER_ENABLED) {
+        if (process.env.HENNOS_DEVELOPMENT_MODE !== "true") {
             return false;
         }
 
-        return process.env.HTTP_SERVER_ENABLED === "true";
+        if (Config.TELEGRAM_BOT_ADMIN === -1) {
+            throw new Error("Missing TELEGRAM_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
+        }
+
+        return true;
     }
 
     static get HENNOS_VERBOSE_LOGGING(): boolean {
@@ -56,60 +31,89 @@ export class Config {
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
-    static get OPENAI_API_ORG(): string {
-        if (!process.env.OPENAI_API_ORG) {
-            throw new Error("Missing OPENAI_API_ORG");
-        }
-
-        return process.env.OPENAI_API_ORG;
-    }
-
-    static get OPENAI_API_ORG_LIMITED(): string {
-        if (!process.env.OPENAI_API_ORG_LIMITED) {
-            throw new Error("Missing OPENAI_API_ORG_LIMITED");
-        }
-
-        return process.env.OPENAI_API_ORG_LIMITED;
-    }
-
-    static get OPENAI_API_KEY_LIMITED(): string {
-        if (!process.env.OPENAI_API_KEY_LIMITED) {
-            throw new Error("Missing OPENAI_API_KEY_LIMITED");
-        }
-
-        return process.env.OPENAI_API_KEY_LIMITED;
-    }
-
-    static get OPENAI_API_KEY(): string {
-        if (!process.env.OPENAI_API_KEY) {
-            throw new Error("Missing OPENAI_API_KEY");
-        }
-
-        return process.env.OPENAI_API_KEY;
-    }
-
-    static get OPENAI_API_LLM() {
-        if (!process.env.OPENAI_API_LLM) {
-            throw new Error("Missing OPENAI_API_LLM");
-        }
-
-        return process.env.OPENAI_API_LLM;
-    }
-
-    static get OPENAI_API_LIMITED_LLM() {
-        if (!process.env.OPENAI_API_LIMITED_LLM) {
-            return "gpt-3.5-turbo";
-        }
-
-        return process.env.OPENAI_API_LIMITED_LLM;
-    }
-
-    static get OLLAMA_LLM(): string {
+    static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
-            return "mistral:7b";
+            return {
+                MODEL: "llama3:latest",
+                CTX: 8192
+            };
         }
 
-        return process.env.OLLAMA_LLM;
+        const parts = process.env.OLLAMA_LLM.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OLLAMA_LLM");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
+    static get OLLAMA_LLM_LARGE(): HennosModelConfig {
+        if (!process.env.OLLAMA_LLM_LARGE) {
+            return {
+                MODEL: "phi3:latest,128000",
+                CTX: 8192
+            };
+        }
+
+        const parts = process.env.OLLAMA_LLM_LARGE.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OLLAMA_LLM_LARGE");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
+    static get OLLAMA_LLM_VISION(): HennosModelConfig {
+        if (!process.env.OLLAMA_LLM_VISION) {
+            return {
+                MODEL: "llava:7b",
+                CTX: 20480
+            };
+        }
+
+        const parts = process.env.OLLAMA_LLM_VISION.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OLLAMA_LLM_VISION");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+    
+
+    static get OLLAMA_LLM_EMBED(): HennosModelConfig {
+        if (!process.env.OLLAMA_LLM_EMBED) {
+            return {
+                MODEL: "phi3:latest,128000",
+                CTX: 8192
+            };
+        }
+
+        const parts = process.env.OLLAMA_LLM_EMBED.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OLLAMA_LLM_EMBED");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
     }
 
     static get OLLAMA_HOST(): string {
@@ -118,6 +122,14 @@ export class Config {
         }
 
         return process.env.OLLAMA_HOST;
+    }
+
+    static get OPENAI_API_KEY(): string {
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error("Missing OPENAI_API_KEY");
+        }
+
+        return process.env.OPENAI_API_KEY;
     }
 
     static get OLLAMA_PORT(): number {
@@ -129,6 +141,28 @@ export class Config {
 
         if (Number.isNaN(port)) {
             throw new Error("Invalid OLLAMA_PORT value");
+        }
+
+        return port;
+    }
+
+    static get QDRANT_HOST(): string {
+        if (!process.env.QDRANT_HOST) {
+            return "localhost";
+        }
+
+        return process.env.QDRANT_HOST;
+    }
+
+    static get QDRANT_PORT(): number {
+        if (!process.env.QDRANT_PORT) {
+            return 6333;
+        }
+
+        const port = parseInt(process.env.QDRANT_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid QDRANT_PORT value");
         }
 
         return port;

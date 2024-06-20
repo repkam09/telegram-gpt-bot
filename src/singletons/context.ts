@@ -8,7 +8,7 @@ export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt:
     const promptTokens = getChatContextTokenCount(prompt);
     
     let totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
-    while (totalTokens > Config.HENNOS_MAX_TOKENS) {
+    while (totalTokens > Config.OLLAMA_LLM.CTX) {
         if (currentChatContext.length === 0) {
             throw new Error("Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
         }
@@ -22,7 +22,7 @@ export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt:
 
 
 function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessageParam[]): number {
-    const encoder = encoding_for_model("gpt-4");
+    const encoder = encoding_for_model("gpt-3.5-turbo");
     const total = context.reduce((acc, val) => {
         if (!val.content || typeof val.content !== "string") {
             return acc;

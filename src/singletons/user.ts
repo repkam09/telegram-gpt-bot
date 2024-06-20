@@ -7,6 +7,8 @@ import { ValidTTSNames } from "../handlers/voice";
 export class HennosUser {
     public chatId: number;
 
+    public displayName: string;
+
     public whitelisted: boolean;
 
     private db: PrismaClient;
@@ -15,6 +17,7 @@ export class HennosUser {
         this.chatId = chatId;
         this.whitelisted = false;
         this.db = Database.instance();
+        this.displayName = "HennosUser";
     }
 
     public isAdmin(): boolean {
@@ -22,7 +25,7 @@ export class HennosUser {
     }
 
     public toString(): string {
-        return `HennosUser ${String(this.chatId)}`;
+        return `${this.displayName} ${String(this.chatId)}`;
     }
 
     public allowFunctionCalling(): boolean {
@@ -79,6 +82,7 @@ export class HennosUser {
         });
 
         this.whitelisted = result.whitelisted;
+        this.displayName = `${result.firstName} ${result.lastName}`;
         return {
             firstName: result.firstName,
             lastName: result.lastName,

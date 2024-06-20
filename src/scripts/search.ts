@@ -1,7 +1,7 @@
 import { Config } from "../singletons/config";
 import readline from "node:readline";
 import axios from "axios";
-import { processChatCompletionLocal } from "../singletons/completions";
+import { processChatCompletionLimited } from "../singletons/completions";
 import OpenAI from "openai";
 import { convert } from "html-to-text";
 import { HennosUser } from "../singletons/user";
@@ -11,7 +11,7 @@ async function search(query: string) {
     const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
 
     const processed = buildQueryParsePrompt(user, query);
-    const result = await processChatCompletionLocal(user, processed);
+    const result = await processChatCompletionLimited(user, processed);
 
     let queries: string[] = [query];
     try {
@@ -64,7 +64,7 @@ async function search(query: string) {
 
     console.log(prompt);
 
-    const completion = await processChatCompletionLocal(user, prompt);
+    const completion = await processChatCompletionLimited(user, prompt);
     console.log(completion);
 }
 

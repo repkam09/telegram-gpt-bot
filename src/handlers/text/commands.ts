@@ -1,5 +1,4 @@
 import TelegramBot from "node-telegram-bot-api";
-import { handleVoiceReadCommand } from "./commands/handleVoiceSettings";
 import { handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
 import { handleWhitelistCommand } from "./commands/handleWhitelist";
 import { handleHelpCommand, handleResetCommand, handleStartCommand } from "./commands/basic";
@@ -21,10 +20,6 @@ export async function handleCommandMessage(user: HennosUser, msg: TelegramBot.Me
 
     if (msg.text === "/settings" && user.whitelisted) {
         return handleGeneralSettingsCommand(user);
-    }
-
-    if (msg.text.startsWith("/read") && user.whitelisted) {
-        return handleVoiceReadCommand(user, msg.text);
     }
 
     if (msg.text.startsWith("/whitelist") && user.isAdmin()) {
