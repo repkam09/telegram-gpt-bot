@@ -12,7 +12,7 @@ import { handlePrivateMessage } from "../handlers/text/private";
 import { handleWhitelistedGroupMessage } from "../handlers/text/group";
 import { handleCommandMessage } from "../handlers/text/commands";
 import { HennosUser, HennosUserAsync } from "./user";
-import { HennosGroup } from "./group";
+import { HennosGroup, HennosGroupAsync } from "./group";
 import { handleLLMProviderSettingsCallback } from "../handlers/text/commands/handleLLMProviderSettings";
 import path from "node:path";
 
@@ -108,8 +108,7 @@ export class BotInstance {
             }
 
             if (msg.chat.type !== "private") {
-                const group = new HennosGroup(msg.chat.id);
-                await group.setBasicInfo(msg.chat.title);
+                const group = await HennosGroupAsync(msg.chat.id, msg.chat.title);
                 return handleTelegramGroupMessage(user, group, msg as MessageWithText);
             }
 
