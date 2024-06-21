@@ -104,17 +104,24 @@ export class HennosUser {
                 preferredName: true,
                 botName: true,
                 voice: true,
-                provider: true
+                provider: true,
+                whitelisted: true
             },
             where: {
                 chatId: this.chatId
             }
         });
+
+        let provider = "ollama";
+        if (!result.provider && result.whitelisted) {
+            provider = "anthropic";
+        }
+
         return {
             preferredName: result.preferredName,
             botName: result.botName,
             voice: result.voice ? result.voice as ValidTTSNames : "onyx" as ValidTTSNames,
-            provider: result.provider ? result.provider as ValidLLMProviders : "ollama" as ValidLLMProviders,
+            provider: provider as ValidLLMProviders,
             personality: "default"
         };
     }

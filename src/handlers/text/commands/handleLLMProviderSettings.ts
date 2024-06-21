@@ -57,3 +57,40 @@ Ollama provides completely private, locally hosted, models that keep all of your
 Select one of the options below: `, opts);
 }
 
+export async function handleAdminSetProviderCommand(user: HennosUser, text: string) {
+    const trimmed = text.replace("/llm-provider", "").trim();
+    const bot = BotInstance.instance();
+
+    if (trimmed) {
+        const parts = trimmed.split(" ");
+        const input = parseInt(parts[0]);
+        if (isNaN(input)) {
+            return bot.sendMessage(user.chatId, "The chatId you tried to configure appears to be invalid. Expected an integer value.");
+        }
+
+        // Check if we have a user with that chatId.
+        const exists = await HennosUser.exists(input);
+        if (!exists) {
+            return bot.sendMessage(user.chatId, `ChatId ${input} is not a known user.`);
+        }
+
+        if (parts[1]) {
+            // Grab the provider name
+            const validProviders = ["openai", "anthropic", "ollama"];
+            if (!validProviders.includes(parts[1])) {
+                return bot.sendMessage(user.chatId, `ChatId ${input} is a known user, but requested provider ${parts[1]} is invalid.`);
+            }
+
+            await exists.setPreferredProvider(parts[1]);
+            return bot.sendMessage(user.chatId, `ChatId ${input} has been configured to use ${parts[1]}.`);
+        } else {
+            const current = await exists.getPreferences();
+            return bot.sendMessage(user.chatId, `ChatId ${input} has been configured to use ${current.provider}.`);
+        }
+    } else {
+        const preferences = await user.getPreferences();
+        return bot.sendMessage(user.chatId, `You are configured to use ${preferences.provider}.`);
+    }
+}
+
+
