@@ -3,8 +3,17 @@ import { Database } from "./sqlite";
 import { Config } from "./config";
 import { Message } from "ollama";
 
+export async function HennosGroupAsync(chatId: number, name?: string): Promise<HennosGroup> {
+    const group = new HennosGroup(chatId);
+    await group.setBasicInfo(name);
+    await group.getBasicInfo();
+    return group;
+}
+
 export class HennosGroup {
     public chatId: number;
+
+    public displayName: string;
 
     public whitelisted: boolean;
 
@@ -14,10 +23,11 @@ export class HennosGroup {
         this.chatId = chatId;
         this.whitelisted = false;
         this.db = Database.instance();
+        this.displayName = "HennosGroup";
     }
 
     public toString(): string {
-        return `HennosGroup ${String(this.chatId)}`;
+        return `Group - ${this.displayName} ${String(this.chatId)}`;
     }
 
     public allowFunctionCalling(): boolean {
@@ -55,6 +65,7 @@ export class HennosGroup {
         });
 
         this.whitelisted = result.whitelisted;
+        this.displayName = result.name;
         return {
             name: result.name
         };
