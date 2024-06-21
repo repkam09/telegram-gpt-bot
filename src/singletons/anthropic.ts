@@ -54,11 +54,9 @@ export class HennosAnthropicProvider {
         }
 
         try {
+            const combinedSystemPrompt = system.map((message) => message.content).join(" ");
             const response = await HennosAnthropicProvider.instance().messages.create({
-                system: system.map((message) => ({
-                    type: "text",
-                    text: message.content
-                })),
+                system: combinedSystemPrompt,
                 model: Config.ANTHROPIC_LLM.MODEL,
                 max_tokens: 4096,
                 messages

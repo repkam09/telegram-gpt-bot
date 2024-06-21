@@ -1,10 +1,12 @@
 import { HennosGroup } from "../../singletons/group";
 import { Logger } from "../../singletons/logger";
 import { Message } from "ollama";
-import { HennosOllamaProvider } from "../../singletons/ollama";
+import { HennosAnthropicProvider } from "../../singletons/anthropic";
+import { HennosUser } from "../../singletons/user";
 
-export async function handleWhitelistedGroupMessage(group: HennosGroup, text: string): Promise<string> {
-    const { name } = await group.getBasicInfo();
+export async function handleWhitelistedGroupMessage(user: HennosUser, group: HennosGroup, text: string): Promise<string> {
+    const groupInfo = await group.getBasicInfo();
+    const userInfo = await user.getBasicInfo();
 
     const date = new Date().toUTCString();
     const prompt: Message[] = [
@@ -15,11 +17,11 @@ export async function handleWhitelistedGroupMessage(group: HennosGroup, text: st
         },
         {
             role: "system",
-            content: `The current Date and Time is ${date}.`
+            content: `You are currently assisting users within a group chat setting. The group chat is called '${groupInfo.name}'.`
         },
         {
             role: "system",
-            content: `You are currently assisting users within a group chat setting. The group chat is called '${name}'.`
+            content: `The current Date and Time is ${date}.`
         }
     ];
 
@@ -27,11 +29,11 @@ export async function handleWhitelistedGroupMessage(group: HennosGroup, text: st
 
     context.push({
         role: "user",
-        content: text
+        content: `${userInfo.firstName}: ${text}`,
     });
 
     try {
-        const response = await HennosOllamaProvider.completion(group, prompt, context);
+        const response = await HennosAnthropicProvider.completion(group, prompt, context);
         await group.updateChatContext("user", text);
         await group.updateChatContext("assistant", response);
         return response;

@@ -188,7 +188,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     }
 
     // If the user did @ the bot, strip out that @ prefix before processing the message
-    const response = await handleWhitelistedGroupMessage(group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));
+    const response = await handleWhitelistedGroupMessage(user, group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));
     await BotInstance.sendMessageWrapper(group, response), { reply_to_message_id: msg.message_id };
 }
 
