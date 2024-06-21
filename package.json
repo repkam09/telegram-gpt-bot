@@ -28,7 +28,6 @@
     "axios": "^1.6.5",
     "dotenv": "^16.3.1",
     "html-to-text": "^9.0.5",
-    "install": "^0.13.0",
     "koa": "^2.15.2",
     "koa-bodyparser": "^4.4.1",
     "llamaindex": "^0.2.1",

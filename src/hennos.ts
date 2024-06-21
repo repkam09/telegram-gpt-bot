@@ -1,17 +1,16 @@
 import { Config } from "./singletons/config";
 import { Database } from "./singletons/sqlite";
-import { } from "./singletons/ollama";
 import { BotInstance } from "./singletons/telegram";
 import { Vector } from "./singletons/vector";
 
 async function start() {
     // Check that all the right environment variables are set
-    console.log(`OLLAMA_LLM: ${JSON.stringify(Config.OLLAMA_LLM)}`);
-    console.log(`OLLAMA_LLM_LARGE: ${JSON.stringify(Config.OLLAMA_LLM_LARGE)}`);
-
+    console.log(`OLLAMA_LLM: ${Config.OLLAMA_LLM.MODEL}`);
+    console.log(`OPENAI_LLM: ${Config.OPENAI_LLM.MODEL}`);
+    console.log(`ANTHROPIC_LLM: ${Config.ANTHROPIC_LLM.MODEL}`);
+    console.log(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
     console.log(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
-
-    console.log(`Local File Storage: ${Config.LOCAL_STORAGE()}`);
+    console.log(`LOCAL_STORAGE is configured as ${Config.LOCAL_STORAGE()}`);
 
     await Database.init();
     await Vector.init();
