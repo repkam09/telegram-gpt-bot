@@ -113,8 +113,8 @@ export class HennosUser {
         });
 
         let provider = "ollama";
-        if (!result.provider && result.whitelisted) {
-            provider = "anthropic";
+        if (result.whitelisted) {
+            provider = result.provider ? result.provider : "anthropic";
         }
 
         return {
