@@ -8,5 +8,9 @@
         "**/Thumbs.db": true,
         "build": true,
         "node_modules": true
-    }
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features",
+        "editor.formatOnSave": false
+      },
 }

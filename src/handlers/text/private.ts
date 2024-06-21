@@ -1,10 +1,9 @@
-import { processChatCompletion, processChatCompletionLimited } from "../../singletons/completions";
-import OpenAI from "openai";
 import { HennosUser } from "../../singletons/user";
-import { getSizedChatContext } from "../../singletons/context";
-import { moderateLimitedUserTextInput } from "../../singletons/moderation";
 import { Logger } from "../../singletons/logger";
 import { Message } from "ollama";
+import { HennosOllamaProvider } from "../../singletons/ollama";
+import { HennosOpenAIProvider } from "../../singletons/openai";
+import { HennosAnthropicProvider } from "../../singletons/anthropic";
 
 export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     if (user.whitelisted) {
@@ -28,13 +27,31 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
         content: text
     });
 
-    const messages = await getSizedChatContext(user, prompt, context);
+    const preferences = await user.getPreferences();
     try {
-        const response = await processChatCompletion(user, messages);
-        await user.updateChatContext("user", text);
-        await user.updateChatContext("assistant", response);
-        return response;
-    } catch (err) {
+        switch (preferences.provider) {
+        case "openai": {
+            const response = await HennosOpenAIProvider.completion(user, prompt, context);
+            await user.updateChatContext("user", text);
+            await user.updateChatContext("assistant", response);
+            return response;
+        }
+
+        case "anthropic": {
+            const response = await HennosAnthropicProvider.completion(user, prompt, context);
+            await user.updateChatContext("user", text);
+            await user.updateChatContext("assistant", response);
+            return response;
+        }
+
+        default: {
+            const response = await HennosOllamaProvider.completion(user, prompt, context);
+            await user.updateChatContext("user", text);
+            await user.updateChatContext("assistant", response);
+            return response;
+        }
+        }
+    } catch (err: unknown) {
         const error = err as Error;
         Logger.error(user, `Error processing chat completion: ${error.message}`, error.stack);
         return "Sorry, I was unable to process your message";
@@ -59,18 +76,21 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
         }
     ];
 
-    const flagged = await moderateLimitedUserTextInput(user, text);
+    const flagged = await HennosOpenAIProvider.moderation(user, text);
     if (flagged) {
-        return "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.";
+        return "Sorry, I can't help with that. You message appears to violate the moderation rules.";
     }
 
-    const response = await processChatCompletionLimited(user, [
-        ...prompt,
+    const response = await HennosOllamaProvider.completion(user, prompt, [
         {
             content: text,
             role: "user",
         }
     ]);
+
+    await user.updateChatContext("user", text);
+    await user.updateChatContext("assistant", response);
+
     return response;
 }
 

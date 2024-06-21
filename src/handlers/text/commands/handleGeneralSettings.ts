@@ -2,6 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { BotInstance, registerInputCallback } from "../../../singletons/telegram";
 import { sendVoiceSettingsPrompt } from "./handleVoiceSettings";
 import { HennosUser } from "../../../singletons/user";
+import { sendLLMProviderSettingsPrompt } from "./handleLLMProviderSettings";
 
 export async function handleGeneralSettingsCallback(user: HennosUser, queryId: string, data: string) {
     const bot = BotInstance.instance();
@@ -37,6 +38,11 @@ export async function handleGeneralSettingsCallback(user: HennosUser, queryId: s
         bot.answerCallbackQuery(queryId);
         sendVoiceSettingsPrompt(user);
     }
+
+    if (command === "llm-provider") {
+        bot.answerCallbackQuery(queryId);
+        sendLLMProviderSettingsPrompt(user);
+    }
 }
 
 export async function handleGeneralSettingsCommand(user: HennosUser) {
@@ -49,6 +55,10 @@ export async function handleGeneralSettingsCommand(user: HennosUser) {
                     {
                         text: "Voice",
                         callback_data: "customize-bot-voice",
+                    },
+                    {
+                        text: "AI Models",
+                        callback_data: "customize-llm-provider",
                     },
                     {
                         text: "My Name",

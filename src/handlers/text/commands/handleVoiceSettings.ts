@@ -1,7 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { BotInstance } from "../../../singletons/telegram";
 import { ValidTTSNames } from "../../voice";
-import { OllamaWrapper } from "../../../singletons/ollama";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
 

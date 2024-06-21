@@ -1,9 +1,18 @@
 import { PrismaClient } from "@prisma/client";
 import { Database } from "./sqlite";
-import OpenAI from "openai";
 import { Config } from "./config";
 import { ValidTTSNames } from "../handlers/voice";
 import { Message } from "ollama";
+
+
+export async function  HennosUserAsync(chatId: number, firstName: string, lastName?: string, username?: string): Promise<HennosUser> {
+    const user = new HennosUser(chatId);
+    await user.setBasicInfo(firstName, lastName, username);
+    await user.getBasicInfo();
+    return user;
+}
+
+type ValidLLMProviders = "openai" | "ollama" | "anthropic"
 
 export class HennosUser {
     public chatId: number;
@@ -27,12 +36,6 @@ export class HennosUser {
 
     public toString(): string {
         return `${this.displayName} ${String(this.chatId)}`;
-    }
-
-    public allowFunctionCalling(): boolean {
-        // @TODO: Improve function calling before re-enabling this.
-        return false;
-        //return Config.TELEGRAM_BOT_ADMIN === this.chatId;
     }
 
     static setWhitelisted(user: HennosUser, whitelisted: boolean) {
@@ -101,6 +104,7 @@ export class HennosUser {
                 preferredName: true,
                 botName: true,
                 voice: true,
+                provider: true
             },
             where: {
                 chatId: this.chatId
@@ -110,6 +114,7 @@ export class HennosUser {
             preferredName: result.preferredName,
             botName: result.botName,
             voice: result.voice ? result.voice as ValidTTSNames : "onyx" as ValidTTSNames,
+            provider: result.provider ? result.provider as ValidLLMProviders : "ollama" as ValidLLMProviders,
             personality: "default"
         };
     }
@@ -143,6 +148,17 @@ export class HennosUser {
             },
             data: {
                 voice: name
+            }
+        });
+    }
+
+    public async setPreferredProvider(provider: string): Promise<void> {
+        await this.db.user.update({
+            where: {
+                chatId: this.chatId
+            },
+            data: {
+                provider: provider
             }
         });
     }
@@ -195,7 +211,7 @@ export class HennosUser {
             orderBy: {
                 id: "desc"
             },
-            take: 50
+            take: 100
         });
 
         return result.reverse();

@@ -1,6 +1,6 @@
 import { Config } from "./singletons/config";
 import { Database } from "./singletons/sqlite";
-import { OllamaWrapper } from "./singletons/ollama";
+import { } from "./singletons/ollama";
 import { BotInstance } from "./singletons/telegram";
 import { Vector } from "./singletons/vector";
 
@@ -11,8 +11,7 @@ async function start() {
 
     console.log(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
 
-    // Create an OpenAI Instance
-    OllamaWrapper.instance();
+    console.log(`Local File Storage: ${Config.LOCAL_STORAGE()}`);
 
     await Database.init();
     await Vector.init();

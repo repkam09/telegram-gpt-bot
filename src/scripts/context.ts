@@ -4,7 +4,7 @@ import readline from "node:readline/promises";
 
 import { Config } from "../singletons/config";
 import { Database } from "../singletons/sqlite";
-import { HennosUser } from "../singletons/user";
+import { HennosUserAsync } from "../singletons/user";
 import { handlePrivateMessage } from "../handlers/text/private";
 
 dotenv.config();
@@ -12,9 +12,8 @@ dotenv.config();
 async function context() {
     await Database.init();
 
-    const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
-    await user.setBasicInfo("Test");
-
+    const user = await HennosUserAsync(Config.TELEGRAM_BOT_ADMIN, "Test");
+    
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,

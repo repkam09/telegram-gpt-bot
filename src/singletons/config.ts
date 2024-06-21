@@ -1,4 +1,9 @@
+import os from "node:os";
+import fs from "node:fs";
+import path from "node:path";
 import * as dotenv from "dotenv";
+import { HennosGroup } from "./group";
+import { HennosUser } from "./user";
 dotenv.config();
 
 type HennosModelConfig = {
@@ -93,7 +98,7 @@ export class Config {
             CTX: ctx
         };
     }
-    
+
 
     static get OLLAMA_LLM_EMBED(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM_EMBED) {
@@ -130,6 +135,98 @@ export class Config {
         }
 
         return process.env.OPENAI_API_KEY;
+    }
+
+    static get OPENAI_LLM(): HennosModelConfig {
+        if (!process.env.OPENAI_LLM) {
+            return {
+                MODEL: "gpt-3.5-turbo",
+                CTX: 16000
+            };
+        }
+
+        const parts = process.env.OPENAI_LLM.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OPENAI_LLM");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
+    static get OPENAI_LLM_VISION(): HennosModelConfig {
+        if (!process.env.OPENAI_LLM_VISION) {
+            return {
+                MODEL: "gpt-4o",
+                CTX: 32000
+            };
+        }
+
+        const parts = process.env.OPENAI_LLM_VISION.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OPENAI_LLM_VISION");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
+    static get ANTHROPIC_API_KEY(): string {
+        if (!process.env.ANTHROPIC_API_KEY) {
+            throw new Error("Missing ANTHROPIC_API_KEY");
+        }
+
+        return process.env.ANTHROPIC_API_KEY;
+    }
+
+    static get ANTHROPIC_LLM(): HennosModelConfig {
+        if (!process.env.ANTHROPIC_LLM) {
+            return {
+                MODEL: "claude-3-haiku-20240307",
+                CTX: 200000
+            };
+        }
+
+        const parts = process.env.ANTHROPIC_LLM.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for ANTHROPIC_LLM");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
+    static get ANTHROPIC_LLM_VISION(): HennosModelConfig {
+        if (!process.env.ANTHROPIC_LLM_VISION) {
+            return {
+                MODEL: "claude-3-haiku-20240307",
+                CTX: 200000
+            };
+        }
+
+        const parts = process.env.ANTHROPIC_LLM_VISION.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for ANTHROPIC_LLM_VISION");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
     }
 
     static get OLLAMA_PORT(): number {
@@ -195,5 +292,26 @@ export class Config {
         }
 
         return adminId;
+    }
+
+    static LOCAL_STORAGE(user?: HennosUser | HennosGroup): string {
+        if (!process.env.LOCAL_STORAGE) {
+            return os.tmpdir();
+        }
+
+        if (user) {
+            const dir = path.join(process.cwd(), process.env.LOCAL_STORAGE, String(user.chatId));
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir);
+            }
+
+            return dir;
+        }
+
+        const dir = path.join(process.cwd(), process.env.LOCAL_STORAGE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
+        return dir;
     }
 }

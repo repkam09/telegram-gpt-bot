@@ -1,40 +1,44 @@
-import { OllamaWrapper } from "../singletons/ollama";
-import ollama, { Message  } from "ollama";
+import { HennosAnthropicProvider } from "../singletons/anthropic";
+import { HennosOllamaProvider } from "../singletons/ollama";
+import { HennosOpenAIProvider } from "../singletons/openai";
 import { HennosUser } from "../singletons/user";
-import { Logger } from "../singletons/logger";
-import { Config } from "../singletons/config";
 
-export async function handleImageMesssage(user: HennosUser, tempFilePath: string, query?: string): Promise<string> {
-    Logger.info(user, `handleImageMesssage Start (${Config.OLLAMA_LLM_VISION.MODEL})`);
+type ImagePaths = {
+    local: string,
+    remote: string,
+    mime: string
+}
 
-    const completion = await OllamaWrapper.instance().chat({
-        stream: false,
-        model: Config.OLLAMA_LLM_VISION.MODEL,
-        messages: [
-            {
-                role: "user",
-                content: query ? query : "Describe this image in as much detail as posible",
-                images: [tempFilePath]
-            }
-        ],
-    });
+export async function handleImageMessage(user: HennosUser, image: ImagePaths, query?: string): Promise<string> {
+    const preferences = await user.getPreferences();
 
-    const response = completion.message;
-    if (!response) {
-        Logger.info(user, "handleImageMesssage End");
-        return "No information available about this image";
+    let completion;
+    if (preferences.provider === "openai") {
+        completion = await HennosOpenAIProvider.vision(user, {
+            role: "user",
+            content: query ? query : "Describe this image in as much detail as possible."
+        }, image.remote, image.mime);
+    } else if(preferences.provider === "anthropic") {
+        completion = await HennosAnthropicProvider.vision(user, {
+            role: "user",
+            content: query ? query : "Describe this image in as much detail as possible."
+        }, image.local, image.mime as "image/jpeg" | "image/png" | "image/gif" | "image/webp");
+    } else {
+        completion = await HennosOllamaProvider.vision(user, {
+            role: "user",
+            content: query ? query : "Describe this image in as much detail as possible."
+        }, image.local, image.mime);
     }
 
-    if (query) {
-        await user.updateChatContext("system", "The user sent an image message");
+    await user.updateChatContext("user", "<metadata>The user sent an image message that was handled by a vision processing system.</metadata>");
+    if (query) {        
         await user.updateChatContext("user", query);
-        await user.updateChatContext("assistant", response.content);
+        await user.updateChatContext("assistant", completion);
     }
 
     if (!query) {
-        await user.updateChatContext("system", `The user sent an image message. Here is a description of the image: ${response}`);
+        await user.updateChatContext("user", `<metadata>Here is a description of the image: ${completion}</metadata>`);
     }
 
-    Logger.info(user, "handleImageMesssage End");
-    return response.content;
+    return completion;
 }
