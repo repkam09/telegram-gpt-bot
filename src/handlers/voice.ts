@@ -1,6 +1,5 @@
-import { createReadStream } from "node:fs";
 import { Logger } from "../singletons/logger";
-import { OpenAIWrapper } from "../singletons/openai";
+import { HennosOpenAIProvider } from "../singletons/openai";
 import { handlePrivateMessage } from "./text/private";
 import { HennosUser } from "../singletons/user";
 
@@ -8,25 +7,14 @@ export type ValidTTSNames = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shim
 
 export async function handleVoiceMessage(user: HennosUser, path: string): Promise<[string, ArrayBuffer | undefined]> {
     try {
-        const transcription = await OpenAIWrapper.instance().audio.transcriptions.create({
-            model: "whisper-1",
-            file: createReadStream(path)
-        });
+        const transcription = await HennosOpenAIProvider.transcription(user, path); 
 
-        const response = await handlePrivateMessage(user, transcription.text, {
+        const response = await handlePrivateMessage(user, transcription, {
             role: "system",
             content: "The user sent their message via a voice recording. The voice recording has been transcribed into text for your convenience."
         });
 
-        const { voice } = await user.getPreferences();
-        const result = await OpenAIWrapper.instance().audio.speech.create({
-            model: "tts-1",
-            voice: voice,
-            input: response,
-            response_format: "opus"
-        });
-
-        const arrayBuffer = await result.arrayBuffer();
+        const arrayBuffer = await HennosOpenAIProvider.speech(user, response);
         return [response, arrayBuffer];
     } catch (err: unknown) {
         const error = err as Error;

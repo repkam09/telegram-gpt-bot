@@ -1,17 +1,19 @@
 import { Config } from "../singletons/config";
 import readline from "node:readline";
 import axios from "axios";
-import { processChatCompletionLocal } from "../singletons/completions";
-import OpenAI from "openai";
 import { convert } from "html-to-text";
-import { HennosUser } from "../singletons/user";
+import { HennosUser, HennosUserAsync } from "../singletons/user";
 import { getHTMLSearchResults } from "../singletons/tools";
+import { Message } from "ollama";
+import { HennosOllamaProvider } from "../singletons/ollama";
 
 async function search(query: string) {
-    const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
+    const user = await HennosUserAsync(Config.TELEGRAM_BOT_ADMIN, "Test");
 
-    const processed = buildQueryParsePrompt(user, query);
-    const result = await processChatCompletionLocal(user, processed);
+    const result = await HennosOllamaProvider.completion(user, buildQueryParsePrompt(), [{
+        role: "user",
+        content: query
+    }]);
 
     let queries: string[] = [query];
     try {
@@ -64,7 +66,10 @@ async function search(query: string) {
 
     console.log(prompt);
 
-    const completion = await processChatCompletionLocal(user, prompt);
+    const completion = await HennosOllamaProvider.completion(user, prompt, [{
+        role: "user",
+        content: query
+    }]);
     console.log(completion);
 }
 
@@ -82,8 +87,8 @@ async function getSearchResults(url: string) {
     return html.data;
 }
 
-function buildQueryParsePrompt(user: HennosUser, query: string): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+function buildQueryParsePrompt(): Message[] {
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are an intelligent text processing AI that helps extract key information from user input."
@@ -99,18 +104,14 @@ function buildQueryParsePrompt(user: HennosUser, query: string): OpenAI.Chat.Com
         {
             role: "system",
             content: "Because your response will be parsed by code, you should format your response as a valid JSON object that contains a 'queries' key which is an array of strings. You should not include anything else in your response."
-        },
-        {
-            role: "user",
-            content: query
         }
     ];
 
     return prompt;
 }
 
-function buildSearchResponsePrompt(user: HennosUser, query: string, context: { term: string, result: string }[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+function buildSearchResponsePrompt(user: HennosUser, query: string, context: { term: string, result: string }[]): Message[] {
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are a chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
@@ -130,10 +131,6 @@ function buildSearchResponsePrompt(user: HennosUser, query: string, context: { t
         {
             role: "system",
             content: "Use your own knowledge, and the information from the search results, to provide a response to the user's question."
-        },
-        {
-            role: "user",
-            content: query
         }
     ];
 

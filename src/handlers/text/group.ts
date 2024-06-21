@@ -1,14 +1,13 @@
-import OpenAI from "openai";
-import { processChatCompletion } from "../../singletons/completions";
 import { HennosGroup } from "../../singletons/group";
-import { getSizedChatContext } from "../../singletons/context";
 import { Logger } from "../../singletons/logger";
+import { Message } from "ollama";
+import { HennosOllamaProvider } from "../../singletons/ollama";
 
 export async function handleWhitelistedGroupMessage(group: HennosGroup, text: string): Promise<string> {
     const { name } = await group.getBasicInfo();
 
     const date = new Date().toUTCString();
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. " +
@@ -31,10 +30,8 @@ export async function handleWhitelistedGroupMessage(group: HennosGroup, text: st
         content: text
     });
 
-    const messages = await getSizedChatContext(group, prompt, context);
-
     try {
-        const response = await processChatCompletion(group, messages);
+        const response = await HennosOllamaProvider.completion(group, prompt, context);
         await group.updateChatContext("user", text);
         await group.updateChatContext("assistant", response);
         return response;

@@ -1,15 +1,16 @@
 import { encoding_for_model } from "tiktoken";
 import { HennosUser } from "./user";
-import { Config } from "./config";
-import OpenAI from "openai";
 import { HennosGroup } from "./group";
+import { Message } from "ollama";
+import { Logger } from "./logger";
 
-export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], currentChatContext: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: Message[], currentChatContext: Message[], limit: number): Promise<Message[]> {
     const promptTokens = getChatContextTokenCount(prompt);
     
     let totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
-    while (totalTokens > Config.HENNOS_MAX_TOKENS) {
+    while (totalTokens > limit) {
         if (currentChatContext.length === 0) {
+            Logger.warn(req, "Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
             throw new Error("Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
         }
 
@@ -17,12 +18,12 @@ export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt:
         totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
     }
 
-    return prompt.concat(currentChatContext);
+    Logger.info(req, `getSizedChatContext set total tokens to ${totalTokens}`);
+    return currentChatContext;
 }
 
-
-function getChatContextTokenCount(context: OpenAI.Chat.ChatCompletionMessageParam[]): number {
-    const encoder = encoding_for_model("gpt-4");
+function getChatContextTokenCount(context: Message[]): number {
+    const encoder = encoding_for_model("gpt-3.5-turbo");
     const total = context.reduce((acc, val) => {
         if (!val.content || typeof val.content !== "string") {
             return acc;

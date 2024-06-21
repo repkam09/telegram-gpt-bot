@@ -12,6 +12,7 @@ model User {
   firstName     String
   lastName      String?
   username      String?
+  provider      String?
   whitelisted   Boolean @default(false)
   voice         String?
   preferredName String?

@@ -1,10 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import { Database } from "./sqlite";
-import OpenAI from "openai";
 import { Config } from "./config";
+import { Message } from "ollama";
+
+export async function HennosGroupAsync(chatId: number, name?: string): Promise<HennosGroup> {
+    const group = new HennosGroup(chatId);
+    await group.setBasicInfo(name);
+    await group.getBasicInfo();
+    return group;
+}
 
 export class HennosGroup {
     public chatId: number;
+
+    public displayName: string;
 
     public whitelisted: boolean;
 
@@ -14,10 +23,11 @@ export class HennosGroup {
         this.chatId = chatId;
         this.whitelisted = false;
         this.db = Database.instance();
+        this.displayName = "HennosGroup";
     }
 
     public toString(): string {
-        return `HennosGroup ${String(this.chatId)}`;
+        return `Group - ${this.displayName} ${String(this.chatId)}`;
     }
 
     public allowFunctionCalling(): boolean {
@@ -55,12 +65,13 @@ export class HennosGroup {
         });
 
         this.whitelisted = result.whitelisted;
+        this.displayName = result.name;
         return {
             name: result.name
         };
     }
 
-    public async getChatContext(): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+    public async getChatContext(): Promise<Message[]> {
         const result = await this.db.messages.findMany({
             where: {
                 chatId: this.chatId
@@ -72,10 +83,10 @@ export class HennosGroup {
             orderBy: {
                 id: "desc"
             },
-            take: 50
+            take: 100
         });
 
-        return result.reverse() as OpenAI.Chat.ChatCompletionMessageParam[];
+        return result.reverse();
     }
 
     public async updateChatContext(role: "user" | "assistant" | "system", content: string): Promise<void> {

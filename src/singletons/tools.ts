@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import OpenAI from "openai";
 import axios from "axios";
 import { convert } from "html-to-text";

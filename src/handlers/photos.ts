@@ -1,52 +1,44 @@
-import OpenAI from "openai";
-import { OpenAIWrapper } from "../singletons/openai";
+import { HennosAnthropicProvider } from "../singletons/anthropic";
+import { HennosOllamaProvider } from "../singletons/ollama";
+import { HennosOpenAIProvider } from "../singletons/openai";
 import { HennosUser } from "../singletons/user";
-import { Logger } from "../singletons/logger";
 
-export async function handleImageMesssage(user: HennosUser, url: string, query?: string): Promise<string> {
-    Logger.info(user, "handleImageMesssage Start (gpt-4-vision-preview)");
+type ImagePaths = {
+    local: string,
+    remote: string,
+    mime: string
+}
 
-    const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
-        {
-            type: "text",
-            text: query ? query : "Describe this image in as much detail as posible"
-        },
-        {
-            type: "image_url",
-            image_url: {
-                detail: "low",
-                url
-            }
-        }
-    ];
+export async function handleImageMessage(user: HennosUser, image: ImagePaths, query?: string): Promise<string> {
+    const preferences = await user.getPreferences();
 
-    const completion = await OpenAIWrapper.instance().chat.completions.create({
-        model: "gpt-4-vision-preview",
-        max_tokens: 2000,
-        messages: [
-            {
-                role: "user",
-                content
-            },
-        ],
-    });
-
-    const response = completion.choices[0].message.content;
-    if (!response) {
-        Logger.info(user, "handleImageMesssage End");
-        return "No information available about this image";
+    let completion;
+    if (preferences.provider === "openai") {
+        completion = await HennosOpenAIProvider.vision(user, {
+            role: "user",
+            content: query ? query : "Describe this image in as much detail as possible."
+        }, image.remote, image.mime);
+    } else if(preferences.provider === "anthropic") {
+        completion = await HennosAnthropicProvider.vision(user, {
+            role: "user",
+            content: query ? query : "Describe this image in as much detail as possible."
+        }, image.local, image.mime as "image/jpeg" | "image/png" | "image/gif" | "image/webp");
+    } else {
+        completion = await HennosOllamaProvider.vision(user, {
+            role: "user",
+            content: query ? query : "Describe this image in as much detail as possible."
+        }, image.local, image.mime);
     }
 
-    if (query) {
-        await user.updateChatContext("system", "The user sent an image message.");
+    await user.updateChatContext("user", "<metadata>The user sent an image message that was handled by a vision processing system.</metadata>");
+    if (query) {        
         await user.updateChatContext("user", query);
-        await user.updateChatContext("assistant", response);
+        await user.updateChatContext("assistant", completion);
     }
 
     if (!query) {
-        await user.updateChatContext("system", `The user sent an image message. Here is a description of the image: ${response}`);
+        await user.updateChatContext("user", `<metadata>Here is a description of the image: ${completion}</metadata>`);
     }
 
-    Logger.info(user, "handleImageMesssage End");
-    return response;
+    return completion;
 }

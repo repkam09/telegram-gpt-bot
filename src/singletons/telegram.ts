@@ -1,18 +1,20 @@
-import os from "node:os";
 import fs, { } from "node:fs";
 import TelegramBot from "node-telegram-bot-api";
+import mimetype from "mime-types";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { handleDocumentMessage, isSupportedDocumentType } from "../handlers/document";
-import { handleImageMesssage } from "../handlers/photos";
+import { handleImageMessage } from "../handlers/photos";
 import { handleVoiceMessage } from "../handlers/voice";
 import { handleVoiceSettingsCallback } from "../handlers/text/commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback } from "../handlers/text/commands/handleGeneralSettings";
 import { handlePrivateMessage } from "../handlers/text/private";
 import { handleWhitelistedGroupMessage } from "../handlers/text/group";
 import { handleCommandMessage } from "../handlers/text/commands";
-import { HennosUser } from "./user";
-import { HennosGroup } from "./group";
+import { HennosUser, HennosUserAsync } from "./user";
+import { HennosGroup, HennosGroupAsync } from "./group";
+import { handleLLMProviderSettingsCallback } from "../handlers/text/commands/handleLLMProviderSettings";
+import path from "node:path";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -92,23 +94,21 @@ export class BotInstance {
                 return;
             }
 
-            if (Config.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
+            const user = await HennosUserAsync(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
+            if (Config.HENNOS_DEVELOPMENT_MODE) {
                 if (msg.from.id !== Config.TELEGRAM_BOT_ADMIN) {
+                    Logger.warn(user, "Ignoring message from non-admin user due to HENNOS_DEVELOPMENT_MODE true");
                     return;
                 }
             }
 
-            const user = new HennosUser(msg.from.id);
-            await user.setBasicInfo(msg.from.first_name, msg.from.last_name, msg.from.username);
-
             if (msg.text.startsWith("/")) {
-                Logger.trace("text_command", msg);
+                Logger.trace(user, "text_command");
                 return handleTelegramCommandMessage(user, msg as MessageWithText);
             }
 
             if (msg.chat.type !== "private") {
-                const group = new HennosGroup(msg.chat.id);
-                await group.setBasicInfo(msg.chat.title);
+                const group = await HennosGroupAsync(msg.chat.id, msg.chat.title);
                 return handleTelegramGroupMessage(user, group, msg as MessageWithText);
             }
 
@@ -148,17 +148,19 @@ export class BotInstance {
         });
 
         bot.on("sticker", async (msg) => {
-            Logger.trace("sticker", msg);
             return handleTelegramStickerMessage(msg as TelegramBot.Message & { sticker: TelegramBot.Sticker });
         });
 
         bot.on("callback_query", async (query: TelegramBot.CallbackQuery) => {
             if (query.data) {
-                const user = new HennosUser(query.from.id);
-                user.setBasicInfo(query.from.first_name, query.from.last_name, query.from.username);
+                const user = await HennosUserAsync(query.from.id, query.from.first_name, query.from.last_name, query.from.username);
 
                 if (query.data.startsWith("voice-settings-")) {
                     return handleVoiceSettingsCallback(user, query.id, query.data);
+                }
+
+                if (query.data.startsWith("llm-settings-")) {
+                    return handleLLMProviderSettingsCallback(user, query.id, query.data);
                 }
 
                 if (query.data.startsWith("customize-")) {
@@ -179,7 +181,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
         return;
     }
 
-    Logger.trace("text_group", msg);
+    Logger.trace(user, "text_group");
 
     if (!group.whitelisted && !user.whitelisted) {
         return;
@@ -214,7 +216,7 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
         if (!messages) return;
 
         // If we have one or more messages, process them
-        Logger.trace("text_private", msg);
+        Logger.trace(user, "text_private");
         const response = await handlePrivateMessage(user, messages.length === 1 ? messages[0] : messages.join("\n"));
 
         // Send the response to the user
@@ -225,7 +227,7 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
 }
 
 async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Message & { voice: TelegramBot.Voice }) {
-    const tempFilePath = await BotInstance.instance().downloadFile(msg.voice.file_id, os.tmpdir());
+    const tempFilePath = await BotInstance.instance().downloadFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
     const [response, arrayBuffer] = await handleVoiceMessage(user, tempFilePath);
     if (arrayBuffer) {
         await BotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
@@ -245,8 +247,10 @@ async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Mes
         return (obj.width * obj.height > max.width * max.height) ? obj : max;
     });
 
-    const url = await BotInstance.instance().getFileLink(largestImage.file_id);
-    const response = await handleImageMesssage(user, url, msg.caption);
+    const tempFileUrl = await BotInstance.instance().getFileLink(largestImage.file_id);
+    const tempFilePath = await BotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(user));
+    const mime_type = mimetype.contentType(path.extname(tempFilePath));
+    const response = await handleImageMessage(user, { remote: tempFileUrl, local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
     return BotInstance.sendMessageWrapper(user, response);
 }
 
@@ -275,7 +279,7 @@ async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.
         return BotInstance.sendMessageWrapper(user, `This document seems to be a ${document.mime_type} which is not yet supported.`);
     }
 
-    const tempFilePath = await BotInstance.instance().downloadFile(document.file_id, os.tmpdir());
+    const tempFilePath = await BotInstance.instance().downloadFile(document.file_id, Config.LOCAL_STORAGE(user));
     const response = await handleDocumentMessage(user, tempFilePath, document.mime_type, document.file_unique_id);
     return BotInstance.sendMessageWrapper(user, response);
 }
@@ -286,16 +290,19 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
         return;
     }
 
+    const user = await HennosUserAsync(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
+    Logger.trace(user, "sticker");
+
     const { set_name, emoji } = msg.sticker;
     if (set_name && emoji) {
         return;
     }
 
     try {
-        const stickerPath = await BotInstance.instance().downloadFile(msg.sticker.file_id, os.tmpdir());
+        const stickerPath = await BotInstance.instance().downloadFile(msg.sticker.file_id, Config.LOCAL_STORAGE(user));
         await BotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
     } catch (err) {
-        const user = new HennosUser(msg.from.id);
+        const user = await HennosUserAsync(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
         Logger.error(user, err);
     }
 }
@@ -307,8 +314,10 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
         return;
     }
 
-    if (Config.HENNOS_DEVELOPMENT_SINGLE_USER_MODE) {
+    const user = await HennosUserAsync(message.from.id, message.from.first_name, message.from.last_name, message.from.username);
+    if (Config.HENNOS_DEVELOPMENT_MODE) {
         if (message.from.id !== Config.TELEGRAM_BOT_ADMIN) {
+            Logger.warn(user, "Ignoring message from non-admin user due to HENNOS_DEVELOPMENT_MODE true");
             return;
         }
     }
@@ -317,14 +326,12 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
         return;
     }
 
-    const user = new HennosUser(message.from.id);
-    await user.setBasicInfo(message.from.first_name, message.from.last_name, message.from.username);
     if (!user.whitelisted) {
-        Logger.trace(`${requiredProperty} [but not whitelisted]`, message);
+        Logger.trace(user, `${requiredProperty} [but not whitelisted]`);
         return BotInstance.sendMessageWrapper(user, "Sorry, you have not been whitelisted to use this feature.");
     }
 
-    Logger.trace(requiredProperty, message);
+    Logger.trace(user, requiredProperty);
     return handler(user, message);
 }
 

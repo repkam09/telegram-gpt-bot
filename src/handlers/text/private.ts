@@ -1,11 +1,11 @@
-import { processChatCompletion, processChatCompletionLimited } from "../../singletons/completions";
-import OpenAI from "openai";
 import { HennosUser } from "../../singletons/user";
-import { getSizedChatContext } from "../../singletons/context";
-import { moderateLimitedUserTextInput } from "../../singletons/moderation";
 import { Logger } from "../../singletons/logger";
+import { Message } from "ollama";
+import { HennosOllamaProvider } from "../../singletons/ollama";
+import { HennosOpenAIProvider } from "../../singletons/openai";
+import { HennosAnthropicProvider } from "../../singletons/anthropic";
 
-export async function handlePrivateMessage(user: HennosUser, text: string, hint?: OpenAI.Chat.Completions.ChatCompletionMessageParam): Promise<string> {
+export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     if (user.whitelisted) {
         return handleWhitelistedPrivateMessage(user, text, hint);
     } else {
@@ -13,7 +13,7 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
     }
 }
 
-async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: OpenAI.Chat.Completions.ChatCompletionMessageParam): Promise<string> {
+async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     const prompt = await buildPrompt(user);
     const context = await user.getChatContext();
 
@@ -27,13 +27,31 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
         content: text
     });
 
-    const messages = await getSizedChatContext(user, prompt, context);
+    const preferences = await user.getPreferences();
     try {
-        const response = await processChatCompletion(user, messages);
-        await user.updateChatContext("user", text);
-        await user.updateChatContext("assistant", response);
-        return response;
-    } catch (err) {
+        switch (preferences.provider) {
+        case "openai": {
+            const response = await HennosOpenAIProvider.completion(user, prompt, context);
+            await user.updateChatContext("user", text);
+            await user.updateChatContext("assistant", response);
+            return response;
+        }
+
+        case "anthropic": {
+            const response = await HennosAnthropicProvider.completion(user, prompt, context);
+            await user.updateChatContext("user", text);
+            await user.updateChatContext("assistant", response);
+            return response;
+        }
+
+        default: {
+            const response = await HennosOllamaProvider.completion(user, prompt, context);
+            await user.updateChatContext("user", text);
+            await user.updateChatContext("assistant", response);
+            return response;
+        }
+        }
+    } catch (err: unknown) {
         const error = err as Error;
         Logger.error(user, `Error processing chat completion: ${error.message}`, error.stack);
         return "Sorry, I was unable to process your message";
@@ -43,7 +61,7 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
 async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): Promise<string> {
     const { firstName } = await user.getBasicInfo();
 
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short sentences, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
@@ -58,22 +76,25 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
         }
     ];
 
-    const flagged = await moderateLimitedUserTextInput(user, text);
+    const flagged = await HennosOpenAIProvider.moderation(user, text);
     if (flagged) {
-        return "Sorry, I can't help with that. You message appears to violate OpenAI's Content Policy.";
+        return "Sorry, I can't help with that. You message appears to violate the moderation rules.";
     }
 
-    const response = await processChatCompletionLimited(user, [
-        ...prompt,
+    const response = await HennosOllamaProvider.completion(user, prompt, [
         {
             content: text,
             role: "user",
         }
     ]);
+
+    await user.updateChatContext("user", text);
+    await user.updateChatContext("assistant", response);
+
     return response;
 }
 
-export async function buildPrompt(user: HennosUser): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
+export async function buildPrompt(user: HennosUser): Promise<Message[]> {
     const { firstName, location } = await user.getBasicInfo();
     const { botName, preferredName, personality } = await user.getPreferences();
 
@@ -81,7 +102,7 @@ export async function buildPrompt(user: HennosUser): Promise<OpenAI.Chat.Complet
 
     const locationDetails = location ? `The user provided the location information as lat=${location.latitude}, lon=${location.latitude}` : "";
 
-    const prompt: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const prompt: Message[] = [
         {
             role: "system",
             content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."

@@ -1,10 +1,10 @@
 import path from "path";
 import { Config } from "../singletons/config";
 import { handlePlainTextDocument } from "../handlers/document";
-import { HennosUser } from "../singletons/user";
+import { HennosUserAsync } from "../singletons/user";
 
 async function test() {
-    const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
+    const user = await HennosUserAsync(Config.TELEGRAM_BOT_ADMIN, "Test");
     const filePath = path.join("documents", Config.TELEGRAM_BOT_ADMIN.toString());
 
     const startTime = Date.now();

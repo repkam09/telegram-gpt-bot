@@ -1,11 +1,23 @@
 import { PrismaClient } from "@prisma/client";
 import { Database } from "./sqlite";
-import OpenAI from "openai";
 import { Config } from "./config";
 import { ValidTTSNames } from "../handlers/voice";
+import { Message } from "ollama";
+
+
+export async function  HennosUserAsync(chatId: number, firstName: string, lastName?: string, username?: string): Promise<HennosUser> {
+    const user = new HennosUser(chatId);
+    await user.setBasicInfo(firstName, lastName, username);
+    await user.getBasicInfo();
+    return user;
+}
+
+type ValidLLMProviders = "openai" | "ollama" | "anthropic"
 
 export class HennosUser {
     public chatId: number;
+
+    public displayName: string;
 
     public whitelisted: boolean;
 
@@ -15,6 +27,7 @@ export class HennosUser {
         this.chatId = chatId;
         this.whitelisted = false;
         this.db = Database.instance();
+        this.displayName = "HennosUser";
     }
 
     public isAdmin(): boolean {
@@ -22,13 +35,7 @@ export class HennosUser {
     }
 
     public toString(): string {
-        return `HennosUser ${String(this.chatId)}`;
-    }
-
-    public allowFunctionCalling(): boolean {
-        // @TODO: Improve function calling before re-enabling this.
-        return false;
-        //return Config.TELEGRAM_BOT_ADMIN === this.chatId;
+        return `${this.displayName} ${String(this.chatId)}`;
     }
 
     static setWhitelisted(user: HennosUser, whitelisted: boolean) {
@@ -79,6 +86,7 @@ export class HennosUser {
         });
 
         this.whitelisted = result.whitelisted;
+        this.displayName = `${result.firstName} ${result.lastName}`;
         return {
             firstName: result.firstName,
             lastName: result.lastName,
@@ -96,6 +104,7 @@ export class HennosUser {
                 preferredName: true,
                 botName: true,
                 voice: true,
+                provider: true
             },
             where: {
                 chatId: this.chatId
@@ -105,6 +114,7 @@ export class HennosUser {
             preferredName: result.preferredName,
             botName: result.botName,
             voice: result.voice ? result.voice as ValidTTSNames : "onyx" as ValidTTSNames,
+            provider: result.provider ? result.provider as ValidLLMProviders : "ollama" as ValidLLMProviders,
             personality: "default"
         };
     }
@@ -138,6 +148,17 @@ export class HennosUser {
             },
             data: {
                 voice: name
+            }
+        });
+    }
+
+    public async setPreferredProvider(provider: string): Promise<void> {
+        await this.db.user.update({
+            where: {
+                chatId: this.chatId
+            },
+            data: {
+                provider: provider
             }
         });
     }
@@ -178,7 +199,7 @@ export class HennosUser {
         });
     }
 
-    public async getChatContext(): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+    public async getChatContext(): Promise<Message[]> {
         const result = await this.db.messages.findMany({
             where: {
                 chatId: this.chatId
@@ -190,10 +211,10 @@ export class HennosUser {
             orderBy: {
                 id: "desc"
             },
-            take: 50
+            take: 100
         });
 
-        return result.reverse() as OpenAI.Chat.ChatCompletionMessageParam[];
+        return result.reverse();
     }
 
     public async updateChatContext(role: "user" | "assistant" | "system", content: string): Promise<void> {

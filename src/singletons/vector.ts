@@ -6,7 +6,7 @@ export class Vector {
 
     public static async init() {
         const vectorStore = new QdrantVectorStore({
-            url: "http://localhost:6333",
+            url: `http://${Config.QDRANT_HOST}:${Config.QDRANT_PORT}`,
         });
 
         const index = await VectorStoreIndex.fromVectorStore(vectorStore, {
@@ -14,12 +14,13 @@ export class Vector {
             nodeParser: new SimpleNodeParser(),
             promptHelper: new PromptHelper(),
             embedModel: new OllamaEmbedding({
-                model: "nomic-embed-text",
+                model: Config.OLLAMA_LLM_EMBED.MODEL,
+                contextWindow: Config.OLLAMA_LLM_EMBED.CTX,
                 baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
-                contextWindow: 4096
             }),
             llm: new Ollama({
-                model: "tinyllama",
+                model: Config.OLLAMA_LLM_LARGE.MODEL,
+                contextWindow: Config.OLLAMA_LLM_LARGE.CTX,
                 baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
             })
         });
