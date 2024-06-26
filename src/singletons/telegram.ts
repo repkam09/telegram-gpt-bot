@@ -87,6 +87,12 @@ export class BotInstance {
         }
     }
 
+    static setTelegramTypingIndicator(req: HennosUser | HennosGroup): void {
+        BotInstance.instance().sendChatAction(req.chatId, "typing").catch((err: unknown) => {
+            Logger.warn(req, `Error while setting Telegram typing indicator: ${err}`);
+        });
+    }
+
     static init() {
         const bot = BotInstance.instance();
         bot.on("text", async (msg) => {
@@ -109,6 +115,7 @@ export class BotInstance {
 
             if (msg.chat.type !== "private") {
                 const group = await HennosGroupAsync(msg.chat.id, msg.chat.title);
+                BotInstance.setTelegramTypingIndicator(group);
                 return handleTelegramGroupMessage(user, group, msg as MessageWithText);
             }
 
@@ -119,6 +126,7 @@ export class BotInstance {
                     InputCallbackFunctionMap.delete(user.chatId);
                     return callback(msg);
                 }
+                BotInstance.setTelegramTypingIndicator(user);
                 return handleTelegramPrivateMessage(user, msg as MessageWithText);
             }
         });
@@ -332,6 +340,7 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
     }
 
     Logger.trace(user, requiredProperty);
+    BotInstance.setTelegramTypingIndicator(user);
     return handler(user, message);
 }
 
