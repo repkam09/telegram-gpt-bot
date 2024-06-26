@@ -299,8 +299,9 @@ export class Config {
             return os.tmpdir();
         }
 
+        const cwd = path.join(__dirname, "../", "../");
         if (user) {
-            const dir = path.join(process.cwd(), process.env.LOCAL_STORAGE, String(user.chatId));
+            const dir = path.join(cwd, process.env.LOCAL_STORAGE, String(user.chatId));
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir);
             }
@@ -308,7 +309,7 @@ export class Config {
             return dir;
         }
 
-        const dir = path.join(process.cwd(), process.env.LOCAL_STORAGE);
+        const dir = path.join(cwd, process.env.LOCAL_STORAGE);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir);
         }

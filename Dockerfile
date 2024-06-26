@@ -1,7 +1,11 @@
-FROM node:20
+FROM node:20-buster
 
 # Set the working directory
 WORKDIR /app/hennos
+
+# Install some apt deps
+RUN apt update
+RUN apt install -y ffmpeg build-essential
 
 # Copy package.json and package-lock.json
 COPY package.json package.json

@@ -1,7 +1,7 @@
 import { HennosGroup } from "../../singletons/group";
 import { Logger } from "../../singletons/logger";
 import { Message } from "ollama";
-import { HennosAnthropicProvider } from "../../singletons/anthropic";
+import { HennosAnthropicSingleton } from "../../singletons/anthropic";
 import { HennosUser } from "../../singletons/user";
 
 export async function handleWhitelistedGroupMessage(user: HennosUser, group: HennosGroup, text: string): Promise<string> {
@@ -33,7 +33,7 @@ export async function handleWhitelistedGroupMessage(user: HennosUser, group: Hen
     });
 
     try {
-        const response = await HennosAnthropicProvider.completion(group, prompt, context);
+        const response = await HennosAnthropicSingleton.instance().completion(group, prompt, context);
         await group.updateChatContext("user", text);
         await group.updateChatContext("assistant", response);
         return response;

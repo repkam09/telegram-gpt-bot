@@ -1,29 +1,38 @@
 import { Config } from "./config";
 import OpenAI from "openai";
 import { HennosUser } from "./user";
-import { HennosGroup } from "./group";
 import { Message } from "ollama";
 import { Logger } from "./logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
 import { createReadStream } from "node:fs";
 import { getSizedChatContext } from "./context";
+import { HennosBaseProvider, HennosConsumer } from "./base";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
-type HennosConsumer = HennosUser | HennosGroup
 
-export class HennosOpenAIProvider {
-    private static _instance: OpenAI;
+export class HennosOpenAISingleton {
+    private static _instance: HennosBaseProvider | null = null;
 
-    private static instance(): OpenAI {
-        if (!HennosOpenAIProvider._instance) {
-            HennosOpenAIProvider._instance = new OpenAI({
-                apiKey: Config.OPENAI_API_KEY,
-            });
+    public static instance(): HennosBaseProvider {
+        if (!HennosOpenAISingleton._instance) {
+            HennosOpenAISingleton._instance = new HennosOpenAIProvider();
         }
-        return HennosOpenAIProvider._instance;
+        return HennosOpenAISingleton._instance;
+    }
+}
+
+class HennosOpenAIProvider extends HennosBaseProvider {
+    private openai: OpenAI;
+
+    constructor() {
+        super();
+
+        this.openai = new OpenAI({
+            apiKey: Config.OPENAI_API_KEY,
+        });
     }
 
-    public static async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
+    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
         Logger.info(req, `OpenAI Completion Start (${Config.OPENAI_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OPENAI_LLM.CTX);
@@ -35,7 +44,7 @@ export class HennosOpenAIProvider {
                 role: message.role as MessageRoles,
             }));
 
-            const response = await HennosOpenAIProvider.instance().chat.completions.create({
+            const response = await this.openai.chat.completions.create({
                 model: Config.OPENAI_LLM.MODEL,
                 messages
             });
@@ -55,10 +64,10 @@ export class HennosOpenAIProvider {
         }
     }
 
-    public static async vision(req: HennosConsumer, prompt: Message, remote: string, mime: string): Promise<string> {
+    public async vision(req: HennosConsumer, prompt: Message, remote: string, mime: string): Promise<string> {
         Logger.info(req, `OpenAI Vision Completion Start (${Config.OPENAI_LLM_VISION.MODEL})`);
         try {
-            const response = await HennosOpenAIProvider.instance().chat.completions.create({
+            const response = await this.openai.chat.completions.create({
                 stream: false,
                 model: Config.OPENAI_LLM_VISION.MODEL,
                 messages: [
@@ -95,10 +104,11 @@ export class HennosOpenAIProvider {
             throw err;
         }
     }
-    public static async moderation(req: HennosConsumer, input: string): Promise<boolean> {
+
+    public async moderation(req: HennosConsumer, input: string): Promise<boolean> {
         Logger.info(req, "OpenAI Moderation Start");
         try {
-            const response = await HennosOpenAIProvider.instance().moderations.create({
+            const response = await this.openai.moderations.create({
                 input
             });
 
@@ -119,10 +129,10 @@ export class HennosOpenAIProvider {
         }
     }
 
-    public static async transcription(req: HennosConsumer, path: string): Promise<string> {
+    public async transcription(req: HennosConsumer, path: string): Promise<string> {
         Logger.info(req, "OpenAI Transcription Start");
         try {
-            const transcription = await HennosOpenAIProvider.instance().audio.transcriptions.create({
+            const transcription = await this.openai.audio.transcriptions.create({
                 model: "whisper-1",
                 file: createReadStream(path)
             });
@@ -135,11 +145,11 @@ export class HennosOpenAIProvider {
         }
     }
 
-    public static async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
+    public async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
         Logger.info(user, "OpenAI Speech Start");
         try {
             const preferences = await user.getPreferences();
-            const result = await HennosOpenAIProvider.instance().audio.speech.create({
+            const result = await this.openai.audio.speech.create({
                 model: "tts-1",
                 voice: preferences.voice,
                 input: input,

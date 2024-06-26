@@ -2,34 +2,42 @@ import fs from "node:fs/promises";
 import { Config } from "./config";
 import { Anthropic } from "@anthropic-ai/sdk";
 import { HennosUser } from "./user";
-import { HennosGroup } from "./group";
 import { Message } from "ollama";
 import { MessageParam, TextBlock } from "@anthropic-ai/sdk/resources";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
+import { HennosOpenAISingleton } from "./openai";
+import { HennosBaseProvider, HennosConsumer } from "./base";
 
-type HennosConsumer = HennosUser | HennosGroup
+export class HennosAnthropicSingleton {
+    private static _instance: HennosBaseProvider | null = null;
 
-export class HennosAnthropicProvider {
-    private static _instance: Anthropic;
-
-    private static instance(): Anthropic {
-        if (!HennosAnthropicProvider._instance) {
-            HennosAnthropicProvider._instance = new Anthropic({
-                apiKey: Config.ANTHROPIC_API_KEY
-            });
+    public static instance(): HennosBaseProvider {
+        if (!HennosAnthropicSingleton._instance) {
+            HennosAnthropicSingleton._instance = new HennosAnthropicProvider();
         }
-        return HennosAnthropicProvider._instance;
+        return HennosAnthropicSingleton._instance;
+    }
+}
+
+class HennosAnthropicProvider extends HennosBaseProvider {
+    private anthropic: Anthropic;
+
+    constructor() {
+        super();
+
+        this.anthropic = new Anthropic({
+            apiKey: Config.ANTHROPIC_API_KEY
+        });
     }
 
-    public static async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
+    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
         Logger.info(req, `Anthropic Completion Start (${Config.ANTHROPIC_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.ANTHROPIC_LLM.CTX);
 
-        const messages = chat.reduce((acc: MessageParam[], current: Message, index: number) => {
+        const messages = chat.filter((entry) => entry.role !== "system").reduce((acc: MessageParam[], current: Message, index: number) => {
             if (index === 0) {
-                // Always add the first message
                 return [current as MessageParam];
             }
 
@@ -55,7 +63,7 @@ export class HennosAnthropicProvider {
 
         try {
             const combinedSystemPrompt = system.map((message) => message.content).join(" ");
-            const response = await HennosAnthropicProvider.instance().messages.create({
+            const response = await this.anthropic.messages.create({
                 system: combinedSystemPrompt,
                 model: Config.ANTHROPIC_LLM.MODEL,
                 max_tokens: 4096,
@@ -73,7 +81,7 @@ export class HennosAnthropicProvider {
         }
     }
 
-    public static async vision(req: HennosConsumer, prompt: Message, local: string, mime: "image/jpeg" | "image/png" | "image/gif" | "image/webp"): Promise<string> {
+    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: "image/jpeg" | "image/png" | "image/gif" | "image/webp"): Promise<string> {
         Logger.info(req, `Anthropic Vision Completion Start (${Config.ANTHROPIC_LLM_VISION.MODEL})`);
         try {
 
@@ -81,7 +89,7 @@ export class HennosAnthropicProvider {
             const raw = await fs.readFile(local);
             const data = Buffer.from(raw).toString("base64");
 
-            const response = await HennosAnthropicProvider.instance().messages.create({
+            const response = await this.anthropic.messages.create({
                 model: Config.ANTHROPIC_LLM_VISION.MODEL,
                 max_tokens: 4096,
                 messages: [
@@ -113,5 +121,20 @@ export class HennosAnthropicProvider {
             Logger.info(req, "Anthropic Vision Completion Completion Error: ", err);
             throw err;
         }
+    }
+
+    public async moderation(req: HennosConsumer, input: string): Promise<boolean> {
+        Logger.warn(req, "Anthropic Moderation Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().moderation(req, input);
+    }
+
+    public async transcription(req: HennosConsumer, path: string): Promise<string> {
+        Logger.warn(req, "Anthropic Transcription Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().transcription(req, path);
+    }
+
+    public async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
+        Logger.warn(user, "Anthropic Speech Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().speech(user, input);
     }
 }

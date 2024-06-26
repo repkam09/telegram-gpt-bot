@@ -241,12 +241,6 @@ async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Mes
         await BotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
     }
 
-    fs.unlink(tempFilePath, (err: Error | null) => {
-        if (err) {
-            Logger.error(user, "Error deleting voice file: ", err.message);
-        }
-    });
-
     return BotInstance.sendMessageWrapper(user, response);
 }
 

@@ -5,12 +5,12 @@ import { convert } from "html-to-text";
 import { HennosUser, HennosUserAsync } from "../singletons/user";
 import { getHTMLSearchResults } from "../singletons/tools";
 import { Message } from "ollama";
-import { HennosOllamaProvider } from "../singletons/ollama";
+import { HennosOllamaSingleton } from "../singletons/ollama";
 
 async function search(query: string) {
     const user = await HennosUserAsync(Config.TELEGRAM_BOT_ADMIN, "Test");
 
-    const result = await HennosOllamaProvider.completion(user, buildQueryParsePrompt(), [{
+    const result = await HennosOllamaSingleton.instance().completion(user, buildQueryParsePrompt(), [{
         role: "user",
         content: query
     }]);
@@ -66,7 +66,7 @@ async function search(query: string) {
 
     console.log(prompt);
 
-    const completion = await HennosOllamaProvider.completion(user, prompt, [{
+    const completion = await HennosOllamaSingleton.instance().completion(user, prompt, [{
         role: "user",
         content: query
     }]);

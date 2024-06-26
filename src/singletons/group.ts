@@ -83,7 +83,7 @@ export class HennosGroup {
             orderBy: {
                 id: "desc"
             },
-            take: 100
+            take: 10
         });
 
         return result.reverse();

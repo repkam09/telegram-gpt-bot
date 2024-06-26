@@ -1,6 +1,6 @@
-import { HennosAnthropicProvider } from "../singletons/anthropic";
-import { HennosOllamaProvider } from "../singletons/ollama";
-import { HennosOpenAIProvider } from "../singletons/openai";
+import { HennosAnthropicSingleton } from "../singletons/anthropic";
+import { HennosOllamaSingleton } from "../singletons/ollama";
+import { HennosOpenAISingleton } from "../singletons/openai";
 import { HennosUser } from "../singletons/user";
 
 type ImagePaths = {
@@ -14,17 +14,17 @@ export async function handleImageMessage(user: HennosUser, image: ImagePaths, qu
 
     let completion;
     if (preferences.provider === "openai") {
-        completion = await HennosOpenAIProvider.vision(user, {
+        completion = await HennosOpenAISingleton.instance().vision(user, {
             role: "user",
             content: query ? query : "Describe this image in as much detail as possible."
         }, image.remote, image.mime);
     } else if(preferences.provider === "anthropic") {
-        completion = await HennosAnthropicProvider.vision(user, {
+        completion = await HennosAnthropicSingleton.instance().vision(user, {
             role: "user",
             content: query ? query : "Describe this image in as much detail as possible."
         }, image.local, image.mime as "image/jpeg" | "image/png" | "image/gif" | "image/webp");
     } else {
-        completion = await HennosOllamaProvider.vision(user, {
+        completion = await HennosOllamaSingleton.instance().vision(user, {
             role: "user",
             content: query ? query : "Describe this image in as much detail as possible."
         }, image.local, image.mime);

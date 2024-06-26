@@ -8,3 +8,4 @@ hennos.db-journal
 documents
 hennos.sqlite
 hennos.sqlite-journal
+tests/fixtures/*.oga.wav

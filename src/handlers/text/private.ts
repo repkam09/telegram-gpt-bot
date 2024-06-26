@@ -1,9 +1,9 @@
 import { HennosUser } from "../../singletons/user";
 import { Logger } from "../../singletons/logger";
 import { Message } from "ollama";
-import { HennosOllamaProvider } from "../../singletons/ollama";
-import { HennosOpenAIProvider } from "../../singletons/openai";
-import { HennosAnthropicProvider } from "../../singletons/anthropic";
+import { HennosOllamaSingleton } from "../../singletons/ollama";
+import { HennosOpenAISingleton } from "../../singletons/openai";
+import { HennosAnthropicSingleton } from "../../singletons/anthropic";
 
 export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     if (user.whitelisted) {
@@ -30,26 +30,26 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     const preferences = await user.getPreferences();
     try {
         switch (preferences.provider) {
-        case "openai": {
-            const response = await HennosOpenAIProvider.completion(user, prompt, context);
-            await user.updateChatContext("user", text);
-            await user.updateChatContext("assistant", response);
-            return response;
-        }
+            case "openai": {
+                const response = await HennosOpenAISingleton.instance().completion(user, prompt, context);
+                await user.updateChatContext("user", text);
+                await user.updateChatContext("assistant", response);
+                return response;
+            }
 
-        case "anthropic": {
-            const response = await HennosAnthropicProvider.completion(user, prompt, context);
-            await user.updateChatContext("user", text);
-            await user.updateChatContext("assistant", response);
-            return response;
-        }
+            case "anthropic": {
+                const response = await HennosAnthropicSingleton.instance().completion(user, prompt, context);
+                await user.updateChatContext("user", text);
+                await user.updateChatContext("assistant", response);
+                return response;
+            }
 
-        default: {
-            const response = await HennosOllamaProvider.completion(user, prompt, context);
-            await user.updateChatContext("user", text);
-            await user.updateChatContext("assistant", response);
-            return response;
-        }
+            default: {
+                const response = await HennosOllamaSingleton.instance().completion(user, prompt, context);
+                await user.updateChatContext("user", text);
+                await user.updateChatContext("assistant", response);
+                return response;
+            }
         }
     } catch (err: unknown) {
         const error = err as Error;
@@ -76,12 +76,14 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
         }
     ];
 
-    const flagged = await HennosOpenAIProvider.moderation(user, text);
+    const flagged = await HennosOpenAISingleton.instance().moderation(user, text);
     if (flagged) {
+        await user.updateChatContext("user", text);
+        await user.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
         return "Sorry, I can't help with that. You message appears to violate the moderation rules.";
     }
 
-    const response = await HennosOllamaProvider.completion(user, prompt, [
+    const response = await HennosOllamaSingleton.instance().completion(user, prompt, [
         {
             content: text,
             role: "user",
@@ -118,26 +120,26 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
     ];
 
     switch (personality) {
-    case "seductive":
-        prompt.unshift({
-            role: "system",
-            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are also seductive and flirty.`
-        });
-        break;
+        case "seductive":
+            prompt.unshift({
+                role: "system",
+                content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are also seductive and flirty.`
+            });
+            break;
 
-    case "snarky":
-        prompt.unshift({
-            role: "system",
-            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is snarky and sarcastic while still being helpful.`
-        });
-        break;
+        case "snarky":
+            prompt.unshift({
+                role: "system",
+                content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is snarky and sarcastic while still being helpful.`
+            });
+            break;
 
-    default:
-        prompt.unshift({
-            role: "system",
-            content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly.`
-        });
-        break;
+        default:
+            prompt.unshift({
+                role: "system",
+                content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly.`
+            });
+            break;
     }
     return prompt;
 }

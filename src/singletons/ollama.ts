@@ -1,25 +1,41 @@
-import { ListResponse, Message, Ollama } from "ollama";
+import { Message, Ollama } from "ollama";
+import ffmpeg from "fluent-ffmpeg";
 import { Config } from "./config";
-import { HennosGroup } from "./group";
 import { Logger } from "./logger";
-import { HennosUser } from "./user";
 import { getSizedChatContext } from "./context";
+import { HennosBaseProvider, HennosConsumer } from "./base";
+import { HennosOpenAISingleton } from "./openai";
+import { HennosUser } from "./user";
 
-type HennosConsumer = HennosUser | HennosGroup
+// type WhisperResult = {
+//     start: string,
+//     end: string,
+//     speech: string
+// }[]
 
-export class HennosOllamaProvider {
-    private static _instance: Ollama;
+export class HennosOllamaSingleton {
+    private static _instance: HennosBaseProvider | null = null;
 
-    private static instance(): Ollama {
-        if (!HennosOllamaProvider._instance) {
-            HennosOllamaProvider._instance = new Ollama({
-                host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
-            });
+    public static instance(): HennosBaseProvider {
+        if (!HennosOllamaSingleton._instance) {
+            HennosOllamaSingleton._instance = new HennosOllamaProvider();
         }
-        return HennosOllamaProvider._instance;
+        return HennosOllamaSingleton._instance;
+    }
+}
+
+class HennosOllamaProvider extends HennosBaseProvider {
+    private ollama: Ollama;
+
+    constructor() {
+        super();
+
+        this.ollama = new Ollama({
+            host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
+        });
     }
 
-    public static async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
+    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
         Logger.info(req, `Ollama Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OLLAMA_LLM.CTX);
@@ -27,7 +43,7 @@ export class HennosOllamaProvider {
         try {
             const prompt = system.concat(chat);
 
-            const response = await HennosOllamaProvider.instance().chat({
+            const response = await this.ollama.chat({
                 stream: false,
                 model: Config.OLLAMA_LLM.MODEL,
                 messages: prompt
@@ -41,10 +57,10 @@ export class HennosOllamaProvider {
         }
     }
 
-    public static async vision(req: HennosConsumer, prompt: Message, local: string, mime: string): Promise<string> {
+    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: string): Promise<string> {
         Logger.info(req, `Ollama Vision Completion Start (${Config.OLLAMA_LLM_VISION.MODEL})`);
         try {
-            const response = await HennosOllamaProvider.instance().chat({
+            const response = await this.ollama.chat({
                 stream: false,
                 model: Config.OLLAMA_LLM_VISION.MODEL,
                 messages: [{
@@ -62,11 +78,59 @@ export class HennosOllamaProvider {
         }
     }
 
-    public static async models(): Promise<ListResponse> {
-        return HennosOllamaProvider.instance().list();
+    public async moderation(req: HennosConsumer, input: string): Promise<boolean> {
+        Logger.warn(req, "Ollama Moderation Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().moderation(req, input);
     }
 
-    public static async status(): Promise<ListResponse> {
-        return HennosOllamaProvider.instance().ps();
+    public async transcription(req: HennosConsumer, path: string): Promise<string> {
+        Logger.info(req, "Ollama Transcription Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().transcription(req, path);
     }
+
+    // public async experimental_local_transcription(req: HennosConsumer, path: string): Promise<string> {
+    //     Logger.info(req, "Ollama Transcription Start");
+    //     try {
+    //         const convertedPath = await convertAudioFile(path);
+    //         const transcript: WhisperResult = await whisper(convertedPath, {
+    //             modelName: "base.en"
+    //         });
+
+    //         const collect = transcript.map((item) => item.speech.trim()).join(" ");
+    //         Logger.info(req, "Ollama Transcription Completion Success");
+    //         Logger.debug("Ollama Transcription Output: ", collect);
+    //         return collect;
+    //     } catch (err: unknown) {
+    //         Logger.error(req, "Ollama Transcription Error, attempting OpenAI fallback. Error: ", err);
+    //         return HennosOpenAISingleton.instance().transcription(req, path);
+    //     }
+    // }
+
+    public async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
+        Logger.warn(user, "Ollama Speech Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().speech(user, input);
+    }
+}
+
+/**
+ * ffmpeg -i input.mp3 -ar 16000 output.wav
+ * @param path 
+ * @returns 
+ */
+export function convertAudioFile(path: string): Promise<string> {
+    Logger.debug(`Ollama Convert Audio File Path: ${path}`);
+    return new Promise((resolve, reject) => {
+        ffmpeg({
+            source: path
+        })
+            .addOption(["-ar", "16000"]).addOutput(`${path}.wav`)
+            .on("end", function () {
+                Logger.debug("Ollama Convert Audio File End");
+                resolve(`${path}.wav`);
+            })
+            .on("error", function (err) {
+                Logger.debug("Ollama Convert Audio File Error");
+                reject(err);
+            }).run();
+    });
 }
