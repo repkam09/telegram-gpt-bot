@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Config } from "./config";
 import OpenAI from "openai";
 import { HennosUser } from "./user";

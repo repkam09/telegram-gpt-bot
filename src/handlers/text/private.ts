@@ -4,6 +4,7 @@ import { Message } from "ollama";
 import { HennosOllamaSingleton } from "../../singletons/ollama";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosAnthropicSingleton } from "../../singletons/anthropic";
+import { determine_tool_calls_needed, process_tool_calls } from "../../tools/tools";
 
 export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     if (user.whitelisted) {
@@ -15,6 +16,19 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
 
 async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     const prompt = await buildPrompt(user);
+
+    const result = await determine_tool_calls_needed(user, {
+        content: text,
+        role: "user"
+    });
+
+    if (result.length > 0) {
+        const tool_context = await process_tool_calls(user, result);
+        tool_context.forEach((entry) => {
+            prompt.push(entry);
+        });
+    }
+
     const context = await user.getChatContext();
 
     // If a hint is provided, push it to the context right before the user message

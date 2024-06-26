@@ -6,7 +6,7 @@ import { HennosGroup } from "./group";
 import { HennosUser } from "./user";
 dotenv.config();
 
-type HennosModelConfig = {
+export type HennosModelConfig = {
     MODEL: string
     CTX: number
 }
@@ -271,6 +271,14 @@ export class Config {
         }
 
         return process.env.TELEGRAM_BOT_KEY;
+    }
+
+    static get OPEN_WEATHER_API(): string | false {
+        if (!process.env.OPEN_WEATHER_API) {
+            return false;
+        }
+
+        return process.env.OPEN_WEATHER_API;
     }
 
     static get TELEGRAM_GROUP_PREFIX(): string {

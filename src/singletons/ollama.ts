@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Message, Ollama } from "ollama";
 import ffmpeg from "fluent-ffmpeg";
 import { Config } from "./config";
@@ -6,12 +7,6 @@ import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
-
-// type WhisperResult = {
-//     start: string,
-//     end: string,
-//     speech: string
-// }[]
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;

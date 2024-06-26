@@ -3,7 +3,7 @@ import readline from "node:readline";
 import axios from "axios";
 import { convert } from "html-to-text";
 import { HennosUser, HennosUserAsync } from "../singletons/user";
-import { getHTMLSearchResults } from "../singletons/tools";
+import { getHTMLSearchResults } from "../tools/duck_duck_go_search";
 import { Message } from "ollama";
 import { HennosOllamaSingleton } from "../singletons/ollama";
 

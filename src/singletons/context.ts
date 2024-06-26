@@ -6,7 +6,6 @@ import { Logger } from "./logger";
 
 export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: Message[], currentChatContext: Message[], limit: number): Promise<Message[]> {
     const promptTokens = getChatContextTokenCount(prompt);
-    
     let totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
     while (totalTokens > limit) {
         if (currentChatContext.length === 0) {
@@ -19,6 +18,7 @@ export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt:
     }
 
     Logger.info(req, `getSizedChatContext set total tokens to ${totalTokens}`);
+    Logger.debug(`getSizedChatContext User: ${req.displayName}, System: ${JSON.stringify(prompt)}, Context: ${JSON.stringify(currentChatContext)}`);
     return currentChatContext;
 }
 
