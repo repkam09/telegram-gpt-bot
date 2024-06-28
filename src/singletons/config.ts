@@ -2,8 +2,7 @@ import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import * as dotenv from "dotenv";
-import { HennosGroup } from "./group";
-import { HennosUser } from "./user";
+import { HennosConsumer } from "./base";
 dotenv.config();
 
 export type HennosModelConfig = {
@@ -302,7 +301,7 @@ export class Config {
         return adminId;
     }
 
-    static LOCAL_STORAGE(user?: HennosUser | HennosGroup): string {
+    static LOCAL_STORAGE(user?: HennosConsumer): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();
         }

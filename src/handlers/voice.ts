@@ -7,7 +7,7 @@ import { HennosAnthropicSingleton } from "../singletons/anthropic";
 
 export type ValidTTSNames = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
 
-export async function handleVoiceMessage(user: HennosUser, path: string): Promise<[string, ArrayBuffer | undefined]> {
+export async function handleVoiceMessage(user: HennosUser, path: string): Promise<string> {
     const preferences = await user.getPreferences();
 
     try {
@@ -24,12 +24,10 @@ export async function handleVoiceMessage(user: HennosUser, path: string): Promis
             role: "system",
             content: "The user sent their message via a voice recording. The voice recording has been transcribed into text for your convenience."
         });
-
-        const arrayBuffer = await HennosOpenAISingleton.instance().speech(user, response);
-        return [response, arrayBuffer];
+        return response;
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error(user, "Error processing voice message: ", error.message, error.stack);
-        return ["Sorry, I was unable to process your voice message.", undefined];
+        return "Sorry, I was unable to process your voice message.";
     }
 }

@@ -15,6 +15,8 @@ import { HennosUser, HennosUserAsync } from "./user";
 import { HennosGroup, HennosGroupAsync } from "./group";
 import { handleLLMProviderSettingsCallback } from "../handlers/text/commands/handleLLMProviderSettings";
 import path from "node:path";
+import { HennosConsumer } from "./base";
+import { HennosOpenAISingleton } from "./openai";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -34,7 +36,7 @@ export class BotInstance {
         return BotInstance._instance;
     }
 
-    static async sendMessageWrapper(user: HennosUser | HennosGroup, content: string, options: TelegramBot.SendMessageOptions = {}) {
+    static async sendMessageWrapper(user: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions = {}) {
         if (!content) {
             throw new Error("Message content is undefined");
         }
@@ -72,7 +74,7 @@ export class BotInstance {
         }
     }
 
-    static async sendTelegramMessageWithRetry(user: HennosUser | HennosGroup, content: string, options: TelegramBot.SendMessageOptions) {
+    static async sendTelegramMessageWithRetry(user: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions) {
         const bot = BotInstance.instance();
         try {
             await bot.sendMessage(user.chatId, content, { ...options, parse_mode: "Markdown" });
@@ -87,9 +89,9 @@ export class BotInstance {
         }
     }
 
-    static setTelegramTypingIndicator(req: HennosUser | HennosGroup): void {
-        BotInstance.instance().sendChatAction(req.chatId, "typing").catch((err: unknown) => {
-            Logger.warn(req, `Error while setting Telegram typing indicator: ${err}`);
+    static setTelegramIndicator(req: HennosConsumer, action: TelegramBot.ChatAction): void {
+        BotInstance.instance().sendChatAction(req.chatId, action).catch((err: unknown) => {
+            Logger.warn(req, `Error while setting Telegram ${action} indicator: ${err}`);
         });
     }
 
@@ -115,7 +117,6 @@ export class BotInstance {
 
             if (msg.chat.type !== "private") {
                 const group = await HennosGroupAsync(msg.chat.id, msg.chat.title);
-                BotInstance.setTelegramTypingIndicator(group);
                 return handleTelegramGroupMessage(user, group, msg as MessageWithText);
             }
 
@@ -126,7 +127,6 @@ export class BotInstance {
                     InputCallbackFunctionMap.delete(user.chatId);
                     return callback(msg);
                 }
-                BotInstance.setTelegramTypingIndicator(user);
                 return handleTelegramPrivateMessage(user, msg as MessageWithText);
             }
         });
@@ -196,6 +196,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     }
 
     // If the user did @ the bot, strip out that @ prefix before processing the message
+    BotInstance.setTelegramIndicator(group, "typing");
     const response = await handleWhitelistedGroupMessage(user, group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));
     await BotInstance.sendMessageWrapper(group, response), { reply_to_message_id: msg.message_id };
 }
@@ -225,6 +226,7 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
 
         // If we have one or more messages, process them
         Logger.trace(user, "text_private");
+        BotInstance.setTelegramIndicator(user, "typing");
         const response = await handlePrivateMessage(user, messages.length === 1 ? messages[0] : messages.join("\n"));
 
         // Send the response to the user
@@ -235,10 +237,19 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
 }
 
 async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Message & { voice: TelegramBot.Voice }) {
+    BotInstance.setTelegramIndicator(user, "typing");
     const tempFilePath = await BotInstance.instance().downloadFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
-    const [response, arrayBuffer] = await handleVoiceMessage(user, tempFilePath);
-    if (arrayBuffer) {
-        await BotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
+    const response = await handleVoiceMessage(user, tempFilePath);
+
+    BotInstance.setTelegramIndicator(user, "record_voice");
+    try {
+        const arrayBuffer = await HennosOpenAISingleton.instance().speech(user, response);
+        if (arrayBuffer) {
+            BotInstance.setTelegramIndicator(user, "upload_voice");
+            await BotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
+        }
+    } catch (err) {
+        Logger.error(user, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
     }
 
     return BotInstance.sendMessageWrapper(user, response);
@@ -249,29 +260,36 @@ async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Mes
         return (obj.width * obj.height > max.width * max.height) ? obj : max;
     });
 
+    BotInstance.setTelegramIndicator(user, "upload_photo");
     const tempFileUrl = await BotInstance.instance().getFileLink(largestImage.file_id);
     const tempFilePath = await BotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(user));
     const mime_type = mimetype.contentType(path.extname(tempFilePath));
+
+    BotInstance.setTelegramIndicator(user, "typing");
     const response = await handleImageMessage(user, { remote: tempFileUrl, local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
     return BotInstance.sendMessageWrapper(user, response);
 }
 
 async function handleTelegramLocationMessage(user: HennosUser, msg: TelegramBot.Message & { location: TelegramBot.Location }) {
+    BotInstance.setTelegramIndicator(user, "find_location");
     await user.updateLocation(msg.location.latitude, msg.location.longitude);
     return BotInstance.sendMessageWrapper(user, "Thanks! I will take your location into account in the future.");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
+    BotInstance.setTelegramIndicator(user, "typing");
     return BotInstance.sendMessageWrapper(user, "Error: Audio messages are not yet supported");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
+    BotInstance.setTelegramIndicator(user, "typing");
     return BotInstance.sendMessageWrapper(user, "Error: Contacts are not supported yet.");
 }
 
 async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
+    BotInstance.setTelegramIndicator(user, "upload_document");
     const document = msg.document;
     if (!document.mime_type) {
         return BotInstance.sendMessageWrapper(user, "This document is an unknown type and is not supported.");
@@ -282,6 +300,7 @@ async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.
     }
 
     const tempFilePath = await BotInstance.instance().downloadFile(document.file_id, Config.LOCAL_STORAGE(user));
+    BotInstance.setTelegramIndicator(user, "typing");
     const response = await handleDocumentMessage(user, tempFilePath, document.mime_type, document.file_unique_id);
     return BotInstance.sendMessageWrapper(user, response);
 }
@@ -334,7 +353,6 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
     }
 
     Logger.trace(user, requiredProperty);
-    BotInstance.setTelegramTypingIndicator(user);
     return handler(user, message);
 }
 

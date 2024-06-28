@@ -1,19 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Config } from "./config";
-import { HennosUser } from "./user";
-import { HennosGroup } from "./group";
+import { HennosConsumer } from "./base";
 
 export class Logger {
-    static info(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
+    static info(user: HennosConsumer, message?: any, ...optionalParams: any[]): void {
         console.log(new Date().toISOString(), user.toString(), message, ...optionalParams);
     }
 
-    static warn(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
+    static warn(user: HennosConsumer, message?: any, ...optionalParams: any[]): void {
         console.warn(new Date().toISOString(), user.toString(), message, ...optionalParams);
     }
 
-    static error(user: HennosUser | HennosGroup, message?: any, ...optionalParams: any[]): void {
+    static error(user: HennosConsumer, message?: any, ...optionalParams: any[]): void {
         console.error(new Date().toISOString(), user.toString(), message, ...optionalParams);
     }
 
@@ -23,7 +22,7 @@ export class Logger {
         }
     }
 
-    static trace(user: HennosUser | HennosGroup, context: string) {
+    static trace(user: HennosConsumer, context: string) {
         console.log(new Date().toISOString(), user.toString(),  `context=${context}`);
     }
 }

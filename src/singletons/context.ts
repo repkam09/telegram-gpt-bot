@@ -1,10 +1,9 @@
 import { encoding_for_model } from "tiktoken";
-import { HennosUser } from "./user";
-import { HennosGroup } from "./group";
 import { Message } from "ollama";
 import { Logger } from "./logger";
+import { HennosConsumer } from "./base";
 
-export async function getSizedChatContext(req: HennosUser | HennosGroup, prompt: Message[], currentChatContext: Message[], limit: number): Promise<Message[]> {
+export async function getSizedChatContext(req: HennosConsumer, prompt: Message[], currentChatContext: Message[], limit: number): Promise<Message[]> {
     const promptTokens = getChatContextTokenCount(prompt);
     let totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
     while (totalTokens > limit) {

@@ -1,11 +1,11 @@
 import { Message } from "ollama";
 import OpenAI from "openai";
-import { HennosGroup } from "../singletons/group";
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
 import { duck_duck_go_search_tool, duck_duck_go_search_tool_callback } from "./duck_duck_go_search";
 import { open_weathermap_lookup_tool, open_weathermap_lookup_tool_callback } from "./open_weather_map_lookup";
+import { HennosConsumer } from "../singletons/base";
 
 export type ToolEntries = {
     name: string,
@@ -80,7 +80,7 @@ export async function determine_tool_calls_needed(user: HennosUser, message: Mes
 }
 
 
-export async function process_tool_calls(req: HennosUser | HennosGroup, tool_calls: ToolEntries[]): Promise<Message[]> {
+export async function process_tool_calls(req: HennosConsumer, tool_calls: ToolEntries[]): Promise<Message[]> {
     const results = await Promise.all(tool_calls.map(async (tool_call) => {
         try {
             if (tool_call.name === "duck_duck_go_search") {
