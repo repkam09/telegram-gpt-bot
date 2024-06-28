@@ -5,6 +5,7 @@ import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
 import { duck_duck_go_search_tool, duck_duck_go_search_tool_callback } from "./duck_duck_go_search";
 import { open_weathermap_lookup_tool, open_weathermap_lookup_tool_callback } from "./open_weather_map_lookup";
+import { fetch_generic_url_tool, fetch_generic_url_tool_callback } from "./fetch_generic_url";
 import { HennosConsumer } from "../singletons/base";
 
 export type ToolEntries = {
@@ -45,7 +46,8 @@ export async function determine_tool_calls_needed(user: HennosUser, message: Mes
                     content: [
                         "Here are the descriptions of the possible tools:",
                         JSON.stringify(duck_duck_go_search_tool),
-                        JSON.stringify(open_weathermap_lookup_tool)
+                        JSON.stringify(open_weathermap_lookup_tool),
+                        JSON.stringify(fetch_generic_url_tool)
                     ].join("\n"),
                 },
                 {
@@ -88,6 +90,9 @@ export async function process_tool_calls(req: HennosConsumer, tool_calls: ToolEn
             }
             if (tool_call.name === "open_weather_map_lookup") {
                 return open_weathermap_lookup_tool_callback(req, tool_call);
+            }
+            if (tool_call.name === "fetch_generic_url") {
+                return fetch_generic_url_tool_callback(req as HennosUser, tool_call);
             }
         } catch (error) {
             return undefined;

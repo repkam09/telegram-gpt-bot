@@ -1,7 +1,6 @@
 import { Config } from "./singletons/config";
 import { Database } from "./singletons/sqlite";
 import { BotInstance } from "./singletons/telegram";
-import { Vector } from "./singletons/vector";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -13,7 +12,6 @@ async function start() {
     console.log(`LOCAL_STORAGE is configured as ${Config.LOCAL_STORAGE()}`);
 
     await Database.init();
-    await Vector.init();
 
     BotInstance.init();
 }

@@ -6,16 +6,17 @@ import {
     Ollama,
     OllamaEmbedding,
     ResponseSynthesizer,
-    MetadataMode,
     BaseReader,
     FILE_EXT_TO_READER,
     OpenAI,
     OpenAIEmbedding,
-    ServiceContext
+    ServiceContext,
+    Anthropic,
 } from "llamaindex";
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
+import { ValidAnthropicModels } from "../singletons/anthropic";
 
 export async function handleDocumentMessage(user: HennosUser, path: string, file_ext: string, uuid: string): Promise<string> {
     try {
@@ -34,18 +35,21 @@ export async function handleDocumentMessage(user: HennosUser, path: string, file
 async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
     const preferences = await user.getPreferences();
     if (preferences.provider === "ollama") {
+        Logger.info(user, "Creating an Ollama service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new Ollama({
-                baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
+                config: {
+                    host: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
+                    contextWindow: Config.OLLAMA_LLM_LARGE.CTX
+                },
                 model: Config.OLLAMA_LLM_LARGE.MODEL,
-                requestTimeout: 600000,
-                contextWindow: Config.OLLAMA_LLM_LARGE.CTX
             }),
             embedModel: new OllamaEmbedding({
-                baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
-                contextWindow: Config.OLLAMA_LLM_EMBED.CTX,
+                config: {
+                    host: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
+                    contextWindow: Config.OLLAMA_LLM_EMBED.CTX
+                },
                 model: Config.OLLAMA_LLM_EMBED.MODEL,
-                requestTimeout: 600000
             }),
             nodeParser: new SimpleNodeParser({
                 chunkSize: 1024,
@@ -55,21 +59,44 @@ async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
         return serviceContext;
     }
 
-    const serviceContext = serviceContextFromDefaults({
-        llm: new OpenAI({
-            model: "gpt-3.5-turbo",
-            apiKey: Config.OPENAI_API_KEY,
-        }),
-        embedModel: new OpenAIEmbedding({
-            model: "text-embedding-ada-002",
-            apiKey: Config.OPENAI_API_KEY,
-        }),
-        nodeParser: new SimpleNodeParser({
-            chunkSize: 2048,
-            chunkOverlap: 256
-        })
-    });
-    return serviceContext;
+    if (preferences.provider === "openai") {
+        Logger.info(user, "Creating an OpenAI service context for document processing based on user preferences");
+        const serviceContext = serviceContextFromDefaults({
+            llm: new OpenAI({
+                model: "gpt-3.5-turbo",
+                apiKey: Config.OPENAI_API_KEY,
+            }),
+            embedModel: new OpenAIEmbedding({
+                model: "text-embedding-ada-002",
+                apiKey: Config.OPENAI_API_KEY,
+            }),
+            nodeParser: new SimpleNodeParser({
+                chunkSize: 2048,
+                chunkOverlap: 256
+            })
+        });
+        return serviceContext;
+    }
+
+    if (preferences.provider === "anthropic") {
+        Logger.info(user, "Creating an Anthropic service context for document processing based on user preferences");
+        const serviceContext = serviceContextFromDefaults({
+            llm: new Anthropic({
+                model: Config.ANTHROPIC_LLM.MODEL as ValidAnthropicModels,
+                apiKey: Config.ANTHROPIC_API_KEY,
+            }),
+            embedModel: new OpenAIEmbedding({
+                model: "text-embedding-ada-002",
+                apiKey: Config.OPENAI_API_KEY,
+            }),
+            nodeParser: new SimpleNodeParser({
+                chunkSize: 2048,
+                chunkOverlap: 256
+            })
+        });
+        return serviceContext;
+    }
+    throw new Error(`Invalid LLM provider for user ${user.displayName} with value ${preferences.provider}`);
 }
 
 export async function handleDocument(user: HennosUser, path: string, uuid: string, reader: BaseReader): Promise<string> {
@@ -84,7 +111,6 @@ export async function handleDocument(user: HennosUser, path: string, uuid: strin
 
     const queryEngine = index.asQueryEngine({
         responseSynthesizer: new ResponseSynthesizer({
-            metadataMode: MetadataMode.ALL,
             serviceContext
         }),
         retriever: index.asRetriever({
@@ -97,9 +123,6 @@ export async function handleDocument(user: HennosUser, path: string, uuid: strin
     });
 
     const summary = response.toString();
-
-    await user.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
-    await user.updateChatContext("assistant", summary);
 
     Logger.info(user, `Completed processing document at path: ${path} with UUID: ${uuid}.`);
     return summary;

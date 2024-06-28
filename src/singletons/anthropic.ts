@@ -8,6 +8,7 @@ import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosBaseProvider, HennosConsumer } from "./base";
+import { ALL_AVAILABLE_ANTHROPIC_MODELS } from "llamaindex";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -19,6 +20,8 @@ export class HennosAnthropicSingleton {
         return HennosAnthropicSingleton._instance;
     }
 }
+
+export type ValidAnthropicModels = keyof typeof ALL_AVAILABLE_ANTHROPIC_MODELS;
 
 class HennosAnthropicProvider extends HennosBaseProvider {
     private anthropic: Anthropic;

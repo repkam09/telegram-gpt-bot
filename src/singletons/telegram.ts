@@ -310,6 +310,10 @@ async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.
     const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : ".bin";
 
     const response = await handleDocumentMessage(user, tempFilePath, ext, msg.document.file_unique_id);
+
+    await user.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
+    await user.updateChatContext("assistant", response);
+
     BotInstance.setTelegramMessageReact(user, msg);
     return BotInstance.sendMessageWrapper(user, response);
 }
