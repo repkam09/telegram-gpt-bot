@@ -34,11 +34,13 @@ export async function handleDocument(user: HennosUser, path: string, uuid: strin
     const documents = await reader.loadData(path);
     const serviceContext = serviceContextFromDefaults({
         llm: new Ollama({
+            baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
             model: Config.OLLAMA_LLM_LARGE.MODEL,
             requestTimeout: 600000,
             contextWindow: Config.OLLAMA_LLM_LARGE.CTX
         }),
         embedModel: new OllamaEmbedding({
+            baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
             contextWindow: Config.OLLAMA_LLM_EMBED.CTX,
             model: Config.OLLAMA_LLM_EMBED.MODEL,
             requestTimeout: 600000
