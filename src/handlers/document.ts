@@ -8,7 +8,10 @@ import {
     ResponseSynthesizer,
     MetadataMode,
     BaseReader,
-    FILE_EXT_TO_READER
+    FILE_EXT_TO_READER,
+    OpenAI,
+    OpenAIEmbedding,
+    ServiceContext
 } from "llamaindex";
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
@@ -28,28 +31,52 @@ export async function handleDocumentMessage(user: HennosUser, path: string, file
     }
 }
 
+async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
+    const preferences = await user.getPreferences();
+    if (preferences.provider === "ollama") {
+        const serviceContext = serviceContextFromDefaults({
+            llm: new Ollama({
+                baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
+                model: Config.OLLAMA_LLM_LARGE.MODEL,
+                requestTimeout: 600000,
+                contextWindow: Config.OLLAMA_LLM_LARGE.CTX
+            }),
+            embedModel: new OllamaEmbedding({
+                baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
+                contextWindow: Config.OLLAMA_LLM_EMBED.CTX,
+                model: Config.OLLAMA_LLM_EMBED.MODEL,
+                requestTimeout: 600000
+            }),
+            nodeParser: new SimpleNodeParser({
+                chunkSize: 1024,
+                chunkOverlap: 128
+            })
+        });
+        return serviceContext;
+    }
+
+    const serviceContext = serviceContextFromDefaults({
+        llm: new OpenAI({
+            model: "gpt-3.5-turbo",
+            apiKey: Config.OPENAI_API_KEY,
+        }),
+        embedModel: new OpenAIEmbedding({
+            model: "text-embedding-ada-002",
+            apiKey: Config.OPENAI_API_KEY,
+        }),
+        nodeParser: new SimpleNodeParser({
+            chunkSize: 2048,
+            chunkOverlap: 256
+        })
+    });
+    return serviceContext;
+}
+
 export async function handleDocument(user: HennosUser, path: string, uuid: string, reader: BaseReader): Promise<string> {
     Logger.info(user, `Processing document at path: ${path} with UUID: ${uuid}.`);
 
     const documents = await reader.loadData(path);
-    const serviceContext = serviceContextFromDefaults({
-        llm: new Ollama({
-            baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
-            model: Config.OLLAMA_LLM_LARGE.MODEL,
-            requestTimeout: 600000,
-            contextWindow: Config.OLLAMA_LLM_LARGE.CTX
-        }),
-        embedModel: new OllamaEmbedding({
-            baseURL: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
-            contextWindow: Config.OLLAMA_LLM_EMBED.CTX,
-            model: Config.OLLAMA_LLM_EMBED.MODEL,
-            requestTimeout: 600000
-        }),
-        nodeParser: new SimpleNodeParser({
-            chunkSize: 1024,
-            chunkOverlap: 128
-        })
-    });
+    const serviceContext = await buildServiceContext(user);
 
     const index = await SummaryIndex.fromDocuments(documents, {
         serviceContext
