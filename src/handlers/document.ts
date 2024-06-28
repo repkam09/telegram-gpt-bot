@@ -7,41 +7,31 @@ import {
     OllamaEmbedding,
     ResponseSynthesizer,
     MetadataMode,
-    TextFileReader
+    BaseReader,
+    FILE_EXT_TO_READER
 } from "llamaindex";
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
 
-export async function isSupportedDocumentType(mime_type: string): Promise<boolean> {
-    if (mime_type === "text/plain") {
-        return true;
-    }
-
-    return false;
-}
-
-export async function handleDocumentMessage(user: HennosUser, path: string, mime_type: string, uuid: string): Promise<string> {
+export async function handleDocumentMessage(user: HennosUser, path: string, file_ext: string, uuid: string): Promise<string> {
     try {
-        switch (mime_type) {
-            case "text/plain":
-                return handlePlainTextDocument(user, path, uuid);
-            default:
-                return `This document seems to be a ${mime_type} which is not yet supported.`;
+        const reader = FILE_EXT_TO_READER[file_ext];
+        if (!reader) {
+            return `This document seems to be a ${file_ext} which is not yet supported.`;
         }
+        return handleDocument(user, path, uuid, reader);
+
     } catch (err) {
         Logger.error(user, `Error while processing document at path ${path} with UUID ${uuid}.`, err);
         return "An error occured while processing your document.";
     }
 }
 
-
-export async function handlePlainTextDocument(user: HennosUser, path: string, uuid: string): Promise<string> {
+export async function handleDocument(user: HennosUser, path: string, uuid: string, reader: BaseReader): Promise<string> {
     Logger.info(user, `Processing document at path: ${path} with UUID: ${uuid}.`);
 
-    const tfr = new TextFileReader();
-    const documents = await tfr.loadData(path);
-
+    const documents = await reader.loadData(path);
     const serviceContext = serviceContextFromDefaults({
         llm: new Ollama({
             model: Config.OLLAMA_LLM_LARGE.MODEL,
@@ -54,7 +44,7 @@ export async function handlePlainTextDocument(user: HennosUser, path: string, uu
             requestTimeout: 600000
         }),
         nodeParser: new SimpleNodeParser({
-            chunkSize: 512,
+            chunkSize: 1024,
             chunkOverlap: 128
         })
     });
@@ -79,7 +69,7 @@ export async function handlePlainTextDocument(user: HennosUser, path: string, uu
 
     const summary = response.toString();
 
-    await user.updateChatContext("user", "I uploaded a document for you to summarize. Its a plan text file.");
+    await user.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
     await user.updateChatContext("assistant", summary);
 
     Logger.info(user, `Completed processing document at path: ${path} with UUID: ${uuid}.`);

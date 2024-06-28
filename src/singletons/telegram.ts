@@ -3,7 +3,7 @@ import TelegramBot from "node-telegram-bot-api";
 import mimetype from "mime-types";
 import { Config } from "./config";
 import { Logger } from "./logger";
-import { handleDocumentMessage, isSupportedDocumentType } from "../handlers/document";
+import { handleDocumentMessage } from "../handlers/document";
 import { handleImageMessage } from "../handlers/photos";
 import { handleVoiceMessage } from "../handlers/voice";
 import { handleVoiceSettingsCallback } from "../handlers/text/commands/handleVoiceSettings";
@@ -92,6 +92,22 @@ export class BotInstance {
     static setTelegramIndicator(req: HennosConsumer, action: TelegramBot.ChatAction): void {
         BotInstance.instance().sendChatAction(req.chatId, action).catch((err: unknown) => {
             Logger.warn(req, `Error while setting Telegram ${action} indicator: ${err}`);
+        });
+    }
+
+    static setTelegramMessageReact(req: HennosConsumer, msg: TelegramBot.Message, emote?: string): void {
+        const options = {
+            reaction: emote ? [{
+                type: "emoji",
+                emoji: emote
+            }] : []
+        };
+
+        // @ts-expect-error - The Types are wrong for the bot instance, it does support setMessageReaction 
+        BotInstance.instance().setMessageReaction(req.chatId, msg.message_id, options).then(() => {
+            Logger.debug(`Set reaction on Telegram message ${msg.message_id} for user ${req.displayName}`);
+        }).catch((err: unknown) => {
+            Logger.error(req, `Error while setting reaction on Telegram message ${msg.message_id}: `, err);
         });
     }
 
@@ -289,19 +305,12 @@ async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.M
 }
 
 async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
-    BotInstance.setTelegramIndicator(user, "upload_document");
-    const document = msg.document;
-    if (!document.mime_type) {
-        return BotInstance.sendMessageWrapper(user, "This document is an unknown type and is not supported.");
-    }
+    BotInstance.setTelegramMessageReact(user, msg, "👀");
+    const tempFilePath = await BotInstance.instance().downloadFile(msg.document.file_id, Config.LOCAL_STORAGE(user));
+    const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : ".bin";
 
-    if (!isSupportedDocumentType(document.mime_type)) {
-        return BotInstance.sendMessageWrapper(user, `This document seems to be a ${document.mime_type} which is not yet supported.`);
-    }
-
-    const tempFilePath = await BotInstance.instance().downloadFile(document.file_id, Config.LOCAL_STORAGE(user));
-    BotInstance.setTelegramIndicator(user, "typing");
-    const response = await handleDocumentMessage(user, tempFilePath, document.mime_type, document.file_unique_id);
+    const response = await handleDocumentMessage(user, tempFilePath, ext, msg.document.file_unique_id);
+    BotInstance.setTelegramMessageReact(user, msg);
     return BotInstance.sendMessageWrapper(user, response);
 }
 
