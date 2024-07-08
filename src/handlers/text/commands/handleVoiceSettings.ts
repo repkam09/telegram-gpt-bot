@@ -3,6 +3,7 @@ import { BotInstance } from "../../../singletons/telegram";
 import { ValidTTSNames } from "../../voice";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
+import { HennosOpenAISingleton } from "../../../singletons/openai";
 
 export async function handleVoiceSettingsCallback(user: HennosUser, queryId: string, data: string) {
     // Set the voice and return to the user.
@@ -66,3 +67,16 @@ export async function sendVoiceSettingsPrompt(user: HennosUser) {
     bot.sendMessage(user.chatId, "You can customize the voice that Hennos uses when sending audio messages. Select one of the options below:  ", opts);
 }
 
+export async function handleReadCommand(req: HennosUser, text: string) {
+    BotInstance.setTelegramIndicator(req, "record_voice");
+    const trimmed = text.replace("/read", "").trim();
+    try {
+        const arrayBuffer = await HennosOpenAISingleton.instance().speech(req, trimmed);
+        if (arrayBuffer) {
+            BotInstance.setTelegramIndicator(req, "upload_voice");
+            await BotInstance.sendVoiceMemoWrapper(req.chatId, Buffer.from(arrayBuffer));
+        }
+    } catch (err) {
+        Logger.error(req, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
+    }
+}
