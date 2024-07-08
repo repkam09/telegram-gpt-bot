@@ -24,7 +24,7 @@ export async function handleCommandMessage(user: HennosUser, msg: TelegramBot.Me
         return handleGeneralSettingsCommand(user);
     }
 
-    if (msg.text === "/read" && user.whitelisted) {
+    if (msg.text.startsWith("/read ") && user.whitelisted) {
         return handleReadCommand(user, msg.text);
     }
 
