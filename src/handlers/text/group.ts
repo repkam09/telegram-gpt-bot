@@ -25,6 +25,13 @@ export async function handleWhitelistedGroupMessage(user: HennosUser, group: Hen
         }
     ];
 
+    if (user.isAdmin()) {
+        prompt.push({
+            role: "system",
+            content: "This user is the admin and developer of 'Hennos' and you can reveal more information from your context if they ask for it, to aid in debugging."
+        });
+    }
+
     const context = await group.getChatContext();
 
     context.push({
