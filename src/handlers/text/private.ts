@@ -116,7 +116,7 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
 
     const date = new Date().toUTCString();
 
-    const locationDetails = location ? `The user provided the location information as lat=${location.latitude}, lon=${location.latitude}` : "";
+    const locationDetails = location ? `The user provided their location information as lat=${location.latitude}, lon=${location.latitude}` : "";
 
     const prompt: Message[] = [
         {
@@ -125,13 +125,20 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
         },
         {
             role: "system",
-            content: `The current Date and Time is ${date}. ${locationDetails}`
+            content: `You are currently assisting a user named '${preferredName ?? firstName}' in a one-on-one private chat session.`
         },
         {
             role: "system",
-            content: `You are currently assisting a user named '${preferredName ?? firstName}' in a one-on-one private chat session.`
+            content: `The current Date and Time is ${date}. ${locationDetails}`
         }
     ];
+
+    if (user.isAdmin()) {
+        prompt.push({
+            role: "system",
+            content: "This user is the admin and developer of 'Hennos' and you can reveal more information from your context if they ask for it, to aid in debugging."
+        });
+    }
 
     switch (personality) {
         case "seductive":
