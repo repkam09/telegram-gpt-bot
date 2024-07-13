@@ -83,8 +83,8 @@ export async function determine_tool_calls_needed(user: HennosUser, message: Mes
 
 
 export async function process_tool_calls(req: HennosConsumer, tool_calls: ToolEntries[]): Promise<Message[]> {
-    const results = await Promise.all(tool_calls.map(async (tool_call) => {
-        try {
+    try {
+        const results = await Promise.all(tool_calls.map(async (tool_call) => {
             if (tool_call.name === "duck_duck_go_search") {
                 return duck_duck_go_search_tool_callback(req, tool_call);
             }
@@ -94,10 +94,12 @@ export async function process_tool_calls(req: HennosConsumer, tool_calls: ToolEn
             if (tool_call.name === "fetch_generic_url") {
                 return fetch_generic_url_tool_callback(req as HennosUser, tool_call);
             }
-        } catch (error) {
-            return undefined;
-        }
-    }));
+        }));
+        results.filter((tool_message): tool_message is OpenAI.Chat.Completions.ChatCompletionToolMessageParam => tool_message !== undefined);
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.error(req, `Error processing tool calls: ${error.message}`);
+    }
 
-    return results.filter((tool_message): tool_message is OpenAI.Chat.Completions.ChatCompletionToolMessageParam => tool_message !== undefined);
+    return [];
 }

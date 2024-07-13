@@ -17,7 +17,7 @@ export async function handleWhitelistedGroupMessage(user: HennosUser, group: Hen
         },
         {
             role: "system",
-            content: `You are currently assisting users within a group chat setting. The group chat is called '${groupInfo.name}'.`
+            content: `You are currently assisting users within a group chat setting. The group chat is called '${groupInfo.name}'. The user you are currently assisting is '${userInfo.firstName}'.`
         },
         {
             role: "system",
@@ -29,7 +29,7 @@ export async function handleWhitelistedGroupMessage(user: HennosUser, group: Hen
 
     context.push({
         role: "user",
-        content: `${userInfo.firstName}: ${text}`,
+        content: text,
     });
 
     try {
