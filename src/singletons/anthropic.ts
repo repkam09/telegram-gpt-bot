@@ -39,33 +39,46 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
         const chat = await getSizedChatContext(req, system, complete, Config.ANTHROPIC_LLM.CTX);
 
-        const messages = chat.filter((entry) => entry.role !== "system").reduce((acc: MessageParam[], current: Message, index: number) => {
-            if (index === 0) {
-                return [current as MessageParam];
-            }
+        const messages = chat.map(
+            (entry) => {
+                if (entry.role === "system") {
+                    // Anthropic doesn't support system messages in the middle of the conversation, so we need to convert them to assistant messages
+                    return {
+                        role: "assistant",
+                        content: `SYSTEM_CONTEXT: ${entry.content}`
+                    };
+                }
+                return entry;
+            }).filter(
+                (entry) => entry.role !== "system").reduce(
+                    (acc: MessageParam[], current: Message, index: number) => {
+                        if (index === 0) {
+                            return [current as MessageParam];
+                        }
 
-            const previous = acc[acc.length - 1];
+                        const previous = acc[acc.length - 1];
 
-            if (previous.role === current.role) {
-                // If the roles are the same, combine the messages
-                previous.content += "\n" + current.content;
-                return acc;
-            } else if (
-                (previous.role === "user" && current.role === "assistant") ||
-                (previous.role === "assistant" && current.role === "user")
-            ) {
-                return [...acc, current as MessageParam];
-            } else {
-                return acc;
-            }
-        }, [] as MessageParam[]);
+                        if (previous.role === current.role) {
+                            // If the roles are the same, combine the messages
+                            previous.content += "\n" + current.content;
+                            return acc;
+                        } else if (
+                            (previous.role === "user" && current.role === "assistant") ||
+                            (previous.role === "assistant" && current.role === "user")
+                        ) {
+                            return [...acc, current as MessageParam];
+                        } else {
+                            return acc;
+                        }
+                    }, [] as MessageParam[]);
 
+        // The first message must also be a user message...
         if (messages[0].role === "assistant") {
             messages.shift();
         }
 
         try {
-            const combinedSystemPrompt = system.map((message) => message.content).join(" ");
+            const combinedSystemPrompt = system.map((message) => message.content).join("\n");
             const response = await this.anthropic.messages.create({
                 system: combinedSystemPrompt,
                 model: Config.ANTHROPIC_LLM.MODEL,
