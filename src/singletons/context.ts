@@ -24,7 +24,8 @@ export async function getSizedChatContext(req: HennosConsumer, prompt: Message[]
 function getChatContextTokenCount(context: Message[]): number {
     const encoder = encoding_for_model("gpt-3.5-turbo");
     const total = context.reduce((acc, val) => {
-        if (!val.content || typeof val.content !== "string") {
+        if (!val || !val.content || typeof val.content !== "string") {
+            Logger.debug(`getChatContextTokenCount encountered an invalid message, skipping. ${val}`);
             return acc;
         }
 

@@ -24,7 +24,11 @@ export const duck_duck_go_search_tool: OpenAI.Chat.Completions.ChatCompletionToo
     }
 };
 
-export const duck_duck_go_search_tool_callback = async (req: HennosConsumer, tool_entry: ToolEntries): Promise<Message | undefined> => {
+export type DuckDuckGoSearchArgs = {
+    query: string
+};
+
+export const duck_duck_go_search_tool_callback = async (req: HennosConsumer, tool_entry: ToolEntries<DuckDuckGoSearchArgs>): Promise<Message | undefined> => {
     if (!tool_entry.args.query) {
         return undefined;
     }

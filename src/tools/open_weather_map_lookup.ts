@@ -29,8 +29,12 @@ export const open_weathermap_lookup_tool: OpenAI.Chat.Completions.ChatCompletion
     }
 };
 
+export type OpenWeatherMapToolArgs = {
+    lat: string,
+    lon: string
+};
 
-export const open_weathermap_lookup_tool_callback = async (req: HennosConsumer, tool_entry: ToolEntries): Promise<Message | undefined> => {
+export const open_weathermap_lookup_tool_callback = async (req: HennosConsumer, tool_entry: ToolEntries<OpenWeatherMapToolArgs>): Promise<Message | undefined> => {
     if (!tool_entry.args.lat) {
         return undefined;
     }

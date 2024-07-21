@@ -1,4 +1,5 @@
 import { Config } from "./singletons/config";
+import { ScheduleJob } from "./singletons/cron";
 import { Database } from "./singletons/sqlite";
 import { BotInstance } from "./singletons/telegram";
 
@@ -12,6 +13,7 @@ async function start() {
     console.log(`LOCAL_STORAGE is configured as ${Config.LOCAL_STORAGE()}`);
 
     await Database.init();
+    await ScheduleJob.init();
 
     BotInstance.init();
 }

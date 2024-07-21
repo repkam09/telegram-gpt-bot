@@ -16,11 +16,16 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
 
 async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     const prompt = await buildPrompt(user);
+    const context = await user.getChatContext();
 
-    const result = await determine_tool_calls_needed(user, {
-        content: text,
-        role: "user"
-    });
+    const recent = context.slice(-5);
+    const result = await determine_tool_calls_needed(user, [
+        ...recent,
+        {
+            content: text,
+            role: "user"
+        }
+    ]);
 
     if (result.length > 0) {
         const tool_context = await process_tool_calls(user, result);
@@ -28,8 +33,6 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
             prompt.push(entry);
         });
     }
-
-    const context = await user.getChatContext();
 
     // If a hint is provided, push it to the context right before the user message
     if (hint) {

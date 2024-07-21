@@ -9,3 +9,4 @@ documents
 hennos.sqlite
 hennos.sqlite-journal
 tests/fixtures/*.oga.wav
+tests/examples/*

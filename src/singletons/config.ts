@@ -280,6 +280,14 @@ export class Config {
         return process.env.OPEN_WEATHER_API;
     }
 
+    static get THE_NEWS_API_KEY(): string | false {
+        if (!process.env.THE_NEWS_API_KEY) {
+            return false;
+        }
+
+        return process.env.THE_NEWS_API_KEY;
+    }
+
     static get TELEGRAM_GROUP_PREFIX(): string {
         if (!process.env.TELEGRAM_GROUP_PREFIX) {
             throw new Error("Missing TELEGRAM_GROUP_PREFIX");
