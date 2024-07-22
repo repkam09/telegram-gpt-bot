@@ -1,4 +1,4 @@
-import { ChannelType, Client, DMChannel, Events, GatewayIntentBits, Partials } from "discord.js";
+import { ChannelType, Client, Events, GatewayIntentBits, Partials } from "discord.js";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { handlePrivateMessage } from "../handlers/text/private";
