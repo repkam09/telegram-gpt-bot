@@ -14,7 +14,7 @@ export class DiscordBotInstance {
             // This init process is a bit weird, it doesnt always seem to work, so potentially try a few times...
             const interval = setInterval(() => {
                 if (!DiscordBotInstance._hasCompletedInit) {
-                    Logger.debug("Initializing Discord bot instance...");
+                    console.log("Initializing Discord bot instance...");
                     const client = new Client({
                         intents: [
                             GatewayIntentBits.Guilds,
@@ -68,13 +68,13 @@ export class DiscordBotInstance {
                                 }
                             }
                         });
-                        Logger.debug(`Ready! Logged in as ${readyClient.user.tag}`);
+                        console.log(`Ready! Logged in as ${readyClient.user.tag}`);
                     });
                 }
 
                 if (DiscordBotInstance._hasCompletedInit) {
                     clearInterval(interval);
-                    Logger.debug("Finished initializing Discord bot instance.");
+                    console.log("Finished initializing Discord bot instance.");
                     return resolve();
                 }
             }, 5000);
