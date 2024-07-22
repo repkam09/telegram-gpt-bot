@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
 import { handleWhitelistCommand } from "./commands/handleWhitelist";
 import { handleHelpCommand, handleResetCommand, handleStartCommand } from "./commands/basic";
-import { BotInstance } from "../../singletons/telegram";
+import { TelegramBotInstance } from "../../singletons/telegram";
 import { HennosUser } from "../../singletons/user";
 import { handleAdminSetProviderCommand } from "./commands/handleLLMProviderSettings";
 import { handleReadCommand } from "./commands/handleVoiceSettings";
@@ -36,5 +36,5 @@ export async function handleCommandMessage(user: HennosUser, msg: TelegramBot.Me
         return handleAdminSetProviderCommand(user, msg.text);
     }
 
-    return BotInstance.sendMessageWrapper(user, "Unknown Command");
+    return TelegramBotInstance.sendMessageWrapper(user, "Unknown Command");
 }

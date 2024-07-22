@@ -1,5 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
-import { BotInstance } from "../../../singletons/telegram";
+import { TelegramBotInstance } from "../../../singletons/telegram";
 import { ValidTTSNames } from "../../voice";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
@@ -9,7 +9,7 @@ export async function handleVoiceSettingsCallback(user: HennosUser, queryId: str
     // Set the voice and return to the user.
     const name = data.replace("voice-settings-", "").trim();
 
-    const bot = BotInstance.instance();
+    const bot = TelegramBotInstance.instance();
     user.setPreferredVoice(name as ValidTTSNames).then(() => {
         bot.answerCallbackQuery(queryId, {
             text: "Future audio messages will use the " + name + " voice."
@@ -63,18 +63,18 @@ export async function sendVoiceSettingsPrompt(user: HennosUser) {
         }
     };
 
-    const bot = BotInstance.instance();
+    const bot = TelegramBotInstance.instance();
     bot.sendMessage(user.chatId, "You can customize the voice that Hennos uses when sending audio messages. Select one of the options below:  ", opts);
 }
 
 export async function handleReadCommand(req: HennosUser, text: string) {
-    BotInstance.setTelegramIndicator(req, "record_voice");
+    TelegramBotInstance.setTelegramIndicator(req, "record_voice");
     const trimmed = text.replace("/read", "").trim();
     try {
         const arrayBuffer = await HennosOpenAISingleton.instance().speech(req, trimmed);
         if (arrayBuffer) {
-            BotInstance.setTelegramIndicator(req, "upload_voice");
-            await BotInstance.sendVoiceMemoWrapper(req.chatId, Buffer.from(arrayBuffer));
+            TelegramBotInstance.setTelegramIndicator(req, "upload_voice");
+            await TelegramBotInstance.sendVoiceMemoWrapper(req.chatId, Buffer.from(arrayBuffer));
         }
     } catch (err) {
         Logger.error(req, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);

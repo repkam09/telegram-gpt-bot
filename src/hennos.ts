@@ -1,7 +1,8 @@
 import { Config } from "./singletons/config";
 import { ScheduleJob } from "./singletons/cron";
+import { DiscordBotInstance } from "./singletons/discord";
 import { Database } from "./singletons/sqlite";
-import { BotInstance } from "./singletons/telegram";
+import { TelegramBotInstance } from "./singletons/telegram";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -15,7 +16,8 @@ async function start() {
     await Database.init();
     await ScheduleJob.init();
 
-    BotInstance.init();
+    await TelegramBotInstance.init();
+    await DiscordBotInstance.init();
 }
 
 // Kick off the async function

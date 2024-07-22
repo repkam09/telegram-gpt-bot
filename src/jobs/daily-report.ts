@@ -6,7 +6,7 @@ import { open_weathermap_lookup_tool_callback } from "../tools/open_weather_map_
 import { Job } from "./job";
 import { buildPrompt } from "../handlers/text/private";
 import { top_news_stories_tool_callback } from "../tools/the_news_api";
-import { BotInstance } from "../singletons/telegram";
+import { TelegramBotInstance } from "../singletons/telegram";
 import { Config } from "../singletons/config";
 
 /**
@@ -82,7 +82,7 @@ export class DailyReport extends Job {
             await user.updateChatContext("user", "Could you please provide me with the daily report of the weather, news headlines, and any other time dependant information from our chat history if applicable?");
             await user.updateChatContext("assistant", result);
 
-            BotInstance.sendTelegramMessageWithRetry(user, result, {});
+            TelegramBotInstance.sendTelegramMessageWithRetry(user, result, {});
         }
     }
 }

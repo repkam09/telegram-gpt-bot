@@ -272,6 +272,14 @@ export class Config {
         return process.env.TELEGRAM_BOT_KEY;
     }
 
+    static get DISCORD_BOT_TOKEN(): string {
+        if (!process.env.DISCORD_BOT_TOKEN) {
+            throw new Error("Missing DISCORD_BOT_TOKEN");
+        }
+
+        return process.env.DISCORD_BOT_TOKEN;
+    }
+
     static get OPEN_WEATHER_API(): string | false {
         if (!process.env.OPEN_WEATHER_API) {
             return false;

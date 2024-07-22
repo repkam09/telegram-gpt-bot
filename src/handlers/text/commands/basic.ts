@@ -1,8 +1,8 @@
-import { BotInstance } from "../../../singletons/telegram";
+import { TelegramBotInstance } from "../../../singletons/telegram";
 import { HennosUser } from "../../../singletons/user";
 
 export async function handleStartCommand(user: HennosUser) {
-    await BotInstance.sendMessageWrapper(user, `Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-4 language model, similar to ChatGPT.
+    await TelegramBotInstance.sendMessageWrapper(user, `Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-4 language model, similar to ChatGPT.
 
 This bot contains additional features for approved users only. Limited access is availble to others.
 
@@ -10,7 +10,7 @@ For more information type /help or check out the [GitHub repository](https://git
 }
 
 export async function handleHelpCommand(user: HennosUser) {
-    await BotInstance.sendMessageWrapper(user, `Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-4 language model, similar to ChatGPT.
+    await TelegramBotInstance.sendMessageWrapper(user, `Hennos is a conversational chat assistant powered by the OpenAI API using the GPT-4 language model, similar to ChatGPT.
 
 This bot contains additional features for approved users only. Limited access is availble to others.
 
@@ -32,5 +32,5 @@ Whitelisted User Features:
 
 export async function handleResetCommand(user: HennosUser) {
     await user.clearChatContext();
-    await BotInstance.sendMessageWrapper(user, "Previous chat context has been cleared. The bot will not remember anything about your previous conversation.");
+    await TelegramBotInstance.sendMessageWrapper(user, "Previous chat context has been cleared. The bot will not remember anything about your previous conversation.");
 }

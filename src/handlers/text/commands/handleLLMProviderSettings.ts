@@ -1,12 +1,12 @@
 import TelegramBot from "node-telegram-bot-api";
-import { BotInstance } from "../../../singletons/telegram";
+import { TelegramBotInstance } from "../../../singletons/telegram";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
 
 export async function handleLLMProviderSettingsCallback(user: HennosUser, queryId: string, data: string) {
     const provider = data.replace("llm-settings-", "").trim();
 
-    const bot = BotInstance.instance();
+    const bot = TelegramBotInstance.instance();
     user.setPreferredProvider(provider).then(() => {
         bot.answerCallbackQuery(queryId, {
             text: "Future messages will be powered by " + provider + "."
@@ -45,7 +45,7 @@ export async function sendLLMProviderSettingsPrompt(user: HennosUser) {
         }
     };
 
-    const bot = BotInstance.instance();
+    const bot = TelegramBotInstance.instance();
     bot.sendMessage(user.chatId, `You can customize the AI model that Hennos uses when responding to messages.
         
 Anthropic provides Claude, a highly performant, trustworthy, and intelligent AI platform. Claude excels at tasks involving language, reasoning, analysis, coding, and more. You can learn more about Claude at https://www.anthropic.com/claude.
@@ -59,7 +59,7 @@ Select one of the options below: `, opts);
 
 export async function handleAdminSetProviderCommand(user: HennosUser, text: string) {
     const trimmed = text.replace("/llm-provider", "").trim();
-    const bot = BotInstance.instance();
+    const bot = TelegramBotInstance.instance();
 
     if (trimmed) {
         const parts = trimmed.split(" ");

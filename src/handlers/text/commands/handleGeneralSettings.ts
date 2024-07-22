@@ -1,11 +1,11 @@
 import TelegramBot from "node-telegram-bot-api";
-import { BotInstance, registerInputCallback } from "../../../singletons/telegram";
+import { TelegramBotInstance, registerInputCallback } from "../../../singletons/telegram";
 import { sendVoiceSettingsPrompt } from "./handleVoiceSettings";
 import { HennosUser } from "../../../singletons/user";
 import { sendLLMProviderSettingsPrompt } from "./handleLLMProviderSettings";
 
 export async function handleGeneralSettingsCallback(user: HennosUser, queryId: string, data: string) {
-    const bot = BotInstance.instance();
+    const bot = TelegramBotInstance.instance();
 
     // Set the voice and return to the user.
     const command = data.replace("customize-", "").trim();
@@ -73,6 +73,6 @@ export async function handleGeneralSettingsCommand(user: HennosUser) {
         }
     };
 
-    const bot = BotInstance.instance();
+    const bot = TelegramBotInstance.instance();
     bot.sendMessage(user.chatId, "You can customize parts of Hennos by using the options below. What would you like to change? ", opts);
 }

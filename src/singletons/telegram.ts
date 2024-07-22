@@ -25,15 +25,15 @@ const InputCallbackFunctionMap = new Map<number, InputCallbackFunction>();
 const PendingChatMap = new Map<number, string[]>();
 const PendingChatTimerMap = new Map<number, NodeJS.Timeout>();
 
-export class BotInstance {
+export class TelegramBotInstance {
     static _instance: TelegramBot;
 
     static instance(): TelegramBot {
-        if (!BotInstance._instance) {
-            BotInstance._instance = new TelegramBot(Config.TELEGRAM_BOT_KEY, { polling: true });
+        if (!TelegramBotInstance._instance) {
+            TelegramBotInstance._instance = new TelegramBot(Config.TELEGRAM_BOT_KEY, { polling: true });
         }
 
-        return BotInstance._instance;
+        return TelegramBotInstance._instance;
     }
 
     static async sendMessageWrapper(user: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions = {}) {
@@ -46,12 +46,12 @@ export class BotInstance {
         }
 
         if (content.length < 4096) {
-            return BotInstance.sendTelegramMessageWithRetry(user, content, options);
+            return TelegramBotInstance.sendTelegramMessageWithRetry(user, content, options);
         }
 
         const chunks = chunkSubstr(content, 4096);
         for (let i = 0; i < chunks.length; i++) {
-            return BotInstance.sendTelegramMessageWithRetry(user, chunks[i], options);
+            return TelegramBotInstance.sendTelegramMessageWithRetry(user, chunks[i], options);
         }
     }
 
@@ -64,18 +64,18 @@ export class BotInstance {
             throw new Error("Message content does not have a length property");
         }
 
-        const bot = BotInstance.instance();
+        const bot = TelegramBotInstance.instance();
         await bot.sendVoice(chatId, content, options);
     }
 
     static async sendAdminMessage(content: string) {
         if (Config.TELEGRAM_BOT_ADMIN !== -1 && !Config.HENNOS_DEVELOPMENT_MODE) {
-            await BotInstance.instance().sendMessage(Config.TELEGRAM_BOT_ADMIN, content, {});
+            await TelegramBotInstance.instance().sendMessage(Config.TELEGRAM_BOT_ADMIN, content, {});
         }
     }
 
     static async sendTelegramMessageWithRetry(user: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions) {
-        const bot = BotInstance.instance();
+        const bot = TelegramBotInstance.instance();
         try {
             await bot.sendMessage(user.chatId, content, { ...options, parse_mode: "Markdown" });
         } catch (err1: unknown) {
@@ -90,7 +90,7 @@ export class BotInstance {
     }
 
     static setTelegramIndicator(req: HennosConsumer, action: TelegramBot.ChatAction): void {
-        BotInstance.instance().sendChatAction(req.chatId, action).catch((err: unknown) => {
+        TelegramBotInstance.instance().sendChatAction(req.chatId, action).catch((err: unknown) => {
             Logger.warn(req, `Error while setting Telegram ${action} indicator: ${err}`);
         });
     }
@@ -104,15 +104,15 @@ export class BotInstance {
         };
 
         // @ts-expect-error - The Types are wrong for the bot instance, it does support setMessageReaction 
-        BotInstance.instance().setMessageReaction(req.chatId, msg.message_id, options).then(() => {
+        TelegramBotInstance.instance().setMessageReaction(req.chatId, msg.message_id, options).then(() => {
             Logger.debug(`Set reaction on Telegram message ${msg.message_id} for user ${req.displayName}`);
         }).catch((err: unknown) => {
             Logger.error(req, `Error while setting reaction on Telegram message ${msg.message_id}: `, err);
         });
     }
 
-    static init() {
-        const bot = BotInstance.instance();
+    static async init() {
+        const bot = TelegramBotInstance.instance();
         bot.on("text", async (msg) => {
             if (!msg.from || !msg.text) {
                 return;
@@ -212,9 +212,9 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     }
 
     // If the user did @ the bot, strip out that @ prefix before processing the message
-    BotInstance.setTelegramIndicator(group, "typing");
+    TelegramBotInstance.setTelegramIndicator(group, "typing");
     const response = await handleWhitelistedGroupMessage(user, group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));
-    await BotInstance.sendMessageWrapper(group, response), { reply_to_message_id: msg.message_id };
+    await TelegramBotInstance.sendMessageWrapper(group, response), { reply_to_message_id: msg.message_id };
 }
 
 async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithText) {
@@ -242,33 +242,33 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
 
         // If we have one or more messages, process them
         Logger.trace(user, "text_private");
-        BotInstance.setTelegramIndicator(user, "typing");
+        TelegramBotInstance.setTelegramIndicator(user, "typing");
         const response = await handlePrivateMessage(user, messages.length === 1 ? messages[0] : messages.join("\n"));
 
         // Send the response to the user
-        await BotInstance.sendMessageWrapper(user, response);
+        await TelegramBotInstance.sendMessageWrapper(user, response);
     }, 2000);
 
     PendingChatTimerMap.set(user.chatId, timeout);
 }
 
 async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Message & { voice: TelegramBot.Voice }) {
-    BotInstance.setTelegramIndicator(user, "typing");
-    const tempFilePath = await BotInstance.instance().downloadFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
+    TelegramBotInstance.setTelegramIndicator(user, "typing");
+    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
     const response = await handleVoiceMessage(user, tempFilePath);
 
-    BotInstance.setTelegramIndicator(user, "record_voice");
+    TelegramBotInstance.setTelegramIndicator(user, "record_voice");
     try {
         const arrayBuffer = await HennosOpenAISingleton.instance().speech(user, response);
         if (arrayBuffer) {
-            BotInstance.setTelegramIndicator(user, "upload_voice");
-            await BotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
+            TelegramBotInstance.setTelegramIndicator(user, "upload_voice");
+            await TelegramBotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
         }
     } catch (err) {
         Logger.error(user, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
     }
 
-    return BotInstance.sendMessageWrapper(user, response);
+    return TelegramBotInstance.sendMessageWrapper(user, response);
 }
 
 async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Message & { photo: TelegramBot.PhotoSize[] }) {
@@ -276,37 +276,37 @@ async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Mes
         return (obj.width * obj.height > max.width * max.height) ? obj : max;
     });
 
-    BotInstance.setTelegramIndicator(user, "upload_photo");
-    const tempFileUrl = await BotInstance.instance().getFileLink(largestImage.file_id);
-    const tempFilePath = await BotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(user));
+    TelegramBotInstance.setTelegramIndicator(user, "upload_photo");
+    const tempFileUrl = await TelegramBotInstance.instance().getFileLink(largestImage.file_id);
+    const tempFilePath = await TelegramBotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(user));
     const mime_type = mimetype.contentType(path.extname(tempFilePath));
 
-    BotInstance.setTelegramIndicator(user, "typing");
+    TelegramBotInstance.setTelegramIndicator(user, "typing");
     const response = await handleImageMessage(user, { remote: tempFileUrl, local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
-    return BotInstance.sendMessageWrapper(user, response);
+    return TelegramBotInstance.sendMessageWrapper(user, response);
 }
 
 async function handleTelegramLocationMessage(user: HennosUser, msg: TelegramBot.Message & { location: TelegramBot.Location }) {
-    BotInstance.setTelegramIndicator(user, "find_location");
+    TelegramBotInstance.setTelegramIndicator(user, "find_location");
     await user.updateLocation(msg.location.latitude, msg.location.longitude);
-    return BotInstance.sendMessageWrapper(user, "Thanks! I will take your location into account in the future.");
+    return TelegramBotInstance.sendMessageWrapper(user, "Thanks! I will take your location into account in the future.");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
-    BotInstance.setTelegramIndicator(user, "typing");
-    return BotInstance.sendMessageWrapper(user, "Error: Audio messages are not yet supported");
+    TelegramBotInstance.setTelegramIndicator(user, "typing");
+    return TelegramBotInstance.sendMessageWrapper(user, "Error: Audio messages are not yet supported");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
-    BotInstance.setTelegramIndicator(user, "typing");
-    return BotInstance.sendMessageWrapper(user, "Error: Contacts are not supported yet.");
+    TelegramBotInstance.setTelegramIndicator(user, "typing");
+    return TelegramBotInstance.sendMessageWrapper(user, "Error: Contacts are not supported yet.");
 }
 
 async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
-    BotInstance.setTelegramMessageReact(user, msg, "👀");
-    const tempFilePath = await BotInstance.instance().downloadFile(msg.document.file_id, Config.LOCAL_STORAGE(user));
+    TelegramBotInstance.setTelegramMessageReact(user, msg, "👀");
+    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.document.file_id, Config.LOCAL_STORAGE(user));
     const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : ".bin";
 
     const response = await handleDocumentMessage(user, tempFilePath, ext, msg.document.file_unique_id);
@@ -314,8 +314,8 @@ async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.
     await user.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
     await user.updateChatContext("assistant", response);
 
-    BotInstance.setTelegramMessageReact(user, msg);
-    return BotInstance.sendMessageWrapper(user, response);
+    TelegramBotInstance.setTelegramMessageReact(user, msg);
+    return TelegramBotInstance.sendMessageWrapper(user, response);
 }
 
 async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker: TelegramBot.Sticker }) {
@@ -333,8 +333,8 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
     }
 
     try {
-        const stickerPath = await BotInstance.instance().downloadFile(msg.sticker.file_id, Config.LOCAL_STORAGE(user));
-        await BotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
+        const stickerPath = await TelegramBotInstance.instance().downloadFile(msg.sticker.file_id, Config.LOCAL_STORAGE(user));
+        await TelegramBotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
     } catch (err) {
         const user = await HennosUserAsync(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
         Logger.error(user, err);
@@ -362,7 +362,7 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
 
     if (!user.whitelisted) {
         Logger.trace(user, `${requiredProperty} [but not whitelisted]`);
-        return BotInstance.sendMessageWrapper(user, "Sorry, you have not been whitelisted to use this feature.");
+        return TelegramBotInstance.sendMessageWrapper(user, "Sorry, you have not been whitelisted to use this feature.");
     }
 
     Logger.trace(user, requiredProperty);
