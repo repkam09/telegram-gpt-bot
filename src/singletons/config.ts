@@ -24,6 +24,10 @@ export class Config {
             throw new Error("Missing TELEGRAM_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
         }
 
+        if (Config.DISCORD_BOT_ADMIN === -1) {
+            throw new Error("Missing DISCORD_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
+        }
+
         return true;
     }
 
@@ -312,6 +316,19 @@ export class Config {
         const adminId = parseInt(process.env.TELEGRAM_BOT_ADMIN);
         if (Number.isNaN(adminId)) {
             throw new Error("Invalid TELEGRAM_BOT_ADMIN");
+        }
+
+        return adminId;
+    }
+
+    static get DISCORD_BOT_ADMIN(): number {
+        if (!process.env.DISCORD_BOT_ADMIN) {
+            return -1;
+        }
+
+        const adminId = parseInt(process.env.DISCORD_BOT_ADMIN);
+        if (Number.isNaN(adminId)) {
+            throw new Error("Invalid DISCORD_BOT_ADMIN");
         }
 
         return adminId;

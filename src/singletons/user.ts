@@ -5,7 +5,7 @@ import { ValidTTSNames } from "../handlers/voice";
 import { Message } from "ollama";
 
 
-export async function  HennosUserAsync(chatId: number, firstName: string, lastName?: string, username?: string): Promise<HennosUser> {
+export async function HennosUserAsync(chatId: number, firstName: string, lastName?: string, username?: string): Promise<HennosUser> {
     const user = new HennosUser(chatId);
     await user.setBasicInfo(firstName, lastName, username);
     await user.getBasicInfo();
@@ -31,7 +31,15 @@ export class HennosUser {
     }
 
     public isAdmin(): boolean {
-        return Config.TELEGRAM_BOT_ADMIN === this.chatId;
+        if (Config.TELEGRAM_BOT_ADMIN === this.chatId) {
+            return true;
+        }
+
+        if (Config.DISCORD_BOT_ADMIN === this.chatId) {
+            return true;
+        }
+
+        return false;
     }
 
     public toString(): string {
@@ -85,7 +93,7 @@ export class HennosUser {
             }
         });
 
-        this.whitelisted = result.whitelisted;
+        this.whitelisted = this.isAdmin() ? true : result.whitelisted;
         this.displayName = `${result.firstName} ${result.lastName}`;
         return {
             firstName: result.firstName,
