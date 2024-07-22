@@ -11,6 +11,7 @@ export class DiscordBotInstance {
 
     static async init(): Promise<void> {
         return new Promise((resolve) => {
+            // This init process is a bit weird, it doesnt always seem to work, so potentially try a few times...
             const interval = setInterval(() => {
                 if (!DiscordBotInstance._hasCompletedInit) {
                     Logger.debug("Initializing Discord bot instance...");
@@ -37,21 +38,34 @@ export class DiscordBotInstance {
                         }
                         DiscordBotInstance._hasCompletedInit = true;
                         readyClient.on(Events.MessageCreate, async message => {
+                            // Ignore messages from bots (this includes ourself because discord is weird)
                             if (message.author.bot) return;
+
+                            // Right now only let the admin send messages to the bot
                             if (Number(message.author.id) !== Config.DISCORD_BOT_ADMIN) {
-                                Logger.debug(`Ignoring message from non-admin user ${message.author.tag} (${message.author.id})`);
+                                Logger.debug(`Ignoring discord message from non-admin user ${message.author.tag} (${message.author.id})`);
                                 return;
                             }
 
                             const user = await HennosUserAsync(Number(message.author.id), message.author.tag, undefined, message.author.username);
                             Logger.info(user, `Received Discord message from ${message.author.tag} (${message.author.id}) in ${message.channel.id}`);
                             if (message.channel.type === ChannelType.DM) {
-                                const response = await handlePrivateMessage(user, message.content);
-                                await message.channel.send(response);
+                                try {
+                                    const response = await handlePrivateMessage(user, message.content);
+                                    await message.channel.send(response);
+                                } catch (err: unknown) {
+                                    const error = err as Error;
+                                    Logger.error(user, `Error handling Discord private message from ${message.author.tag} (${message.author.id}): ${error.message}`);
+                                }
                             } else {
                                 const group = await HennosGroupAsync(Number(message.channel.id), message.channel.name);
-                                const response = await handleWhitelistedGroupMessage(user, group, message.content);
-                                await message.channel.send(response);
+                                try {
+                                    const response = await handleWhitelistedGroupMessage(user, group, message.content);
+                                    await message.channel.send(response);
+                                } catch (err: unknown) {
+                                    const error = err as Error;
+                                    Logger.error(user, `Error handling Discord group message from ${message.author.tag} (${message.author.id}): ${error.message}`);
+                                }
                             }
                         });
                         Logger.debug(`Ready! Logged in as ${readyClient.user.tag}`);
