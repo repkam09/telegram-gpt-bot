@@ -1,22 +1,22 @@
 import fs, { } from "node:fs";
 import TelegramBot from "node-telegram-bot-api";
 import mimetype from "mime-types";
-import { Config } from "./config";
-import { Logger } from "./logger";
-import { handleDocumentMessage } from "../handlers/document";
-import { handleImageMessage } from "../handlers/photos";
-import { handleVoiceMessage } from "../handlers/voice";
-import { handleVoiceSettingsCallback } from "../handlers/text/commands/handleVoiceSettings";
-import { handleGeneralSettingsCallback } from "../handlers/text/commands/handleGeneralSettings";
-import { handlePrivateMessage } from "../handlers/text/private";
-import { handleWhitelistedGroupMessage } from "../handlers/text/group";
-import { handleCommandMessage } from "../handlers/text/commands";
-import { HennosUser, HennosUserAsync } from "./user";
-import { HennosGroup, HennosGroupAsync } from "./group";
-import { handleLLMProviderSettingsCallback } from "../handlers/text/commands/handleLLMProviderSettings";
+import { Config } from "../../singletons/config";
+import { Logger } from "../../singletons/logger";
+import { handleDocumentMessage } from "../../handlers/document";
+import { handleImageMessage } from "../../handlers/photos";
+import { handleVoiceMessage } from "../../handlers/voice";
+import { handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
+import { handleGeneralSettingsCallback } from "./commands/handleGeneralSettings";
+import { handlePrivateMessage } from "../../handlers/text/private";
+import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
+import { handleCommandMessage } from "./commands";
+import { HennosUser, HennosUserAsync } from "../../singletons/user";
+import { HennosGroup, HennosGroupAsync } from "../../singletons/group";
+import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
 import path from "node:path";
-import { HennosConsumer } from "./base";
-import { HennosOpenAISingleton } from "./openai";
+import { HennosConsumer } from "../../singletons/base";
+import { HennosOpenAISingleton } from "../../singletons/openai";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -127,7 +127,7 @@ export class TelegramBotInstance {
             }
 
             if (msg.text.startsWith("/")) {
-                Logger.trace(user, "text_command");
+                Logger.trace(user, `text_command: ${msg.text}`);
                 return handleTelegramCommandMessage(user, msg as MessageWithText);
             }
 
@@ -333,6 +333,8 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
     }
 
     try {
+        // This is a silly feature that fixes an issue in Telegram where some images are incorrectly sent as stickers
+        // This will download the sticker, and re-upload it as a photo
         const stickerPath = await TelegramBotInstance.instance().downloadFile(msg.sticker.file_id, Config.LOCAL_STORAGE(user));
         await TelegramBotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
     } catch (err) {

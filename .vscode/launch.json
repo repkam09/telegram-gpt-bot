@@ -13,7 +13,8 @@
                 "<node_internals>/**"
             ],
             "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/hennos.js"
+            "program": "${workspaceFolder}/build/hennos.js",
+            "console": "integratedTerminal"
         },
         {
             "type": "node",
@@ -25,7 +26,8 @@
             ],
             "preLaunchTask": "tsc",
             "program": "${workspaceFolder}/build/scripts/documents.js",
-            "sourceMaps": true
+            "sourceMaps": true,
+            "console": "integratedTerminal"
         },
         {
             "type": "node",

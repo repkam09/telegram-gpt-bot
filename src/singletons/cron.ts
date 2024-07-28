@@ -9,7 +9,11 @@ export class ScheduleJob {
         if (exists) {
             // Only schedule jobs for the admin right now. Eventually, we can add a
             // job table to the database and schedule jobs for all users
-            cron.schedule(DailyReport.schedule(), () => DailyReport.run(exists));
+            const [schedule, timezone] = DailyReport.schedule();
+            cron.schedule(schedule, () => DailyReport.run(exists), {
+                timezone
+            });
+            DailyReport.scheduled(exists);
         }
     }
 }

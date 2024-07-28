@@ -1,10 +1,10 @@
 import { ChannelType, Client, Events, GatewayIntentBits, Partials } from "discord.js";
-import { Config } from "./config";
-import { Logger } from "./logger";
-import { handlePrivateMessage } from "../handlers/text/private";
-import { HennosUserAsync } from "./user";
-import { handleWhitelistedGroupMessage } from "../handlers/text/group";
-import { HennosGroupAsync } from "./group";
+import { Config } from "../../singletons/config";
+import { Logger } from "../../singletons/logger";
+import { handlePrivateMessage } from "../../handlers/text/private";
+import { HennosUserAsync } from "../../singletons/user";
+import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
+import { HennosGroupAsync } from "../../singletons/group";
 
 export class DiscordBotInstance {
     static _hasCompletedInit = false;

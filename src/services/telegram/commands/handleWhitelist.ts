@@ -1,4 +1,4 @@
-import { TelegramBotInstance } from "../../../singletons/telegram";
+import { TelegramBotInstance } from "../telegram";
 import { Database } from "../../../singletons/sqlite";
 import { HennosUser } from "../../../singletons/user";
 

@@ -39,11 +39,27 @@ export class Config {
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
+    static get TELEGRAM_ENABLED(): boolean {
+        if (!process.env.TELEGRAM_ENABLED) {
+            return true;
+        }
+
+        return process.env.TELEGRAM_ENABLED === "true";
+    }
+
+    static get DISCORD_ENABLED(): boolean {
+        if (!process.env.DISCORD_ENABLED) {
+            return true;
+        }
+
+        return process.env.DISCORD_ENABLED === "true";
+    }
+
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
-                MODEL: "llama3:latest",
-                CTX: 8192
+                MODEL: "llama3.1",
+                CTX: 16000
             };
         }
 
@@ -63,8 +79,8 @@ export class Config {
     static get OLLAMA_LLM_LARGE(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM_LARGE) {
             return {
-                MODEL: "phi3:latest,128000",
-                CTX: 8192
+                MODEL: "llama3.1",
+                CTX: 16000
             };
         }
 
@@ -106,7 +122,7 @@ export class Config {
     static get OLLAMA_LLM_EMBED(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM_EMBED) {
             return {
-                MODEL: "phi3:latest,128000",
+                MODEL: "nomic-embed-text:latest",
                 CTX: 8192
             };
         }
@@ -143,8 +159,8 @@ export class Config {
     static get OPENAI_LLM(): HennosModelConfig {
         if (!process.env.OPENAI_LLM) {
             return {
-                MODEL: "gpt-3.5-turbo",
-                CTX: 16000
+                MODEL: "gpt-4o-mini",
+                CTX: 32000
             };
         }
 
@@ -164,7 +180,7 @@ export class Config {
     static get OPENAI_LLM_VISION(): HennosModelConfig {
         if (!process.env.OPENAI_LLM_VISION) {
             return {
-                MODEL: "gpt-4o",
+                MODEL: "gpt-4o-mini",
                 CTX: 32000
             };
         }
@@ -194,7 +210,7 @@ export class Config {
         if (!process.env.ANTHROPIC_LLM) {
             return {
                 MODEL: "claude-3-haiku-20240307",
-                CTX: 200000
+                CTX: 16000
             };
         }
 

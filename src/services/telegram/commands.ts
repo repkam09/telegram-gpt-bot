@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
 import { handleWhitelistCommand } from "./commands/handleWhitelist";
 import { handleHelpCommand, handleResetCommand, handleStartCommand } from "./commands/basic";
-import { TelegramBotInstance } from "../../singletons/telegram";
+import { TelegramBotInstance } from "./telegram";
 import { HennosUser } from "../../singletons/user";
 import { handleAdminSetProviderCommand } from "./commands/handleLLMProviderSettings";
 import { handleReadCommand } from "./commands/handleVoiceSettings";

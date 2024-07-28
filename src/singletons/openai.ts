@@ -122,7 +122,7 @@ class HennosOpenAIProvider extends HennosBaseProvider {
             }
 
             const flagged = response.results[0].flagged;
-            Logger.info(req, "OpenAI Moderation Success, Result: ", flagged ? "Blocked" : "Allowed");
+            Logger.info(req, "OpenAI Moderation Success, Result: ", flagged ? "Blocked" : "Allowed", "Input:", input);
             return flagged;
         } catch (err: unknown) {
             Logger.error(req, "OpenAI Moderation Error: ", err);

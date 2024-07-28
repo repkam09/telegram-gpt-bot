@@ -6,17 +6,21 @@ import { open_weathermap_lookup_tool_callback } from "../tools/open_weather_map_
 import { Job } from "./job";
 import { buildPrompt } from "../handlers/text/private";
 import { top_news_stories_tool_callback } from "../tools/the_news_api";
-import { TelegramBotInstance } from "../singletons/telegram";
+import { TelegramBotInstance } from "../services/telegram/telegram";
 import { Config } from "../singletons/config";
 
 /**
- * This job will run every day at 8:00 AM and will send a daily report to the user with the following information:
+ * This job will run every day at 8:00 AM EST and will send a daily report to the user with the following information:
  * - The weather forecast for the user's location, if available
  * - The top news headlines
  */
 export class DailyReport extends Job {
-    static schedule(): string {
-        return "0 8 * * *";
+    static schedule(): [string, string] {
+        return ["0 8 * * *", "EST"];
+    }
+
+    static scheduled(user: HennosUser): void {
+        Logger.info(user, "Scheduled Daily Report Job", DailyReport.schedule());
     }
 
     static async run(user: HennosUser) {

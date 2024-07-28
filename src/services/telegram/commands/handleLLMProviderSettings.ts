@@ -1,5 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
-import { TelegramBotInstance } from "../../../singletons/telegram";
+import { TelegramBotInstance } from "../telegram";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
 

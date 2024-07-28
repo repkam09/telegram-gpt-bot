@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
-import { TelegramBotInstance } from "../../../singletons/telegram";
-import { ValidTTSNames } from "../../voice";
+import { TelegramBotInstance } from "../telegram";
+import { ValidTTSNames } from "../../../handlers/voice";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
 import { HennosOpenAISingleton } from "../../../singletons/openai";

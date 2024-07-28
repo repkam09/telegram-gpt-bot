@@ -1,5 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
-import { TelegramBotInstance, registerInputCallback } from "../../../singletons/telegram";
+import { TelegramBotInstance, registerInputCallback } from "../telegram";
 import { sendVoiceSettingsPrompt } from "./handleVoiceSettings";
 import { HennosUser } from "../../../singletons/user";
 import { sendLLMProviderSettingsPrompt } from "./handleLLMProviderSettings";
