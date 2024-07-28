@@ -1,5 +1,4 @@
 import { Config } from "../singletons/config";
-import readline from "node:readline";
 import axios from "axios";
 import { convert } from "html-to-text";
 import { HennosUser, HennosUserAsync } from "../singletons/user";
@@ -137,16 +136,5 @@ function buildSearchResponsePrompt(user: HennosUser, query: string, context: { t
     return prompt;
 }
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
-
-console.log("Search DuckDuckGo");
-rl.question("Query: ", query => {
-    rl.close();
-    search(query);
-});
-
 // Search for information about a topic that is much newer than the training data, probably.
-// search("What can you tell me about LlamaIndex?");
+search("What can you tell me about LlamaIndex?");
