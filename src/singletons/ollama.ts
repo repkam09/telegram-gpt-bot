@@ -58,6 +58,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
 
             Logger.info(req, `Ollama Completion Success, Resulted in ${response.eval_count} output tokens`);
             if (response.message.tool_calls && response.message.tool_calls.length > 0) {
+                Logger.info(req, `Ollama Completion Success, Resulted in ${response.message.tool_calls} Tool Calls`);
                 const tool_calls = response.message.tool_calls.map((tool_call) => {
                     return [tool_call, {}] as [ToolCall, ToolCallMetadata];
                 });
@@ -79,6 +80,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
                 return this.completionWithRecursiveToolCalls(req, prompt, depth + 1);
             }
 
+            Logger.info(req, "Ollama Completion Success, Resulted in Text Completion");
             return response.message.content;
         } catch (err: unknown) {
             Logger.info(req, "Ollama Completion Error: ", err);

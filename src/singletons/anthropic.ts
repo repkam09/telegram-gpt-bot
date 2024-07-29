@@ -133,6 +133,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
             Logger.info(req, `Anthropic Completion Success, Resulted in ${response.usage.output_tokens} output tokens`);
             const tool_blocks = response.content.filter((content) => content.type === "tool_use") as Anthropic.Messages.ToolUseBlock[];
             if (tool_blocks.length > 0) {
+                Logger.info(req, `Anthropic Completion Success, Resulted in ${tool_blocks.length} Tool Calls`);
                 const toolCalls = convertToolCallResponse(tool_blocks);
                 const additional = await process_tool_calls(req, toolCalls);
 
@@ -160,6 +161,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
             }
 
             const text_blocks = response.content.filter((content) => content.type === "text") as TextBlock[];
+            Logger.info(req, `Anthropic Completion Success, Resulted in ${text_blocks.length} Text Blocks`);
 
             const result = text_blocks.map((block) => block.text).join();
             return result;

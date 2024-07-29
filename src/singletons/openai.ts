@@ -116,11 +116,13 @@ class HennosOpenAIProvider extends HennosBaseProvider {
 
             // If this is a normal response with no tool calling, return the content
             if (response.choices[0].message.content) {
+                Logger.info(req, "OpenAI Completion Success, Resulted in Text Completion");
                 return response.choices[0].message.content;
             }
 
             // If the model asked for a tool call, process it and re-trigger the completion
             if (response.choices[0].message.tool_calls && response.choices[0].message.tool_calls.length > 0) {
+                Logger.info(req, `OpenAI Completion Success, Resulted in ${response.choices[0].message.tool_calls.length} Tool Calls`);
                 prompt.push({
                     role: "assistant",
                     tool_calls: response.choices[0].message.tool_calls
