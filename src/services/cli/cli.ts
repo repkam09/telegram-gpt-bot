@@ -11,7 +11,7 @@ export class CommandLineInstance {
 
         const user = await HennosUser.exists(Config.TELEGRAM_BOT_ADMIN);
         if (!user) {
-            throw new Error("Unable to find the admin user in the database.");
+            throw new Error("Existing admin user account not found");
         }
 
         const rl = readline.createInterface({
@@ -24,7 +24,7 @@ export class CommandLineInstance {
             if (query) {
                 const response = await handlePrivateMessage(user, query, {
                     role: "system",
-                    content: "The last user message was sent via the command line interface in Hennos Development Mode, not via Telegram. " +
+                    content: "The user is sending their messsage via the command line interface in Hennos Development Mode, not via Telegram. " +
                         "Please call out anything that looks unusual or strange in the previous chat context, as it may be a bug."
                 });
 

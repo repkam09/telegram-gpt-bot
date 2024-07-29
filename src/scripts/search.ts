@@ -1,13 +1,16 @@
 import { Config } from "../singletons/config";
 import axios from "axios";
 import { convert } from "html-to-text";
-import { HennosUser, HennosUserAsync } from "../singletons/user";
-import { getHTMLSearchResults } from "../tools/duck_duck_go_search";
+import { HennosUser } from "../singletons/user";
 import { Message } from "ollama";
 import { HennosOllamaSingleton } from "../singletons/ollama";
+import { BaseTool } from "../tools/BaseTool";
 
 async function search(query: string) {
-    const user = await HennosUserAsync(Config.TELEGRAM_BOT_ADMIN, "Test");
+    const user = await HennosUser.exists(Config.TELEGRAM_BOT_ADMIN);
+    if (!user) {
+        throw new Error("Existing admin user account not found");
+    }
 
     const result = await HennosOllamaSingleton.instance().completion(user, buildQueryParsePrompt(), [{
         role: "user",
@@ -30,7 +33,7 @@ async function search(query: string) {
         if (json.AbstractText) {
             help = json.AbstractText;
         } else {
-            const html = await getHTMLSearchResults("https://html.duckduckgo.com/html/?q=" + q);
+            const html = await BaseTool.fetchTextData("https://html.duckduckgo.com/html/?q=" + q);
             const converted = convert(html, {
                 wordwrap: 130,
                 selectors: [

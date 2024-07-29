@@ -11,8 +11,8 @@ import { handleGeneralSettingsCallback } from "./commands/handleGeneralSettings"
 import { handlePrivateMessage } from "../../handlers/text/private";
 import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
 import { handleCommandMessage } from "./commands";
-import { HennosUser, HennosUserAsync } from "../../singletons/user";
-import { HennosGroup, HennosGroupAsync } from "../../singletons/group";
+import { HennosUser } from "../../singletons/user";
+import { HennosGroup } from "../../singletons/group";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
 import path from "node:path";
 import { HennosConsumer } from "../../singletons/base";
@@ -118,7 +118,7 @@ export class TelegramBotInstance {
                 return;
             }
 
-            const user = await HennosUserAsync(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
+            const user = await HennosUser.async(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
             if (Config.HENNOS_DEVELOPMENT_MODE) {
                 if (msg.from.id !== Config.TELEGRAM_BOT_ADMIN) {
                     Logger.warn(user, "Ignoring message from non-admin user due to HENNOS_DEVELOPMENT_MODE true");
@@ -132,7 +132,7 @@ export class TelegramBotInstance {
             }
 
             if (msg.chat.type !== "private") {
-                const group = await HennosGroupAsync(msg.chat.id, msg.chat.title);
+                const group = await HennosGroup.async(msg.chat.id, msg.chat.title);
                 return handleTelegramGroupMessage(user, group, msg as MessageWithText);
             }
 
@@ -177,7 +177,7 @@ export class TelegramBotInstance {
 
         bot.on("callback_query", async (query: TelegramBot.CallbackQuery) => {
             if (query.data) {
-                const user = await HennosUserAsync(query.from.id, query.from.first_name, query.from.last_name, query.from.username);
+                const user = await HennosUser.async(query.from.id, query.from.first_name, query.from.last_name, query.from.username);
 
                 if (query.data.startsWith("voice-settings-")) {
                     return handleVoiceSettingsCallback(user, query.id, query.data);
@@ -324,7 +324,7 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
         return;
     }
 
-    const user = await HennosUserAsync(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
+    const user = await HennosUser.async(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
     Logger.trace(user, "sticker");
 
     const { set_name, emoji } = msg.sticker;
@@ -338,7 +338,7 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
         const stickerPath = await TelegramBotInstance.instance().downloadFile(msg.sticker.file_id, Config.LOCAL_STORAGE(user));
         await TelegramBotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
     } catch (err) {
-        const user = await HennosUserAsync(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
+        const user = await HennosUser.async(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
         Logger.error(user, err);
     }
 }
@@ -350,7 +350,7 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
         return;
     }
 
-    const user = await HennosUserAsync(message.from.id, message.from.first_name, message.from.last_name, message.from.username);
+    const user = await HennosUser.async(message.from.id, message.from.first_name, message.from.last_name, message.from.username);
     if (Config.HENNOS_DEVELOPMENT_MODE) {
         if (message.from.id !== Config.TELEGRAM_BOT_ADMIN) {
             Logger.warn(user, "Ignoring message from non-admin user due to HENNOS_DEVELOPMENT_MODE true");

@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { HennosUser } from "./user";
 import { Config } from "./config";
-import { DailyReport } from "../jobs/daily-report";
+import { DailyReport } from "../jobs/DailyReport";
 
 export class ScheduleJob {
     public static async init() {

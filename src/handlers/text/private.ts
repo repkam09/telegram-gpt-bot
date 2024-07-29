@@ -4,7 +4,6 @@ import { Message } from "ollama";
 import { HennosOllamaSingleton } from "../../singletons/ollama";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosAnthropicSingleton } from "../../singletons/anthropic";
-import { determine_tool_calls_needed, process_tool_calls } from "../../tools/tools";
 
 export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     if (user.whitelisted) {
@@ -17,22 +16,6 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
 async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     const prompt = await buildPrompt(user);
     const context = await user.getChatContext();
-
-    const recent = context.slice(-5);
-    const result = await determine_tool_calls_needed(user, [
-        ...recent,
-        {
-            content: text,
-            role: "user"
-        }
-    ]);
-
-    if (result.length > 0) {
-        const tool_context = await process_tool_calls(user, result);
-        tool_context.forEach((entry) => {
-            prompt.push(entry);
-        });
-    }
 
     // If a hint is provided, push it to the context right before the user message
     if (hint) {
@@ -103,7 +86,7 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
     const response = await HennosOllamaSingleton.instance().completion(user, prompt, [
         {
             content: text,
-            role: "user",
+            role: "user"
         }
     ]);
 
@@ -119,7 +102,7 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
 
     const date = new Date().toUTCString();
 
-    const locationDetails = location ? `The user provided their location information as lat=${location.latitude}, lon=${location.latitude}` : "";
+    const locationDetails = location ? `The user provided their location information as lat=${location.latitude}, lon=${location.longitude}` : "";
 
     const prompt: Message[] = [
         {

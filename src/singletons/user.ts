@@ -1,33 +1,17 @@
-import { PrismaClient } from "@prisma/client";
 import { Database } from "./sqlite";
 import { Config } from "./config";
 import { ValidTTSNames } from "../handlers/voice";
-import { Message } from "ollama";
-
-
-export async function HennosUserAsync(chatId: number, firstName: string, lastName?: string, username?: string): Promise<HennosUser> {
-    const user = new HennosUser(chatId);
-    await user.setBasicInfo(firstName, lastName, username);
-    await user.getBasicInfo();
-    return user;
-}
+import { HennosConsumer } from "./base";
 
 type ValidLLMProviders = "openai" | "ollama" | "anthropic"
 
-export class HennosUser {
-    public chatId: number;
-
-    public displayName: string;
-
-    public whitelisted: boolean;
-
-    private db: PrismaClient;
-
+export class HennosUser extends HennosConsumer {
     constructor(chatId: number) {
-        this.chatId = chatId;
-        this.whitelisted = false;
-        this.db = Database.instance();
-        this.displayName = "HennosUser";
+        super(chatId, "HennosUser");
+    }
+
+    public allowFunctionCalling(): boolean {
+        return this.isAdmin();
     }
 
     public isAdmin(): boolean {
@@ -40,42 +24,6 @@ export class HennosUser {
         }
 
         return false;
-    }
-
-    public toString(): string {
-        return `${this.displayName} ${String(this.chatId)}`;
-    }
-
-    static setWhitelisted(user: HennosUser, whitelisted: boolean) {
-        const db = Database.instance();
-        return db.user.update({
-            where: {
-                chatId: user.chatId
-            },
-            data: {
-                whitelisted
-            }
-        });
-    }
-
-    static async exists(chatId: number): Promise<HennosUser | null> {
-        const db = Database.instance();
-        const result = await db.user.findUnique({
-            select: {
-                chatId: true
-            },
-            where: {
-                chatId
-            }
-        });
-
-        if (!result) {
-            return null;
-        }
-
-        const instance = new HennosUser(Number(result.chatId));
-        await instance.getBasicInfo();
-        return instance;
     }
 
     public async getBasicInfo() {
@@ -202,6 +150,18 @@ export class HennosUser {
         this.whitelisted = record.whitelisted;
     }
 
+    public setWhitelisted(whitelisted: boolean) {
+        const db = Database.instance();
+        return db.user.update({
+            where: {
+                chatId: this.chatId
+            },
+            data: {
+                whitelisted
+            }
+        });
+    }
+
     public async updateLocation(latitude: number, longitude: number): Promise<void> {
         await this.db.user.update({
             where: {
@@ -214,39 +174,30 @@ export class HennosUser {
         });
     }
 
-    public async getChatContext(): Promise<Message[]> {
-        const result = await this.db.messages.findMany({
-            where: {
-                chatId: this.chatId
-            },
+    static async exists(chatId: number): Promise<HennosUser | null> {
+        const db = Database.instance();
+        const result = await db.user.findUnique({
             select: {
-                role: true,
-                content: true
+                chatId: true
             },
-            orderBy: {
-                id: "desc"
-            },
-            take: 100
-        });
-
-        return result.reverse();
-    }
-
-    public async updateChatContext(role: "user" | "assistant" | "system", content: string): Promise<void> {
-        await this.db.messages.create({
-            data: {
-                chatId: this.chatId,
-                role,
-                content
-            }
-        });
-    }
-
-    public async clearChatContext(): Promise<void> {
-        await this.db.messages.deleteMany({
             where: {
-                chatId: this.chatId
+                chatId
             }
         });
+
+        if (!result) {
+            return null;
+        }
+
+        const instance = new HennosUser(Number(result.chatId));
+        await instance.getBasicInfo();
+        return instance;
+    }
+
+    static async async(chatId: number, firstName: string, lastName?: string, username?: string): Promise<HennosUser> {
+        const user = new HennosUser(chatId);
+        await user.setBasicInfo(firstName, lastName, username);
+        await user.getBasicInfo();
+        return user;
     }
 }

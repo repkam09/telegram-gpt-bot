@@ -23,7 +23,7 @@ export async function handleWhitelistCommand(user: HennosUser, text: string) {
             return bot.sendMessage(user.chatId, `ChatId ${input} is already whitelisted.`);
         }
 
-        await HennosUser.setWhitelisted(exists, true);
+        await exists.setWhitelisted(true);
         return bot.sendMessage(user.chatId, `ChatId ${input} has been whitelisted.`);
     }
 

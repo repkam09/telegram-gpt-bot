@@ -14,7 +14,8 @@
             ],
             "preLaunchTask": "tsc",
             "program": "${workspaceFolder}/build/hennos.js",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "sourceMaps": true
         },
         {
             "type": "node",

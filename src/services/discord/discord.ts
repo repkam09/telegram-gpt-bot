@@ -2,9 +2,9 @@ import { ChannelType, Client, Events, GatewayIntentBits, Partials } from "discor
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { handlePrivateMessage } from "../../handlers/text/private";
-import { HennosUserAsync } from "../../singletons/user";
 import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
-import { HennosGroupAsync } from "../../singletons/group";
+import { HennosUser } from "../../singletons/user";
+import { HennosGroup } from "../../singletons/group";
 
 export class DiscordBotInstance {
     static _hasCompletedInit = false;
@@ -47,7 +47,7 @@ export class DiscordBotInstance {
                                 return;
                             }
 
-                            const user = await HennosUserAsync(Number(message.author.id), message.author.tag, undefined, message.author.username);
+                            const user = await HennosUser.async(Number(message.author.id), message.author.tag, undefined, message.author.username);
                             Logger.info(user, `Received Discord message from ${message.author.tag} (${message.author.id}) in ${message.channel.id}`);
                             if (message.channel.type === ChannelType.DM) {
                                 try {
@@ -58,7 +58,7 @@ export class DiscordBotInstance {
                                     Logger.error(user, `Error handling Discord private message from ${message.author.tag} (${message.author.id}): ${error.message}`);
                                 }
                             } else {
-                                const group = await HennosGroupAsync(Number(message.channel.id), message.channel.name);
+                                const group = await HennosGroup.async(Number(message.channel.id), message.channel.name);
                                 try {
                                     const response = await handleWhitelistedGroupMessage(user, group, message.content);
                                     await message.channel.send(response);

@@ -2,13 +2,14 @@ import fs from "node:fs/promises";
 import { Config } from "./config";
 import { Anthropic } from "@anthropic-ai/sdk";
 import { HennosUser } from "./user";
-import { Message } from "ollama";
-import { MessageParam, TextBlock } from "@anthropic-ai/sdk/resources";
+import { Message, ToolCall } from "ollama";
+import { MessageParam, TextBlock, Tool } from "@anthropic-ai/sdk/resources";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { ALL_AVAILABLE_ANTHROPIC_MODELS } from "llamaindex";
+import { availableTools, process_tool_calls } from "../tools/tools";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -22,6 +23,35 @@ export class HennosAnthropicSingleton {
 }
 
 export type ValidAnthropicModels = keyof typeof ALL_AVAILABLE_ANTHROPIC_MODELS;
+
+
+function getAvailableTools(req: HennosConsumer): [
+    Anthropic.Messages.MessageCreateParams.ToolChoiceAuto | undefined,
+    Tool[] | undefined
+] {
+    if (!req.whitelisted) {
+        return [undefined, undefined];
+    }
+
+    const tool_choice: Anthropic.Messages.MessageCreateParams.ToolChoiceAuto = {
+        type: "auto"
+    };
+
+    const tools = availableTools(req);
+    if (!tools) {
+        return [undefined, undefined];
+    }
+
+    const converted: Tool[] = tools.map((tool) => ({
+        name: tool.function.name,
+        input_schema: {
+            ...tool.function.parameters,
+            type: "object"
+        }
+    }));
+
+    return [tool_choice, converted];
+}
 
 class HennosAnthropicProvider extends HennosBaseProvider {
     private anthropic: Anthropic;
@@ -76,20 +106,62 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         if (messages[0].role === "assistant") {
             messages.shift();
         }
+        const combinedSystemPrompt = system.map((message) => message.content).join("\n");
+        return this.completionWithRecursiveToolCalls(req, combinedSystemPrompt, messages, 0);
+
+    }
+
+    private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number): Promise<string> {
+        if (depth > 4) {
+            throw new Error("Tool Call Recursion Depth Exceeded");
+        }
 
         try {
-            const combinedSystemPrompt = system.map((message) => message.content).join("\n");
+            const [tool_choice, tools] = getAvailableTools(req);
+
+            Logger.debug("\n\n", JSON.stringify(prompt), "\n\n");
+
             const response = await this.anthropic.messages.create({
-                system: combinedSystemPrompt,
+                system,
                 model: Config.ANTHROPIC_LLM.MODEL,
                 max_tokens: 4096,
-                messages
+                messages: prompt,
+                tool_choice: tool_choice,
+                tools: tools
             });
 
-            const text_blocks = response.content.filter((content) => content.type === "text") as TextBlock[];
-            const result = text_blocks.map((block) => block.text).join();
             Logger.info(req, `Anthropic Completion Success, Resulted in ${response.usage.output_tokens} output tokens`);
+            const tool_blocks = response.content.filter((content) => content.type === "tool_use") as Anthropic.Messages.ToolUseBlock[];
+            if (tool_blocks.length > 0) {
+                const toolCalls = convertToolCallResponse(tool_blocks);
+                const additional = await process_tool_calls(req, toolCalls);
 
+                prompt.push({
+                    role: "assistant",
+                    content: tool_blocks
+                });
+
+                prompt.push({
+                    role: "user",
+                    content: additional.map(([content, metadata]) => {
+                        return {
+                            type: "tool_result",
+                            tool_use_id: metadata.id,
+                            content: [{
+                                type: "text",
+                                text: content
+                            }],
+                            is_error: false
+                        };
+                    })
+                });
+
+                return this.completionWithRecursiveToolCalls(req, system, prompt, depth + 1);
+            }
+
+            const text_blocks = response.content.filter((content) => content.type === "text") as TextBlock[];
+
+            const result = text_blocks.map((block) => block.text).join();
             return result;
         } catch (err: unknown) {
             Logger.info(req, "Anthropic Completion Error: ", err);
@@ -100,10 +172,11 @@ class HennosAnthropicProvider extends HennosBaseProvider {
     public async vision(req: HennosConsumer, prompt: Message, local: string, mime: "image/jpeg" | "image/png" | "image/gif" | "image/webp"): Promise<string> {
         Logger.info(req, `Anthropic Vision Completion Start (${Config.ANTHROPIC_LLM_VISION.MODEL})`);
         try {
-
             // Take the local image and convert it to base64...
             const raw = await fs.readFile(local);
             const data = Buffer.from(raw).toString("base64");
+
+            const [tool_choice, tools] = getAvailableTools(req);
 
             const response = await this.anthropic.messages.create({
                 model: Config.ANTHROPIC_LLM_VISION.MODEL,
@@ -126,7 +199,9 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                             }
                         ]
                     }
-                ]
+                ],
+                tool_choice: tool_choice,
+                tools: tools
             });
 
             const text_blocks = response.content.filter((content) => content.type === "text") as TextBlock[];
@@ -153,4 +228,24 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         Logger.warn(user, "Anthropic Speech Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().speech(user, input);
     }
+}
+
+function convertToolCallResponse(tools: Anthropic.Messages.ToolUseBlock[]): [ToolCall, Anthropic.Messages.ToolUseBlock][] {
+    return tools.map((tool) => {
+        try {
+            return [{
+                function: {
+                    name: tool.name,
+                    arguments: tool.input as Record<string, unknown>
+                }
+            }, tool];
+        } catch (err) {
+            return [{
+                function: {
+                    name: tool.name,
+                    arguments: {}
+                }
+            }, tool];
+        }
+    });
 }

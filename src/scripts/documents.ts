@@ -1,13 +1,16 @@
 import path from "path";
 import { Config } from "../singletons/config";
 import { handleDocument } from "../handlers/document";
-import { HennosUserAsync } from "../singletons/user";
 import { MarkdownReader } from "llamaindex";
 import { Database } from "../singletons/sqlite";
+import { HennosUser } from "../singletons/user";
 
 async function test() {
     await Database.init();
-    const user = await HennosUserAsync(Config.TELEGRAM_BOT_ADMIN, "Test");
+    const user = await HennosUser.exists(Config.TELEGRAM_BOT_ADMIN);
+    if (!user) {
+        throw new Error("Existing admin user account not found");
+    }
 
     await user.setPreferredProvider("anthropic");
 

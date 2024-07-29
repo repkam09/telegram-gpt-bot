@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Message, Ollama } from "ollama";
+import { Message, Ollama, ToolCall } from "ollama";
 import ffmpeg from "fluent-ffmpeg";
 import { Config } from "./config";
 import { Logger } from "./logger";
@@ -7,6 +7,8 @@ import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
+import { availableTools, process_tool_calls } from "../tools/tools";
+import { ToolCallMetadata } from "../tools/BaseTool";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -34,17 +36,49 @@ class HennosOllamaProvider extends HennosBaseProvider {
         Logger.info(req, `Ollama Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OLLAMA_LLM.CTX);
+        const prompt = system.concat(chat);
+
+        return this.completionWithRecursiveToolCalls(req, prompt, 0);
+    }
+
+    private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: Message[], depth: number): Promise<string> {
+        if (depth > 4) {
+            throw new Error("Tool Call Recursion Depth Exceeded");
+        }
 
         try {
-            const prompt = system.concat(chat);
+            Logger.debug("\n\n", JSON.stringify(prompt), "\n\n");
 
             const response = await this.ollama.chat({
                 stream: false,
                 model: Config.OLLAMA_LLM.MODEL,
-                messages: prompt
+                messages: prompt,
+                tools: availableTools(req)
             });
 
             Logger.info(req, `Ollama Completion Success, Resulted in ${response.eval_count} output tokens`);
+            if (response.message.tool_calls && response.message.tool_calls.length > 0) {
+                const tool_calls = response.message.tool_calls.map((tool_call) => {
+                    return [tool_call, {}] as [ToolCall, ToolCallMetadata];
+                });
+
+                prompt.push({
+                    role: "assistant",
+                    content: response.message.content,
+                    tool_calls: response.message.tool_calls
+                });
+
+                const results = await process_tool_calls(req, tool_calls);
+                results.forEach(([result]) => {
+                    prompt.push({
+                        role: "tool",
+                        content: result
+                    });
+                });
+
+                return this.completionWithRecursiveToolCalls(req, prompt, depth + 1);
+            }
+
             return response.message.content;
         } catch (err: unknown) {
             Logger.info(req, "Ollama Completion Error: ", err);
@@ -83,49 +117,8 @@ class HennosOllamaProvider extends HennosBaseProvider {
         return HennosOpenAISingleton.instance().transcription(req, path);
     }
 
-    // public async experimental_local_transcription(req: HennosConsumer, path: string): Promise<string> {
-    //     Logger.info(req, "Ollama Transcription Start");
-    //     try {
-    //         const convertedPath = await convertAudioFile(path);
-    //         const transcript: WhisperResult = await whisper(convertedPath, {
-    //             modelName: "base.en"
-    //         });
-
-    //         const collect = transcript.map((item) => item.speech.trim()).join(" ");
-    //         Logger.info(req, "Ollama Transcription Completion Success");
-    //         Logger.debug("Ollama Transcription Output: ", collect);
-    //         return collect;
-    //     } catch (err: unknown) {
-    //         Logger.error(req, "Ollama Transcription Error, attempting OpenAI fallback. Error: ", err);
-    //         return HennosOpenAISingleton.instance().transcription(req, path);
-    //     }
-    // }
-
     public async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
         Logger.warn(user, "Ollama Speech Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().speech(user, input);
     }
-}
-
-/**
- * ffmpeg -i input.mp3 -ar 16000 output.wav
- * @param path 
- * @returns 
- */
-export function convertAudioFile(path: string): Promise<string> {
-    Logger.debug(`Ollama Convert Audio File Path: ${path}`);
-    return new Promise((resolve, reject) => {
-        ffmpeg({
-            source: path
-        })
-            .addOption(["-ar", "16000"]).addOutput(`${path}.wav`)
-            .on("end", function () {
-                Logger.debug("Ollama Convert Audio File End");
-                resolve(`${path}.wav`);
-            })
-            .on("error", function (err) {
-                Logger.debug("Ollama Convert Audio File Error");
-                reject(err);
-            }).run();
-    });
 }
