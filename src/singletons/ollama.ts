@@ -7,7 +7,7 @@ import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
-import { availableTools, process_tool_calls } from "../tools/tools";
+import { availableTools, processToolCalls } from "../tools/tools";
 import { ToolCallMetadata } from "../tools/BaseTool";
 
 export class HennosOllamaSingleton {
@@ -69,7 +69,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
                     tool_calls: response.message.tool_calls
                 });
 
-                const results = await process_tool_calls(req, tool_calls);
+                const results = await processToolCalls(req, tool_calls);
                 results.forEach(([result]) => {
                     prompt.push({
                         role: "tool",

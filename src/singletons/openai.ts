@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { createReadStream } from "node:fs";
 import { Config } from "./config";
 import OpenAI from "openai";
 import { HennosUser } from "./user";
 import { Message, Tool, ToolCall } from "ollama";
 import { Logger } from "./logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
-import { createReadStream } from "node:fs";
 import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
-import { availableTools, process_tool_calls } from "../tools/tools";
+import { availableTools, processToolCalls } from "../tools/tools";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 
@@ -129,7 +129,7 @@ class HennosOpenAIProvider extends HennosBaseProvider {
                 });
 
                 const toolCalls = convertToolCallResponse(response.choices[0].message.tool_calls);
-                const additional = await process_tool_calls(req, toolCalls);
+                const additional = await processToolCalls(req, toolCalls);
 
                 additional.forEach(([content, metadata]: [string, OpenAI.Chat.Completions.ChatCompletionMessageToolCall]) => {
                     prompt.push({

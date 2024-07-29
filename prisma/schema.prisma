@@ -19,6 +19,7 @@ model User {
   botName       String?
   latitude      Float?
   longitude     Float?
+  experimental  Boolean @default(false)
 }
 
 model Group {

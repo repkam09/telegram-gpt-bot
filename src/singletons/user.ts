@@ -6,12 +6,23 @@ import { HennosConsumer } from "./base";
 type ValidLLMProviders = "openai" | "ollama" | "anthropic"
 
 export class HennosUser extends HennosConsumer {
+    public experimental: boolean;
+
     constructor(chatId: number) {
         super(chatId, "HennosUser");
+        this.experimental = false;
     }
 
     public allowFunctionCalling(): boolean {
-        return this.isAdmin();
+        if (this.isAdmin()) {
+            return true;
+        }
+
+        if (this.whitelisted && this.experimental) {
+            return true;
+        }
+
+        return false;
     }
 
     public isAdmin(): boolean {
@@ -34,7 +45,8 @@ export class HennosUser extends HennosConsumer {
                 lastName: true,
                 username: true,
                 latitude: true,
-                longitude: true
+                longitude: true,
+                experimental: true
             },
             where: {
                 chatId: this.chatId
@@ -42,6 +54,7 @@ export class HennosUser extends HennosConsumer {
         });
 
         this.whitelisted = this.isAdmin() ? true : result.whitelisted;
+        this.experimental = result.experimental;
         this.displayName = `${result.firstName} ${result.lastName}`;
         return {
             firstName: result.firstName,
@@ -129,7 +142,8 @@ export class HennosUser extends HennosConsumer {
     public async setBasicInfo(firstName: string, lastName?: string, username?: string) {
         const record = await this.db.user.upsert({
             select: {
-                whitelisted: true
+                whitelisted: true,
+                experimental: true
             },
             where: {
                 chatId: this.chatId
@@ -144,10 +158,12 @@ export class HennosUser extends HennosConsumer {
                 firstName,
                 lastName,
                 username,
-                whitelisted: this.isAdmin()
+                whitelisted: this.isAdmin(),
+                experimental: this.isAdmin()
             }
         });
         this.whitelisted = record.whitelisted;
+        this.experimental = record.experimental;
     }
 
     public setWhitelisted(whitelisted: boolean) {
@@ -158,6 +174,18 @@ export class HennosUser extends HennosConsumer {
             },
             data: {
                 whitelisted
+            }
+        });
+    }
+
+    public setExperimental(experimental: boolean) {
+        const db = Database.instance();
+        return db.user.update({
+            where: {
+                chatId: this.chatId
+            },
+            data: {
+                experimental
             }
         });
     }

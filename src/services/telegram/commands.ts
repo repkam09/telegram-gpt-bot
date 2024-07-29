@@ -6,6 +6,7 @@ import { TelegramBotInstance } from "./telegram";
 import { HennosUser } from "../../singletons/user";
 import { handleAdminSetProviderCommand } from "./commands/handleLLMProviderSettings";
 import { handleReadCommand } from "./commands/handleVoiceSettings";
+import { handleExperimentalCommand } from "./commands/handleExperimental";
 
 export async function handleCommandMessage(user: HennosUser, msg: TelegramBot.Message & { text: string }) {
     if (msg.text === "/reset") {
@@ -30,6 +31,10 @@ export async function handleCommandMessage(user: HennosUser, msg: TelegramBot.Me
 
     if (msg.text.startsWith("/whitelist") && user.isAdmin()) {
         return handleWhitelistCommand(user, msg.text);
+    }
+
+    if (msg.text.startsWith("/experimental") && user.isAdmin()) {
+        return handleExperimentalCommand(user, msg.text);
     }
 
     if (msg.text.startsWith("/llm-provider") && user.isAdmin()) {

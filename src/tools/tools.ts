@@ -37,7 +37,7 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
     return tools.length > 0 ? tools : undefined;
 }
 
-export async function process_tool_calls(req: HennosConsumer, tool_calls: [ToolCall, ToolCallMetadata][]): Promise<[string, ToolCallMetadata][]> {
+export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCall, ToolCallMetadata][]): Promise<[string, ToolCallMetadata][]> {
     try {
         const results = await Promise.all(tool_calls.map(async ([tool_call, metadata]) => {
             if (tool_call.function.name === "duck_duck_go_search") {

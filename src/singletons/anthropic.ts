@@ -9,7 +9,7 @@ import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { ALL_AVAILABLE_ANTHROPIC_MODELS } from "llamaindex";
-import { availableTools, process_tool_calls } from "../tools/tools";
+import { availableTools, processToolCalls } from "../tools/tools";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -135,7 +135,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
             if (tool_blocks.length > 0) {
                 Logger.info(req, `Anthropic Completion Success, Resulted in ${tool_blocks.length} Tool Calls`);
                 const toolCalls = convertToolCallResponse(tool_blocks);
-                const additional = await process_tool_calls(req, toolCalls);
+                const additional = await processToolCalls(req, toolCalls);
 
                 prompt.push({
                     role: "assistant",
