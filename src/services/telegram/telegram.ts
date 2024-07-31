@@ -10,7 +10,7 @@ import { handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback } from "./commands/handleGeneralSettings";
 import { handlePrivateMessage } from "../../handlers/text/private";
 import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
-import { handleCommandMessage } from "./commands";
+import { handleCommandGroupMessage, handleCommandMessage } from "./commands";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
@@ -126,13 +126,13 @@ export class TelegramBotInstance {
                 }
             }
 
-            if (msg.text.startsWith("/")) {
-                Logger.trace(user, `text_command: ${msg.text}`);
-                return handleTelegramCommandMessage(user, msg as MessageWithText);
-            }
-
             if (msg.chat.type !== "private") {
                 const group = await HennosGroup.async(msg.chat.id, msg.chat.title);
+                // Check if this is a command sent in a group chat
+                if (msg.text.startsWith(`${Config.TELEGRAM_GROUP_PREFIX}/`)) {
+                    Logger.trace(user, `text_command: ${msg.text}`);
+                    return handleTelegramCommandGroupMessage(user, group, msg as MessageWithText);
+                }
 
                 // If the user has experimental features enabled, also enable for the group request
                 if (user.experimental) {
@@ -144,6 +144,12 @@ export class TelegramBotInstance {
             }
 
             if (msg.chat.type === "private") {
+                // Check if this is a command sent in a private chat
+                if (msg.text.startsWith("/")) {
+                    Logger.trace(user, `text_command: ${msg.text}`);
+                    return handleTelegramCommandMessage(user, msg as MessageWithText);
+                }
+
                 // Check if we are waiting for a response from the user
                 if (InputCallbackFunctionMap.has(user.chatId)) {
                     const callback = InputCallbackFunctionMap.get(user.chatId) as InputCallbackFunction;
@@ -200,6 +206,11 @@ export class TelegramBotInstance {
             }
         });
     }
+}
+
+async function handleTelegramCommandGroupMessage(user: HennosUser, group: HennosGroup, msg: MessageWithText) {
+    const converted = msg.text.replace(`${Config.TELEGRAM_GROUP_PREFIX}`, "").trim();
+    return handleCommandGroupMessage(user, group, converted);
 }
 
 async function handleTelegramCommandMessage(user: HennosUser, msg: MessageWithText) {

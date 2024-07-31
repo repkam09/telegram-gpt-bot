@@ -1,16 +1,16 @@
 import { TelegramBotInstance } from "../telegram";
-import { HennosUser } from "../../../singletons/user";
+import { HennosConsumer } from "../../../singletons/base";
 
-export async function handleStartCommand(user: HennosUser) {
-    await TelegramBotInstance.sendMessageWrapper(user, `Hennos is a conversational chat assistant powered by a number of different large language models.
+export async function handleStartCommand(req: HennosConsumer) {
+    await TelegramBotInstance.sendMessageWrapper(req, `Hennos is a conversational chat assistant powered by a number of different large language models.
 
 This bot contains additional features for approved users only. Limited access is availble to others. Your messages will be subject to moderation before being sent to the bot.
 
 For more information type /help or check out the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).`);
 }
 
-export async function handleHelpCommand(user: HennosUser) {
-    await TelegramBotInstance.sendMessageWrapper(user, `Hennos is a conversational chat assistant powered by a number of different large language models.
+export async function handleHelpCommand(req: HennosConsumer) {
+    await TelegramBotInstance.sendMessageWrapper(req, `Hennos is a conversational chat assistant powered by a number of different large language models.
 
 This bot contains additional features for approved users only. Limited access is availble to others. Your messages will be subject to moderation before being sent to the bot.
 
@@ -37,7 +37,7 @@ For more information check out the [GitHub repository](https://github.com/repkam
 `);
 }
 
-export async function handleResetCommand(user: HennosUser) {
-    await user.clearChatContext();
-    await TelegramBotInstance.sendMessageWrapper(user, "Previous chat context has been cleared. The bot will not remember anything about your previous conversation.");
+export async function handleResetCommand(req: HennosConsumer) {
+    await req.clearChatContext();
+    await TelegramBotInstance.sendMessageWrapper(req, "Previous chat context has been cleared. The bot will not remember anything about your previous conversation.");
 }

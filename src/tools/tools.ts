@@ -11,10 +11,12 @@ const AVAILABLE_TOOLS = [SearXNGSearch, OpenWeatherMapLookupTool, FetchGenericUR
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
     if (!req.whitelisted) {
+        Logger.debug(`Tools disabled for ${req.displayName} because they are not whitelisted`);
         return undefined;
     }
 
     if (!req.allowFunctionCalling()) {
+        Logger.debug(`Tools disabled for ${req.displayName} because they are not allowed to call functions`);
         return undefined;
     }
 
@@ -25,6 +27,7 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
         }
     });
 
+    Logger.debug(`Tools allowed for ${req.displayName}, there are ${tools.length} tools available`);
     return tools.length > 0 ? tools : undefined;
 }
 

@@ -1,4 +1,5 @@
 import { HennosConsumer } from "./base";
+import { Database } from "./sqlite";
 
 export class HennosGroup extends HennosConsumer {
     constructor(chatId: number) {
@@ -50,10 +51,42 @@ export class HennosGroup extends HennosConsumer {
         };
     }
 
+    public setWhitelisted(whitelisted: boolean) {
+        const db = Database.instance();
+        return db.group.update({
+            where: {
+                chatId: this.chatId
+            },
+            data: {
+                whitelisted
+            }
+        });
+    }
+
     static async async(chatId: number, name?: string): Promise<HennosGroup> {
         const group = new HennosGroup(chatId);
         await group.setBasicInfo(name);
         await group.getBasicInfo();
         return group;
+    }
+
+    static async exists(chatId: number): Promise<HennosGroup | null> {
+        const db = Database.instance();
+        const result = await db.group.findUnique({
+            select: {
+                chatId: true
+            },
+            where: {
+                chatId
+            }
+        });
+
+        if (!result) {
+            return null;
+        }
+
+        const instance = new HennosGroup(Number(result.chatId));
+        await instance.getBasicInfo();
+        return instance;
     }
 }
