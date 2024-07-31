@@ -133,6 +133,13 @@ export class TelegramBotInstance {
 
             if (msg.chat.type !== "private") {
                 const group = await HennosGroup.async(msg.chat.id, msg.chat.title);
+
+                // If the user has experimental features enabled, also enable for the group request
+                if (user.experimental) {
+                    Logger.debug("User has experimental features enabled, enabling for group");
+                    group.experimental = true;
+                }
+
                 return handleTelegramGroupMessage(user, group, msg as MessageWithText);
             }
 

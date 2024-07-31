@@ -6,11 +6,8 @@ import { HennosConsumer } from "./base";
 type ValidLLMProviders = "openai" | "ollama" | "anthropic"
 
 export class HennosUser extends HennosConsumer {
-    public experimental: boolean;
-
     constructor(chatId: number) {
         super(chatId, "HennosUser");
-        this.experimental = false;
     }
 
     public allowFunctionCalling(): boolean {

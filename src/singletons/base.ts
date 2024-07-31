@@ -16,12 +16,14 @@ export abstract class HennosConsumer {
     public displayName: string;
     public db: PrismaClient;
     public whitelisted: boolean;
+    public experimental: boolean;
 
     constructor(chatId: number, displayName: string) {
         this.chatId = chatId;
         this.db = Database.instance();
         this.displayName = displayName;
         this.whitelisted = false;
+        this.experimental = false;
     }
 
     public abstract allowFunctionCalling(): boolean;

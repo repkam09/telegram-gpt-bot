@@ -6,6 +6,10 @@ export class HennosGroup extends HennosConsumer {
     }
 
     public allowFunctionCalling(): boolean {
+        if (this.whitelisted && this.experimental) {
+            return true;
+        }
+
         return false;
     }
 
