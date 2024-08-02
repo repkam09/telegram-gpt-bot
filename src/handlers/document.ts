@@ -17,8 +17,15 @@ import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
 import { ValidAnthropicModels } from "../singletons/anthropic";
+import { HennosConsumer } from "../singletons/base";
+import { HennosGroup } from "../singletons/group";
 
-export async function handleDocumentMessage(user: HennosUser, path: string, file_ext: string, uuid: string): Promise<string> {
+export async function handleDocumentMessage(req: HennosConsumer, path: string, file_ext: string, uuid: string): Promise<string> {
+    if (req instanceof HennosGroup) {
+        return "Document processing is not supported for groups at this time.";
+    }
+
+    const user = req as HennosUser;
     try {
         const reader = FILE_EXT_TO_READER[file_ext];
         if (!reader) {
@@ -52,8 +59,8 @@ async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
                 model: Config.OLLAMA_LLM_EMBED.MODEL,
             }),
             nodeParser: new SimpleNodeParser({
-                chunkSize: 1024,
-                chunkOverlap: 128
+                chunkSize: 2048,
+                chunkOverlap: 256
             })
         });
         return serviceContext;
@@ -63,11 +70,11 @@ async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
         Logger.info(user, "Creating an OpenAI service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new OpenAI({
-                model: "gpt-3.5-turbo",
-                apiKey: Config.OPENAI_API_KEY,
+                model: Config.OPENAI_LLM_LARGE.MODEL,
+                apiKey: Config.OPENAI_API_KEY
             }),
             embedModel: new OpenAIEmbedding({
-                model: "text-embedding-ada-002",
+                model: Config.OPENAI_LLM_EMBED.MODEL,
                 apiKey: Config.OPENAI_API_KEY,
             }),
             nodeParser: new SimpleNodeParser({
@@ -86,7 +93,7 @@ async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
                 apiKey: Config.ANTHROPIC_API_KEY,
             }),
             embedModel: new OpenAIEmbedding({
-                model: "text-embedding-ada-002",
+                model: Config.OPENAI_LLM_EMBED.MODEL,
                 apiKey: Config.OPENAI_API_KEY,
             }),
             nodeParser: new SimpleNodeParser({

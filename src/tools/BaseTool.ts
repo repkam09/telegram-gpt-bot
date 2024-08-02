@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import axios from "axios";
 import { Tool, ToolCall } from "ollama";
 import { HennosConsumer } from "../singletons/base";
-import axios from "axios";
 
 export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;
@@ -47,4 +47,16 @@ export abstract class BaseTool {
         return result.data as T;
     }
 
+    public static async fetchBinaryData(url: string): Promise<Buffer> {
+        const result = await axios({
+            headers: {
+                "User-Agent": "HennosBot/1.0"
+            },
+            method: "get",
+            url: url,
+            responseType: "arraybuffer"
+        });
+
+        return Buffer.from(result.data);
+    }
 }
