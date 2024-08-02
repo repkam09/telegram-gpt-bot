@@ -10,6 +10,7 @@ import { MetaBugReport } from "./MetaBugReport";
 import { MetaFeatureRequest } from "./MetaFeatureRequest";
 import { ImportCalendar } from "./ImportCalendar";
 import { YoutubeVideoTool } from "./YoutubeVideoTool";
+import { UserImportantFacts } from "./UserMemory";
 
 const AVAILABLE_TOOLS = [
     SearXNGSearch,
@@ -19,6 +20,7 @@ const AVAILABLE_TOOLS = [
     MetaFeatureRequest,
     MetaBugReport,
     ImportCalendar,
+    UserImportantFacts,
     YoutubeVideoTool
 ];
 
