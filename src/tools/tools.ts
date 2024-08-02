@@ -6,8 +6,17 @@ import { HennosConsumer } from "../singletons/base";
 import { TheNewsAPITool } from "./TheNewsAPITool";
 import { ToolCallMetadata } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
+import { MetaBugReport } from "./MetaBugReport";
+import { MetaFeatureRequest } from "./MetaFeatureRequest";
 
-const AVAILABLE_TOOLS = [SearXNGSearch, OpenWeatherMapLookupTool, FetchGenericURLTool, TheNewsAPITool];
+const AVAILABLE_TOOLS = [
+    SearXNGSearch,
+    OpenWeatherMapLookupTool,
+    FetchGenericURLTool,
+    TheNewsAPITool,
+    MetaFeatureRequest,
+    MetaBugReport
+];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
     if (!req.whitelisted) {

@@ -13,6 +13,7 @@ export class SearXNGSearch extends BaseTool {
                 description: [
                     "This tool searches SearXNG for the provided query, which is a privacy-respecting search engine, that includes results from many other search engines.",
                     "The search results returned in an easily processed JSON format containing the result title, URL, brief content, and the engine that provided the result.",
+                    "You should use this tool as often as possible to suppliment your own knowledge and provide the best possible answers to user queries.",
                     `This tool pairs well with the '${FetchGenericURLTool.definition().function.name}' tool, which can be used to fetch specific content using the URLs of the search results.`
                 ].join(" "),
                 parameters: {
