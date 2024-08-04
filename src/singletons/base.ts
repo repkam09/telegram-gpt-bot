@@ -2,6 +2,7 @@ import { Message } from "ollama";
 import { HennosUser } from "./user";
 import { Database } from "./sqlite";
 import { PrismaClient } from "@prisma/client";
+import { Config } from "./config";
 
 export abstract class HennosBaseProvider {
     public abstract completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string>;
@@ -33,6 +34,13 @@ export abstract class HennosConsumer {
     }
 
     public async updateChatContext(role: "user" | "assistant" | "system", content: string): Promise<void> {
+        if (Config.QDRANT_ENABLED) {
+            const collection = await Database.vector().collectionExists(String(this.chatId));
+            if (!collection.exists) {
+                await Database.vector().createCollection(String(this.chatId), {});
+            }
+        }
+
         await this.db.messages.create({
             data: {
                 chatId: this.chatId,

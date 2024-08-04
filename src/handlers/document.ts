@@ -17,8 +17,15 @@ import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
 import { ValidAnthropicModels } from "../singletons/anthropic";
+import { HennosConsumer } from "../singletons/base";
+import { HennosGroup } from "../singletons/group";
 
-export async function handleDocumentMessage(user: HennosUser, path: string, file_ext: string, uuid: string): Promise<string> {
+export async function handleDocumentMessage(req: HennosConsumer, path: string, file_ext: string, uuid: string): Promise<string> {
+    if (req instanceof HennosGroup) {
+        return "Document processing is not supported for groups at this time.";
+    }
+
+    const user = req as HennosUser;
     try {
         const reader = FILE_EXT_TO_READER[file_ext];
         if (!reader) {
@@ -32,10 +39,15 @@ export async function handleDocumentMessage(user: HennosUser, path: string, file
     }
 }
 
-async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
-    const preferences = await user.getPreferences();
-    if (preferences.provider === "ollama") {
-        Logger.info(user, "Creating an Ollama service context for document processing based on user preferences");
+async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext> {
+    let provider = "openai";
+    if (req instanceof HennosUser) {
+        const preferences = await req.getPreferences();
+        provider = preferences.provider;
+    }
+
+    if (provider === "ollama") {
+        Logger.info(req, "Creating an Ollama service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new Ollama({
                 config: {
@@ -52,22 +64,22 @@ async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
                 model: Config.OLLAMA_LLM_EMBED.MODEL,
             }),
             nodeParser: new SimpleNodeParser({
-                chunkSize: 1024,
-                chunkOverlap: 128
+                chunkSize: 2048,
+                chunkOverlap: 256
             })
         });
         return serviceContext;
     }
 
-    if (preferences.provider === "openai") {
-        Logger.info(user, "Creating an OpenAI service context for document processing based on user preferences");
+    if (provider === "openai") {
+        Logger.info(req, "Creating an OpenAI service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new OpenAI({
-                model: "gpt-3.5-turbo",
-                apiKey: Config.OPENAI_API_KEY,
+                model: Config.OPENAI_LLM_LARGE.MODEL,
+                apiKey: Config.OPENAI_API_KEY
             }),
             embedModel: new OpenAIEmbedding({
-                model: "text-embedding-ada-002",
+                model: Config.OPENAI_LLM_EMBED.MODEL,
                 apiKey: Config.OPENAI_API_KEY,
             }),
             nodeParser: new SimpleNodeParser({
@@ -78,15 +90,15 @@ async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
         return serviceContext;
     }
 
-    if (preferences.provider === "anthropic") {
-        Logger.info(user, "Creating an Anthropic service context for document processing based on user preferences");
+    if (provider === "anthropic") {
+        Logger.info(req, "Creating an Anthropic service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new Anthropic({
                 model: Config.ANTHROPIC_LLM.MODEL as ValidAnthropicModels,
                 apiKey: Config.ANTHROPIC_API_KEY,
             }),
             embedModel: new OpenAIEmbedding({
-                model: "text-embedding-ada-002",
+                model: Config.OPENAI_LLM_EMBED.MODEL,
                 apiKey: Config.OPENAI_API_KEY,
             }),
             nodeParser: new SimpleNodeParser({
@@ -96,19 +108,21 @@ async function buildServiceContext(user: HennosUser): Promise<ServiceContext> {
         });
         return serviceContext;
     }
-    throw new Error(`Invalid LLM provider for user ${user.displayName} with value ${preferences.provider}`);
+    throw new Error(`Invalid LLM provider for ${req.displayName} with value ${provider}`);
 }
 
-export async function handleDocument(user: HennosUser, path: string, uuid: string, reader: BaseReader): Promise<string> {
-    Logger.info(user, `Processing document at path: ${path} with UUID: ${uuid}.`);
+export async function handleDocument(req: HennosConsumer, path: string, uuid: string, reader: BaseReader, prompt?: string): Promise<string> {
+    Logger.info(req, `Processing document at path: ${path} with UUID: ${uuid}.`);
 
     const documents = await reader.loadData(path);
-    const serviceContext = await buildServiceContext(user);
+    const serviceContext = await buildServiceContext(req);
 
+    Logger.debug(`Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
     const index = await SummaryIndex.fromDocuments(documents, {
         serviceContext
     });
 
+    Logger.debug(`Created a summary index from ${documents.length} documents at path: ${path} with UUID: ${uuid}.`);
     const queryEngine = index.asQueryEngine({
         responseSynthesizer: new ResponseSynthesizer({
             serviceContext
@@ -118,12 +132,14 @@ export async function handleDocument(user: HennosUser, path: string, uuid: strin
         })
     });
 
+    Logger.debug(`Created a query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
     const response = await queryEngine.query({
-        query: "Can you provide a summary of this document?"
+        query: prompt ? prompt : "Can you provide a summary of this document?"
     });
 
+    Logger.debug(`Queried the query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
     const summary = response.toString();
 
-    Logger.info(user, `Completed processing document at path: ${path} with UUID: ${uuid}.`);
+    Logger.info(req, `Completed processing document at path: ${path} with UUID: ${uuid}.`);
     return summary;
 }

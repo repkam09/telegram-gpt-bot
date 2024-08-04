@@ -198,6 +198,48 @@ export class Config {
         };
     }
 
+    static get OPENAI_LLM_LARGE(): HennosModelConfig {
+        if (!process.env.OPENAI_LLM_LARGE) {
+            return {
+                MODEL: "gpt-4o-mini",
+                CTX: 100000
+            };
+        }
+
+        const parts = process.env.OPENAI_LLM_LARGE.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OPENAI_LLM_LARGE");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
+    static get OPENAI_LLM_EMBED(): HennosModelConfig {
+        if (!process.env.OPENAI_LLM_EMBED) {
+            return {
+                MODEL: "text-embedding-3-small",
+                CTX: 8191
+            };
+        }
+
+        const parts = process.env.OPENAI_LLM_EMBED.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OPENAI_LLM_EMBED");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
     static get ANTHROPIC_API_KEY(): string {
         if (!process.env.ANTHROPIC_API_KEY) {
             throw new Error("Missing ANTHROPIC_API_KEY");
@@ -260,6 +302,14 @@ export class Config {
         }
 
         return port;
+    }
+
+    static get QDRANT_ENABLED(): boolean {
+        if (!process.env.QDRANT_ENABLED) {
+            return false;
+        }
+
+        return process.env.QDRANT_ENABLED === "true";
     }
 
     static get QDRANT_HOST(): string {
@@ -350,14 +400,14 @@ export class Config {
         return adminId;
     }
 
-    static LOCAL_STORAGE(user?: HennosConsumer): string {
+    static LOCAL_STORAGE(req?: HennosConsumer): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();
         }
 
         const cwd = path.join(__dirname, "../", "../");
-        if (user) {
-            const dir = path.join(cwd, process.env.LOCAL_STORAGE, String(user.chatId));
+        if (req) {
+            const dir = path.join(cwd, process.env.LOCAL_STORAGE, String(req.chatId));
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir);
             }
