@@ -304,6 +304,14 @@ export class Config {
         return port;
     }
 
+    static get QDRANT_ENABLED(): boolean {
+        if (!process.env.QDRANT_ENABLED) {
+            return false;
+        }
+
+        return process.env.QDRANT_ENABLED === "true";
+    }
+
     static get QDRANT_HOST(): string {
         if (!process.env.QDRANT_HOST) {
             return "localhost";
