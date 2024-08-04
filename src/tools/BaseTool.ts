@@ -4,6 +4,9 @@
 import axios from "axios";
 import { Tool, ToolCall } from "ollama";
 import { HennosConsumer } from "../singletons/base";
+import { exec } from "child_process";
+import { Logger } from "../singletons/logger";
+
 
 export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;
@@ -58,5 +61,22 @@ export abstract class BaseTool {
         });
 
         return Buffer.from(result.data);
+    }
+
+    public static async exec(command: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            exec(command, (error, stdout, stderr) => {
+                if (error) {
+                    return reject(error);
+                }
+
+                if (stderr) {
+                    Logger.debug("stderr", stderr);
+                }
+
+                Logger.debug("stdout", stdout);
+                return resolve(stdout);
+            });
+        });
     }
 }

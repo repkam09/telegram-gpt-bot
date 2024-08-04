@@ -7,6 +7,12 @@ WORKDIR /app/hennos
 RUN apt update
 RUN apt install -y ffmpeg build-essential
 
+# Install yt-dlp
+RUN apt install -y python3 python3-pip
+RUN python3 -m pip install -U "yt-dlp[default]"
+
+RUN yt-dlp --version
+
 # Copy package.json and package-lock.json
 COPY package.json package.json
 COPY package-lock.json package-lock.json

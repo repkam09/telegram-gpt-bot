@@ -46,7 +46,7 @@ export class FetchGenericURLTool extends BaseTool {
 
             await fs.writeFile(filePath, html, { encoding: "utf-8" });
 
-            const result = await handleDocument(req as HennosUser, filePath, args.url, new HTMLReader());
+            const result = await handleDocument(req as HennosUser, filePath, args.url, new HTMLReader(), "Could you provide a summary of this webpage content?");
             return [`'${args.url}': ${result}`, metadata];
         } catch (err) {
             Logger.error(req, "fetch_generic_url_tool_callback error", { url: args.url, error: err });
