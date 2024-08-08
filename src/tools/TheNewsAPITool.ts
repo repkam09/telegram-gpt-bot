@@ -32,7 +32,7 @@ export class TheNewsAPITool extends BaseTool {
                         },
                         categories: {
                             type: "string",
-                            description: "Comma separated list of categories to include. Supported categories: general | science | sports | business | health | entertainment | tech | politics | food | travel. Ex: business,tech"
+                            description: "Comma separated list of categories to include. Supported categories: general | science | sports | business | health | entertainment | tech | politics | food | travel. Ex: business,tech. Default is 'general'."
                         },
                     },
                     required: [],
@@ -42,13 +42,18 @@ export class TheNewsAPITool extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
-        const locale = args.locale ? `&locale=${args.locale}` : "&locale=us";
-        const categories = args.categories ? `&categories=${args.categories}` : "";
+        if (!args.locale) {
+            args.locale = "us";
+        }
+
+        if (!args.categories) {
+            args.categories = "general";
+        }
 
         Logger.info(req, "top_news_stories_tool_callback", { locale: args.locale, categories: args.categories });
 
         try {
-            const url = `https://api.thenewsapi.com/v1/news/top?api_token=${Config.THE_NEWS_API_KEY}${locale}${categories}`;
+            const url = `https://api.thenewsapi.com/v1/news/top?api_token=${Config.THE_NEWS_API_KEY}&locale=${args.locale}&categories=${args.categories}`;
 
             const result = await BaseTool.fetchJSONData(url);
             return [`Fetched the following top news stories for the locale ${args.locale}: ${JSON.stringify(result)}.`, metadata];
