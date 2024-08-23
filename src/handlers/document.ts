@@ -134,7 +134,7 @@ export async function handleDocument(req: HennosConsumer, path: string, uuid: st
 
     Logger.debug(`Created a query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
     const response = await queryEngine.query({
-        query: prompt ? prompt : "Can you provide a summary of this document?"
+        query: prompt ? prompt : "Create a summary of this document.",
     });
 
     Logger.debug(`Queried the query engine from the summary index at path: ${path} with UUID: ${uuid}.`);

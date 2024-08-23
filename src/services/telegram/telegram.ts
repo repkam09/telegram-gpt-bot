@@ -351,17 +351,24 @@ async function handleTelegramCalendarMessage(req: HennosConsumer, file: string) 
 
 async function handleTelegramDocumentMessage(req: HennosConsumer, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
     TelegramBotInstance.setTelegramMessageReact(req, msg, "👀");
+
     const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.document.file_id, Config.LOCAL_STORAGE(req));
-    const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : ".bin";
+    const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : "bin";
 
-
-    if (ext === "ics") {
-        return handleTelegramCalendarMessage(req, tempFilePath);
+    const finalFilePath = path.join(Config.LOCAL_STORAGE(req), msg.document.file_unique_id + "." + ext);
+    if (fs.existsSync(finalFilePath)) {
+        fs.unlinkSync(tempFilePath);
+    } else {
+        Logger.debug(`Renaming file from ${tempFilePath} to ${finalFilePath}`);
+        fs.renameSync(tempFilePath, finalFilePath);
     }
 
-    const response = await handleDocumentMessage(req, tempFilePath, ext, msg.document.file_unique_id);
-    await req.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
-    await req.updateChatContext("assistant", response);
+    if (ext === "ics") {
+        return handleTelegramCalendarMessage(req, finalFilePath);
+    }
+
+    const response = await handleDocumentMessage(req, finalFilePath, ext, msg.document.file_unique_id);
+    await req.updateChatContext("system", JSON.stringify({ file_unique_id: msg.document.file_unique_id, file_size: msg.document.file_size, file_name: msg.document.file_name, summary: response }));
 
     TelegramBotInstance.setTelegramMessageReact(req, msg);
     return TelegramBotInstance.sendMessageWrapper(req, response);
