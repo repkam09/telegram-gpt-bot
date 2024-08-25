@@ -9,10 +9,10 @@ export class CommandLineInstance {
             throw new Error("CommandLineInstance should not be used in production mode.");
         }
 
-        const user = await HennosUser.exists(Config.TELEGRAM_BOT_ADMIN);
-        if (!user) {
-            throw new Error("Existing admin user account not found");
-        }
+        // Create a temporary user account using the admin id
+        const user = new HennosUser(Config.TELEGRAM_BOT_ADMIN);
+        await user.setBasicInfo("Admin");
+        await user.clearChatContext();
 
         const rl = readline.createInterface({
             input: process.stdin,

@@ -15,6 +15,11 @@ export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;
 
     public static instance(): HennosBaseProvider {
+        if (Config.HENNOS_DEVELOPMENT_MODE_LOCAL_ONLY) {
+            Logger.debug("Anthropic Provider Disabled in Local Development Mode");
+            return HennosAnthropicSingleton._instance as HennosBaseProvider;
+        }
+
         if (!HennosAnthropicSingleton._instance) {
             HennosAnthropicSingleton._instance = new HennosAnthropicProvider();
         }

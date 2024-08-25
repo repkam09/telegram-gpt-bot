@@ -11,6 +11,15 @@ export type HennosModelConfig = {
 }
 
 export class Config {
+
+    static get HENNOS_DEVELOPMENT_MODE_LOCAL_ONLY(): boolean {
+        if (!process.env.HENNOS_DEVELOPMENT_MODE_LOCAL_ONLY) {
+            return false;
+        }
+
+        return process.env.HENNOS_DEVELOPMENT_MODE_LOCAL_ONLY === "true";
+    }
+
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
             return false;
@@ -20,11 +29,12 @@ export class Config {
             return false;
         }
 
-        if (Config.TELEGRAM_BOT_ADMIN === -1) {
+
+        if (Config.TELEGRAM_ENABLED && Config.TELEGRAM_BOT_ADMIN === -1) {
             throw new Error("Missing TELEGRAM_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
         }
 
-        if (Config.DISCORD_BOT_ADMIN === -1) {
+        if (Config.DISCORD_ENABLED && Config.DISCORD_BOT_ADMIN === -1) {
             throw new Error("Missing DISCORD_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
         }
 

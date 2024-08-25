@@ -2,6 +2,7 @@ import { Database } from "./sqlite";
 import { Config } from "./config";
 import { ValidTTSNames } from "../handlers/voice";
 import { HennosConsumer } from "./base";
+import { Logger } from "./logger";
 
 type ValidLLMProviders = "openai" | "ollama" | "anthropic"
 
@@ -81,6 +82,11 @@ export class HennosUser extends HennosConsumer {
         let provider = "ollama";
         if (result.whitelisted) {
             provider = result.provider ? result.provider : "anthropic";
+        }
+
+        if (Config.HENNOS_DEVELOPMENT_MODE_LOCAL_ONLY) {
+            Logger.debug("Forcing provider to Ollama in local development mode.");
+            provider = "ollama";
         }
 
         return {

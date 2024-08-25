@@ -16,6 +16,10 @@ export class HennosOpenAISingleton {
     private static _instance: HennosBaseProvider | null = null;
 
     public static instance(): HennosBaseProvider {
+        if (Config.HENNOS_DEVELOPMENT_MODE_LOCAL_ONLY) {
+            Logger.debug("OpenAI Provider Disabled in Local Development Mode");
+            return HennosOpenAISingleton._instance as HennosBaseProvider;
+        }
         if (!HennosOpenAISingleton._instance) {
             HennosOpenAISingleton._instance = new HennosOpenAIProvider();
         }
