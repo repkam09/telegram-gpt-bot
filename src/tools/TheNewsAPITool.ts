@@ -58,8 +58,9 @@ export class TheNewsAPITool extends BaseTool {
             const result = await BaseTool.fetchJSONData(url);
             return [`Fetched the following top news stories for the locale ${args.locale}: ${JSON.stringify(result)}.`, metadata];
 
-        } catch (err) {
-            Logger.error(req, "top_news_stories_tool_callback error", { locale: args.locale, categories: args.categories });
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, "top_news_stories_tool_callback error", { locale: args.locale, categories: args.categories, err: error.message });
             return ["top_news_stories error, unable to fetch news stories at this time", metadata];
         }
     }

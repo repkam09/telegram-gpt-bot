@@ -37,7 +37,7 @@ export class TelegramBotInstance {
         return TelegramBotInstance._instance;
     }
 
-    static async sendMessageWrapper(req: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions = {}) {
+    static async sendMessageWrapper(req: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions = {}): Promise<void> {
         if (!content) {
             throw new Error("Message content is undefined");
         }
@@ -75,15 +75,15 @@ export class TelegramBotInstance {
         }
     }
 
-    static async sendTelegramMessageWithRetry(user: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions) {
+    static async sendTelegramMessageWithRetry(user: HennosConsumer, content: string, options: TelegramBot.SendMessageOptions): Promise<void> {
         const bot = TelegramBotInstance.instance();
         try {
             await bot.sendMessage(user.chatId, content, { ...options, parse_mode: "Markdown" });
         } catch (err1: unknown) {
+            const error1 = err1 as Error;
             try {
                 await bot.sendMessage(user.chatId, content, { ...options, parse_mode: undefined });
             } catch (err2: unknown) {
-                const error1 = err1 as Error;
                 const error2 = err2 as Error;
                 Logger.error(user, `Failed 2x to send Telegram message. Err1=${error1.message}, Err2=${error2.message}`);
             }
@@ -232,8 +232,9 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
 
     // If the user did @ the bot, strip out that @ prefix before processing the message
     TelegramBotInstance.setTelegramIndicator(group, "typing");
+
     const response = await handleWhitelistedGroupMessage(user, group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));
-    await TelegramBotInstance.sendMessageWrapper(group, response), { reply_to_message_id: msg.message_id };
+    return TelegramBotInstance.sendMessageWrapper(group, response, { reply_to_message_id: msg.message_id });
 }
 
 async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithText) {

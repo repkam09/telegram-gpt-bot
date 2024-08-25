@@ -37,8 +37,9 @@ export class MetaFeatureRequest extends BaseTool {
 
         try {
             await TelegramBotInstance.sendAdminMessage(`Feature Request Tool (${req.displayName}):\n\n${args.request}`);
-        } catch (err) {
-            Logger.error(req, "MetaFeatureRequest unable to send admin message", { request: args.request });
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, "MetaFeatureRequest unable to send admin message", { request: args.request, err: error.message });
         }
 
         return ["feature_request created", metadata];

@@ -249,7 +249,9 @@ function convertToolCallResponse(tools: Anthropic.Messages.ToolUseBlock[]): [Too
                     arguments: tool.input as Record<string, unknown>
                 }
             }, tool];
-        } catch (err) {
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.debug("Failed to convert tool call response", { error: error.message });
             return [{
                 function: {
                     name: tool.name,

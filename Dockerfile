@@ -1,4 +1,4 @@
-FROM node:20-buster
+FROM node:22-bookworm
 
 # Set the working directory
 WORKDIR /app/hennos
@@ -9,7 +9,7 @@ RUN apt install -y ffmpeg build-essential
 
 # Install yt-dlp
 RUN apt install -y python3 python3-pip
-RUN python3 -m pip install -U "yt-dlp[default]"
+RUN python3 -m pip install --break-system-packages -U "yt-dlp[default]"
 
 RUN yt-dlp --version
 

@@ -1,4 +1,4 @@
-import readline from "node:readline/promises";
+import readline, { Interface } from "node:readline/promises";
 import { Config } from "../../singletons/config";
 import { handlePrivateMessage } from "../../handlers/text/private";
 import { HennosUser } from "../../singletons/user";
@@ -14,17 +14,14 @@ export class CommandLineInstance {
         await user.setBasicInfo("Admin");
         await user.clearChatContext();
 
-        const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout,
-        });
+        const rl = await createInterface();
 
         let query = null;
         while (query !== "exit") {
             if (query) {
                 const response = await handlePrivateMessage(user, query, {
                     role: "system",
-                    content: "The user is sending their messsage via the command line interface in Hennos Development Mode, not via Telegram. " +
+                    content: "The user is sending their message via the command line interface in Hennos Development Mode, not via Telegram. " +
                         "Please call out anything that looks unusual or strange in the previous chat context, as it may be a bug."
                 });
 
@@ -67,4 +64,17 @@ export class CommandLineInstance {
 
         process.exit(0);
     }
+}
+
+async function createInterface(): Promise<Interface> {
+    return new Promise((resolve) => {
+        const rl = readline.createInterface({
+            // @ts-expect-error - This is a valid input I swear
+            input: process.stdin,
+            output: process.stdout,
+        });
+
+        return resolve(rl);
+    });
+
 }

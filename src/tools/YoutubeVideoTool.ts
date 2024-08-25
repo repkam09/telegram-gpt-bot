@@ -48,7 +48,7 @@ export class YoutubeVideoTool extends BaseTool {
             // then use the subtitles to generate a summary of the video
             const summary = await handleDocument(req, filePath, args.videoId, new TextFileReader(), "Could you summarize the content of this video based on these subtitles?");
             return [`youtube_video_summary, summary: ${summary}`, metadata];
-        } catch (err) {
+        } catch (err: unknown) {
             const error = err as Error;
             Logger.error(req, "YoutubeVideoTool unable to process videoId", { videoId: args.videoId, err: error.message });
             return [`youtube_video_summary, resulted in an error while processing videoId ${args.videoId}`, metadata];
@@ -69,11 +69,11 @@ export async function extractSubtitles(videoId: string): Promise<string> {
         await fs.access(`${output}.en.srt`);
         Logger.debug("extractSubtitles, already exists", { output: `${output}.en.srt` });
         return `${output}.en.srt`;
-    } catch (err) {
-        // If the file does not exist, continue
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.debug("extractSubtitles, downloading", { output: `${output}.en.srt`, error: error.message });
     }
 
-    Logger.debug("extractSubtitles, downloading", { output: `${output}.en.srt` });
     await BaseTool.exec(`yt-dlp --skip-download --write-auto-subs --write-subs --sub-lang en --convert-subs srt --output "${output}" https://youtu.be/${videoId}`);
     return `${output}.en.srt`;
 }
