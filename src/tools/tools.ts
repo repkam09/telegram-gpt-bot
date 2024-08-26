@@ -9,6 +9,7 @@ import { SearXNGSearch } from "./SearXNGSearchTool";
 import { MetaBugReport } from "./MetaBugReport";
 import { MetaFeatureRequest } from "./MetaFeatureRequest";
 import { YoutubeVideoTool } from "./YoutubeVideoTool";
+import { ScheduleCallback } from "./ScheduleCallback";
 
 const AVAILABLE_TOOLS = [
     SearXNGSearch,
@@ -17,7 +18,8 @@ const AVAILABLE_TOOLS = [
     TheNewsAPITool,
     MetaFeatureRequest,
     MetaBugReport,
-    YoutubeVideoTool
+    YoutubeVideoTool,
+    ScheduleCallback
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {

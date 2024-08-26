@@ -2,6 +2,8 @@ import cron from "node-cron";
 import { HennosUser } from "./user";
 import { Config } from "./config";
 import { DailyReport } from "../jobs/DailyReport";
+import { HennosConsumer } from "./base";
+import { Logger } from "./logger";
 
 export class ScheduleJob {
     public static async init() {
@@ -15,5 +17,10 @@ export class ScheduleJob {
             });
             DailyReport.scheduled(exists);
         }
+    }
+
+    public static async scheduleJob(user: HennosConsumer, schedule: string, prompt: string) {
+        Logger.info(user, "ScheduleJob.scheduleJob", { schedule, prompt });
+        // cron.schedule();
     }
 }
