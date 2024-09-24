@@ -75,4 +75,23 @@ export abstract class HennosConsumer {
 
         return result.reverse();
     }
+
+    public static async isBlacklisted(chatId: number): Promise<{ chatId: number, datetime: Date } | false> {
+        const db = Database.instance();
+        const result = await db.blacklist.findUnique({
+            where: {
+                chatId
+            },
+            select: {
+                datetime: true
+            }
+        });
+        if (!result) {
+            return false;
+        }
+        return {
+            chatId,
+            datetime: result.datetime
+        };
+    }
 }

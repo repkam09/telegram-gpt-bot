@@ -41,7 +41,7 @@ export class OpenWeatherMapLookupTool extends BaseTool {
                         },
                         units: {
                             type: "string",
-                            description: "Units of measurement to return. 'standard', 'metric' and 'imperial' units are available. If you do not use the units parameter, 'standard' units will be applied by default.",
+                            description: "Units of measurement to return. 'metric' and 'imperial' units are available. If you do not use the units parameter, 'metric' units will be applied by default.",
                         }
                     },
                     required: ["lat", "lon"],
@@ -59,7 +59,7 @@ export class OpenWeatherMapLookupTool extends BaseTool {
             return ["open_weather_map_lookup error, lon not provided", metadata];
         }
 
-        const units = args.units ?? "standard";
+        const units = args.units ?? "metric";
         const mode = args.mode ?? "current";
 
         Logger.info(req, "open_weathermap_lookup_tool_callback", { lat: args.lat, lon: args.lon, units: units, mode: mode });

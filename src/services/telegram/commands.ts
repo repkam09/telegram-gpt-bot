@@ -8,6 +8,7 @@ import { handleAdminSetProviderCommand } from "./commands/handleLLMProviderSetti
 import { handleReadCommand } from "./commands/handleVoiceSettings";
 import { handleExperimentalCommand } from "./commands/handleExperimental";
 import { HennosGroup } from "../../singletons/group";
+import { handleBlacklistCommand } from "./commands/handleBlacklist";
 
 export async function handleCommandGroupMessage(user: HennosUser, group: HennosGroup, msg: string) {
     if (msg === "/reset") {
@@ -56,6 +57,10 @@ export async function handleCommandMessage(user: HennosUser, msg: TelegramBot.Me
 
     if (msg.text.startsWith("/whitelist") && user.isAdmin()) {
         return handleWhitelistCommand(user, msg.text);
+    }
+
+    if (msg.text.startsWith("/blacklist") && user.isAdmin()) {
+        return handleBlacklistCommand(user, msg.text);
     }
 
     if (msg.text.startsWith("/experimental") && user.isAdmin()) {

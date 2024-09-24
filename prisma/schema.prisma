@@ -35,3 +35,8 @@ model Messages {
   datetime DateTime @default(now())
   role     String
 }
+
+model Blacklist {
+  chatId   BigInt   @id
+  datetime DateTime @default(now())
+}

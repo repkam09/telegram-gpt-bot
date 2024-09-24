@@ -7,7 +7,7 @@ export class HennosGroup extends HennosConsumer {
     }
 
     public allowFunctionCalling(): boolean {
-        if (this.whitelisted && this.experimental) {
+        if (this.whitelisted) {
             return true;
         }
 

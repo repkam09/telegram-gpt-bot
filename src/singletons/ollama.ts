@@ -47,8 +47,6 @@ class HennosOllamaProvider extends HennosBaseProvider {
         }
 
         try {
-            Logger.debug("\n\n", JSON.stringify(prompt), "\n\n");
-
             const response = await this.ollama.chat({
                 stream: false,
                 model: Config.OLLAMA_LLM.MODEL,

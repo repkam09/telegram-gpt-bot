@@ -118,6 +118,14 @@ export class Config {
         };
     }
 
+    static get OPENAI_BASE_URL(): string | undefined {
+        if (!process.env.OPENAI_BASE_URL) {
+            return undefined;
+        }
+
+        return process.env.OPENAI_BASE_URL;
+    }
+
 
     static get OLLAMA_LLM_EMBED(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM_EMBED) {
@@ -169,6 +177,27 @@ export class Config {
 
         if (Number.isNaN(ctx)) {
             throw new Error("Invalid context length value for OPENAI_LLM");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
+    static get OPENAI_LLM_REASONING(): HennosModelConfig {
+        if (!process.env.OPENAI_LLM_REASONING) {
+            return {
+                MODEL: "o1-mini",
+                CTX: 32000
+            };
+        }
+
+        const parts = process.env.OPENAI_LLM_REASONING.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for OPENAI_LLM_REASONING");
         }
 
         return {

@@ -5,6 +5,7 @@ import { handlePrivateMessage } from "../../handlers/text/private";
 import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
+import { HennosConsumer } from "../../singletons/base";
 
 export class DiscordBotInstance {
     static _hasCompletedInit = false;
@@ -48,6 +49,14 @@ export class DiscordBotInstance {
                             }
 
                             const user = await HennosUser.async(Number(message.author.id), message.author.tag, undefined, message.author.username);
+
+                            // Check if the user is blacklisted
+                            const blacklisted = await HennosConsumer.isBlacklisted(user.chatId);
+                            if (blacklisted) {
+                                Logger.info(user, `Ignoring message from blacklisted user. User was blacklisted at: ${blacklisted.datetime.toISOString()}`);
+                                return;
+                            }
+
                             Logger.info(user, `Received Discord message from ${message.author.tag} (${message.author.id}) in ${message.channel.id}`);
                             if (message.channel.type === ChannelType.DM) {
                                 try {
@@ -59,6 +68,14 @@ export class DiscordBotInstance {
                                 }
                             } else {
                                 const group = await HennosGroup.async(Number(message.channel.id), message.channel.name);
+
+                                // Check if the group is blacklisted
+                                const blacklisted = await HennosConsumer.isBlacklisted(group.chatId);
+                                if (blacklisted) {
+                                    Logger.info(user, `Ignoring message from blacklisted group. Group was blacklisted at: ${blacklisted.datetime.toISOString()}`);
+                                    return;
+                                }
+
                                 try {
                                     const response = await handleWhitelistedGroupMessage(user, group, message.content);
                                     await message.channel.send(response);

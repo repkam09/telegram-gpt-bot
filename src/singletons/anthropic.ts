@@ -122,8 +122,6 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         try {
             const [tool_choice, tools] = getAvailableTools(req);
 
-            Logger.debug("\n\n", JSON.stringify(prompt), "\n\n");
-
             const response = await this.anthropic.messages.create({
                 system,
                 model: Config.ANTHROPIC_LLM.MODEL,

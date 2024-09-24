@@ -1,0 +1,5 @@
+-- CreateTable
+CREATE TABLE "Blacklist" (
+    "chatId" BIGINT NOT NULL PRIMARY KEY,
+    "datetime" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -40,7 +40,7 @@
     "node-telegram-bot-api": "^0.66.0",
     "npm": "^10.8.1",
     "ollama": "^0.5.6",
-    "openai": "^4.52.0",
+    "openai": "^4.63.0",
     "rss-parser": "^3.13.0",
     "sqlite3": "^5.1.7",
     "tiktoken": "^1.0.15"

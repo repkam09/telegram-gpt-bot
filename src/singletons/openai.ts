@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createReadStream } from "node:fs";
 import { Config } from "./config";
-import OpenAI from "openai";
+import OpenAI, { OpenAIError } from "openai";
 import { HennosUser } from "./user";
 import { Message, Tool, ToolCall } from "ollama";
 import { Logger } from "./logger";
@@ -66,13 +66,14 @@ function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMe
     });
 }
 
-class HennosOpenAIProvider extends HennosBaseProvider {
-    private openai: OpenAI;
+export class HennosOpenAIProvider extends HennosBaseProvider {
+    public openai: OpenAI;
 
     constructor() {
         super();
 
         this.openai = new OpenAI({
+            baseURL: Config.OPENAI_BASE_URL,
             apiKey: Config.OPENAI_API_KEY,
         });
     }
@@ -96,8 +97,6 @@ class HennosOpenAIProvider extends HennosBaseProvider {
 
         const [tool_choice, tools] = getAvailableTools(req);
         try {
-            Logger.debug("\n\n", JSON.stringify(prompt), "\n\n");
-
             const response = await this.openai.chat.completions.create({
                 model: Config.OPENAI_LLM.MODEL,
                 messages: prompt,
@@ -145,6 +144,11 @@ class HennosOpenAIProvider extends HennosBaseProvider {
             throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Tool Calls");
         } catch (err: unknown) {
             Logger.error(req, "OpenAI Completion Error: ", err);
+
+            if (err instanceof OpenAIError) {
+                Logger.error(req, "OpenAI Error Response: ", err.message);
+            }
+
             throw err;
         }
     }

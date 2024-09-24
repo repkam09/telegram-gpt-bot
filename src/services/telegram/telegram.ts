@@ -114,6 +114,7 @@ export class TelegramBotInstance {
 
     static async init() {
         const bot = TelegramBotInstance.instance();
+
         bot.on("text", async (msg) => {
             if (!msg.from || !msg.text) {
                 return;
@@ -127,8 +128,23 @@ export class TelegramBotInstance {
                 }
             }
 
+            // Check if the user is blacklisted
+            const blacklisted = await HennosConsumer.isBlacklisted(user.chatId);
+            if (blacklisted) {
+                Logger.info(user, `Ignoring message from blacklisted user. User was blacklisted at: ${blacklisted.datetime.toISOString()}`);
+                return;
+            }
+
             if (msg.chat.type !== "private") {
                 const group = await HennosGroup.async(msg.chat.id, msg.chat.title);
+
+                // Check if the group is blacklisted
+                const blacklisted = await HennosConsumer.isBlacklisted(group.chatId);
+                if (blacklisted) {
+                    Logger.info(user, `Ignoring message from blacklisted group. Group was blacklisted at: ${blacklisted.datetime.toISOString()}`);
+                    return;
+                }
+
                 // Check if this is a command sent in a group chat
                 if (msg.text.startsWith(`${Config.TELEGRAM_GROUP_PREFIX}/`)) {
                     Logger.trace(user, `text_command: ${msg.text}`);
@@ -405,6 +421,13 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
             Logger.warn(user, "Ignoring message from non-admin user due to HENNOS_DEVELOPMENT_MODE true");
             return;
         }
+    }
+
+    // Check if the user is blacklisted
+    const blacklisted = await HennosConsumer.isBlacklisted(user.chatId);
+    if (blacklisted) {
+        Logger.info(user, `Ignoring message from blacklisted user. User was blacklisted at: ${blacklisted.datetime.toISOString()}`);
+        return;
     }
 
     if (!message[requiredProperty]) {

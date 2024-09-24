@@ -15,7 +15,7 @@ export class HennosUser extends HennosConsumer {
             return true;
         }
 
-        if (this.whitelisted && this.experimental) {
+        if (this.whitelisted) {
             return true;
         }
 
