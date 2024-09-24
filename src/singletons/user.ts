@@ -51,7 +51,7 @@ export class HennosUser extends HennosConsumer {
         });
 
         this.whitelisted = this.isAdmin() ? true : result.whitelisted;
-        this.experimental = result.experimental;
+        this.experimental = this.isAdmin() ? true : result.experimental;
         this.displayName = `${result.firstName} ${result.lastName}`;
         return {
             firstName: result.firstName,
