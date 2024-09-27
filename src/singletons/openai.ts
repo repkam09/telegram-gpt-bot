@@ -198,6 +198,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         Logger.info(req, "OpenAI Moderation Start");
         try {
             const response = await this.openai.moderations.create({
+                model: "omni-moderation-latest",
                 input
             });
 

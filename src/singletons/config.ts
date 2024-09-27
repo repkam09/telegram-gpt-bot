@@ -58,7 +58,7 @@ export class Config {
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
-                MODEL: "llama3.1",
+                MODEL: "llama3.2",
                 CTX: 16000
             };
         }
