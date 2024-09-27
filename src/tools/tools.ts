@@ -10,6 +10,7 @@ import { MetaBugReport } from "./MetaBugReport";
 import { MetaFeatureRequest } from "./MetaFeatureRequest";
 import { YoutubeVideoTool } from "./YoutubeVideoTool";
 import { ReasoningModel } from "./Reasoning";
+import { WolframAlpha } from "./WolframAlpha";
 
 const AVAILABLE_TOOLS = [
     SearXNGSearch,
@@ -22,7 +23,8 @@ const AVAILABLE_TOOLS = [
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
     ReasoningModel,
-    YoutubeVideoTool
+    YoutubeVideoTool,
+    WolframAlpha
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
