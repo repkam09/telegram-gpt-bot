@@ -334,7 +334,7 @@ async function handleTelegramLocationMessage(req: HennosConsumer, msg: TelegramB
     const user = req as HennosUser;
     TelegramBotInstance.setTelegramIndicator(req, "find_location");
     await user.updateLocation(msg.location.latitude, msg.location.longitude);
-    return TelegramBotInstance.sendMessageWrapper(user, "Thanks! I will take your location into account in the future.");
+    return TelegramBotInstance.sendMessageWrapper(user, "Location information updated.");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

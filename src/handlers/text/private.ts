@@ -59,12 +59,17 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
 }
 
 async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): Promise<string> {
+    Logger.info(user, `Limited User Chat Completion Start, Text: ${text}`);
     const { firstName } = await user.getBasicInfo();
 
     const prompt: Message[] = [
         {
             role: "system",
-            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short sentences, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
+            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly."
+        },
+        {
+            role: "system",
+            content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, seperated with two newlines to keep your responses easily readable."
         },
         {
             role: "system",
@@ -72,7 +77,7 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
         },
         {
             role: "system",
-            content: "This user is not whitelisted on the service and is getting basic, limited, tier access. Their message history will not be stored after this response."
+            content: "This user is not whitelisted and is getting basic, limited, tier access to Hennos. Their message history will not be stored after this response."
         }
     ];
 
@@ -93,31 +98,48 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
     await user.updateChatContext("user", text);
     await user.updateChatContext("assistant", response);
 
+    Logger.info(user, `Limited User Chat Completion Success, Response: ${response}`);
     return response;
 }
 
 export async function buildPrompt(user: HennosUser): Promise<Message[]> {
-    const { firstName, location } = await user.getBasicInfo();
-    const { botName, preferredName, personality } = await user.getPreferences();
+    const info = await user.getBasicInfo();
+    const preferences = await user.getPreferences();
 
     const date = new Date().toUTCString();
-
-    const locationDetails = location ? `The user provided their location information as lat=${location.latitude}, lon=${location.longitude}` : "";
+    const userName = preferences.preferredName ? preferences.preferredName : info.firstName;
+    const botName = preferences.botName ? preferences.botName : "Hennos";
 
     const prompt: Message[] = [
         {
             role: "system",
-            content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
+            content: `You are a conversational chat assistant named '${botName}' that is helpful, creative, clever, and friendly.`
         },
         {
             role: "system",
-            content: `You are currently assisting a user named '${preferredName ?? firstName}' in a one-on-one private chat session.`
+            content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, seperated with two newlines to keep your responses easily readable."
         },
         {
             role: "system",
-            content: `The current Date and Time is ${date}. ${locationDetails}`
+            content: "You should use any available functions and tools to ensure that your responses are accurate and up to date. You should do this automatically and without the user needing to ask you to do so."
+        },
+        {
+            role: "system",
+            content: `You are currently assisting a user named '${userName}' in a one-on-one private chat session.`
         }
     ];
+
+    if (info.location) {
+        prompt.push({
+            role: "system",
+            content: `The user provided their location information as lat=${info.location.latitude}, lon=${info.location.longitude}`
+        });
+    } else {
+        prompt.push({
+            role: "system",
+            content: "The user has not specified their location. They can do this by using the Telegram mobile app to send a Location GPS pin."
+        });
+    }
 
     if (user.isAdmin()) {
         prompt.push({
@@ -126,27 +148,10 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
         });
     }
 
-    switch (personality) {
-        case "seductive":
-            prompt.unshift({
-                role: "system",
-                content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly. You are also seductive and flirty.`
-            });
-            break;
+    prompt.push({
+        role: "system",
+        content: `The current Date and Time is ${date}.`
+    });
 
-        case "snarky":
-            prompt.unshift({
-                role: "system",
-                content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is snarky and sarcastic while still being helpful.`
-            });
-            break;
-
-        default:
-            prompt.unshift({
-                role: "system",
-                content: `You are a conversational chat assistant named '${botName || "Hennos"}' that is helpful, creative, clever, and friendly.`
-            });
-            break;
-    }
     return prompt;
 }
