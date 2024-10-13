@@ -1,9 +1,12 @@
+import crypto from "node:crypto";
 import { HennosUser } from "../../singletons/user";
 import { Logger } from "../../singletons/logger";
 import { Message } from "ollama";
 import { HennosOllamaSingleton } from "../../singletons/ollama";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosAnthropicSingleton } from "../../singletons/anthropic";
+import { Vector } from "../../singletons/vector";
+import { getChatContextTokenCount } from "../../singletons/context";
 
 export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     if (user.whitelisted) {
@@ -15,6 +18,31 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
 
 async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
     const prompt = await buildPrompt(user);
+
+    if (user.isAdmin()) {
+        Logger.info(user, "Experimental Mode Enabled, Searching Vector Database");
+        // search the vector database for things realted to the user's message
+        const results = await Vector.search(user, text, 5);
+        if (results.length > 0) {
+            Logger.info(user, `Vector Database Search Results: ${results.length}`);
+            const vector = {
+                role: "system",
+                content: `Here are ${results.length} results from the vector database knowledgebase that might be related to the conversation. Context: ${JSON.stringify(results)}`
+            };
+
+            const size = getChatContextTokenCount([vector]);
+            Logger.info(user, `Vector Database Search Results Tokens: ${size}`);
+
+            if (size < 8096) {
+                Logger.info(user, "Vector Database Search Results Added to Prompt");
+                prompt.push(vector);
+            } else {
+                Logger.info(user, "Vector Database Search Results Exceeded Token Limit");
+            }
+        }
+        Logger.info(user, "Experimental Mode Enabled, Searching Vector Database Complete");
+    }
+
     const context = await user.getChatContext();
 
     // If a hint is provided, push it to the context right before the user message
@@ -32,22 +60,19 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
         switch (preferences.provider) {
             case "openai": {
                 const response = await HennosOpenAISingleton.instance().completion(user, prompt, context);
-                await user.updateChatContext("user", text);
-                await user.updateChatContext("assistant", response);
+                await updateChatContext(user, text, response);
                 return response;
             }
 
             case "anthropic": {
                 const response = await HennosAnthropicSingleton.instance().completion(user, prompt, context);
-                await user.updateChatContext("user", text);
-                await user.updateChatContext("assistant", response);
+                await updateChatContext(user, text, response);
                 return response;
             }
 
             default: {
                 const response = await HennosOllamaSingleton.instance().completion(user, prompt, context);
-                await user.updateChatContext("user", text);
-                await user.updateChatContext("assistant", response);
+                await updateChatContext(user, text, response);
                 return response;
             }
         }
@@ -55,6 +80,17 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
         const error = err as Error;
         Logger.error(user, `Error processing chat completion: ${error.message}`, error.stack);
         return "Sorry, I was unable to process your message";
+    }
+}
+
+async function updateChatContext(user: HennosUser, text: string, response: string): Promise<void> {
+    await user.updateChatContext("user", text);
+    await user.updateChatContext("assistant", response);
+
+    if (user.isAdmin()) {
+        Logger.info(user, "Experimental Mode Enabled, Updating Vector Database");
+        const uuid = crypto.randomUUID();
+        await Vector.upsert(user, uuid, `${text}\n${response}`);
     }
 }
 

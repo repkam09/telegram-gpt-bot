@@ -111,7 +111,6 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         }
         const combinedSystemPrompt = system.map((message) => message.content).join("\n");
         return this.completionWithRecursiveToolCalls(req, combinedSystemPrompt, messages, 0);
-
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number): Promise<string> {

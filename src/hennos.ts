@@ -5,6 +5,7 @@ import { Database } from "./singletons/sqlite";
 import { DiscordBotInstance } from "./services/discord/discord";
 import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
+import { Vector } from "./singletons/vector";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -19,6 +20,14 @@ async function start() {
 
     await Database.init();
     await ScheduleJob.init();
+
+    if (Config.QDRANT_ENABLED) {
+        console.log(`QDRANT_HOST: ${Config.QDRANT_HOST}`);
+        console.log(`QDRANT_PORT: ${Config.QDRANT_PORT}`);
+        console.log(`QDRANT_DIMENSONS: ${Config.QDRANT_DIMENSONS}`);
+
+        await Vector.init();
+    }
 
     if (Config.TELEGRAM_ENABLED) {
         await TelegramBotInstance.init();

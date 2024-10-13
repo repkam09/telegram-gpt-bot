@@ -341,6 +341,20 @@ export class Config {
         return process.env.QDRANT_ENABLED === "true";
     }
 
+    static get QDRANT_DIMENSONS(): number {
+        if (!process.env.QDRANT_DIMENSONS) {
+            return 768;
+        }
+
+        const dimensions = parseInt(process.env.QDRANT_DIMENSONS);
+
+        if (Number.isNaN(dimensions)) {
+            throw new Error("Invalid QDRANT_DIMENSONS value");
+        }
+
+        return dimensions;
+    }
+
     static get QDRANT_HOST(): string {
         if (!process.env.QDRANT_HOST) {
             return "localhost";

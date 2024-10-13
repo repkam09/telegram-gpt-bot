@@ -34,6 +34,19 @@
             "type": "node",
             "runtimeArgs": ["--preserve-symlinks"],
             "request": "launch",
+            "name": "Launch RAG",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/rag.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
             "name": "Launch Search",
             "skipFiles": [
                 "<node_internals>/**"

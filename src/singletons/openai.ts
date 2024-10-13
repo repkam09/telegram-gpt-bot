@@ -9,6 +9,7 @@ import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } f
 import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
+import { HennosOllamaSingleton } from "./ollama";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 

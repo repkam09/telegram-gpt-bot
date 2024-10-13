@@ -3,7 +3,7 @@ import TelegramBot from "node-telegram-bot-api";
 import mimetype from "mime-types";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
-import { handleDocumentMessage } from "../../handlers/document";
+import { vectorizeDocument } from "../../handlers/document";
 import { handleImageMessage } from "../../handlers/photos";
 import { handleVoiceMessage } from "../../handlers/voice";
 import { handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
@@ -375,9 +375,7 @@ async function handleTelegramDocumentMessage(req: HennosConsumer, msg: TelegramB
         return handleTelegramCalendarMessage(req, tempFilePath);
     }
 
-    const response = await handleDocumentMessage(req, tempFilePath, ext, msg.document.file_unique_id);
-    await req.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
-    await req.updateChatContext("assistant", response);
+    const response = await vectorizeDocument(req, tempFilePath, ext, msg.document.file_unique_id);
 
     TelegramBotInstance.setTelegramMessageReact(req, msg);
     return TelegramBotInstance.sendMessageWrapper(req, response);

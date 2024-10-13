@@ -1,24 +1,27 @@
+import crypto from "node:crypto";
 import {
-    Anthropic,
     BaseReader,
     FILE_EXT_TO_READER,
+    Anthropic,
     Ollama,
     OllamaEmbedding,
     OpenAI,
     OpenAIEmbedding,
-    ResponseSynthesizer,
     ServiceContext,
+    serviceContextFromDefaults,
     SimpleNodeParser,
     SummaryIndex,
     SummaryRetrieverMode,
-    serviceContextFromDefaults,
+    getResponseSynthesizer,
+    SentenceSplitter
 } from "llamaindex";
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
-import { Config } from "../singletons/config";
-import { ValidAnthropicModels } from "../singletons/anthropic";
 import { HennosConsumer } from "../singletons/base";
 import { HennosGroup } from "../singletons/group";
+import { Vector } from "../singletons/vector";
+import { ValidAnthropicModels } from "../singletons/anthropic";
+import { Config } from "../singletons/config";
 
 export async function handleDocumentMessage(req: HennosConsumer, path: string, file_ext: string, uuid: string): Promise<string> {
     if (req instanceof HennosGroup) {
@@ -38,6 +41,7 @@ export async function handleDocumentMessage(req: HennosConsumer, path: string, f
         return "An error occured while processing your document.";
     }
 }
+
 
 async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext> {
     let provider = "openai";
@@ -124,8 +128,8 @@ export async function handleDocument(req: HennosConsumer, path: string, uuid: st
 
     Logger.debug(`Created a summary index from ${documents.length} documents at path: ${path} with UUID: ${uuid}.`);
     const queryEngine = index.asQueryEngine({
-        responseSynthesizer: new ResponseSynthesizer({
-            serviceContext
+        responseSynthesizer: getResponseSynthesizer("refine", {
+            llm: serviceContext.llm,
         }),
         retriever: index.asRetriever({
             mode: SummaryRetrieverMode.DEFAULT,
@@ -142,4 +146,39 @@ export async function handleDocument(req: HennosConsumer, path: string, uuid: st
 
     Logger.info(req, `Completed processing document at path: ${path} with UUID: ${uuid}.`);
     return summary;
+}
+
+export async function vectorizeDocument(req: HennosConsumer, path: string, file_ext: string, uuid: string): Promise<string> {
+    if (req instanceof HennosGroup) {
+        return "Document processing is not supported for groups at this time.";
+    }
+
+    const user = req as HennosUser;
+    try {
+        const reader = FILE_EXT_TO_READER[file_ext];
+        if (!reader) {
+            return `This document seems to be a ${file_ext} which is not yet supported.`;
+        }
+
+        Logger.info(req, `Processing document at path: ${path} with UUID: ${uuid}.`);
+
+        const documents = await reader.loadData(path);
+        const splitter = new SentenceSplitter({ chunkSize: 1024, chunkOverlap: 128 });
+        const nodes = splitter.getNodesFromDocuments(documents);
+
+        Logger.debug(`Loaded ${nodes.length} text nodes from path: ${path} with UUID: ${uuid}.`);
+        const vectors = nodes.map((node) => {
+            const uuid = crypto.randomUUID();
+            return Vector.upsert(req, uuid, node.text);
+        });
+
+        Logger.debug(`Upserting ${nodes.length} text nodes to the vector database with UUID: ${uuid}.`);
+        await Promise.all(vectors);
+        Logger.debug(`Upserted ${nodes.length} text nodes to the vector database with UUID: ${uuid}.`);
+
+        return "Successfully imported document.";
+    } catch (err) {
+        Logger.error(user, `Error while processing document at path ${path} with UUID ${uuid}.`, err);
+        return "An error occured while processing your document.";
+    }
 }
