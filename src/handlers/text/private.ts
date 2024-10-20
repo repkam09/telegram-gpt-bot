@@ -121,7 +121,7 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
         },
         {
             role: "system",
-            content: "You should use any available functions and tools to ensure that your responses are accurate and up to date. You should do this automatically and without the user needing to ask you to do so."
+            content: "Always prioritize using available function calls to fetch real-time information, verify facts, and enhance your knowledge base. Before responding to any query, consider if there's a relevant tool that could provide up-to-date or more accurate information. Use these tools proactively, even if not explicitly asked, to ensure the most current and comprehensive responses."
         },
         {
             role: "system",
