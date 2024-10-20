@@ -18,7 +18,7 @@ export class YoutubeVideoTool extends BaseTool {
                 name: "youtube_video_summary",
                 description: [
                     "This tool will download the subtitles of a YouTube video and generate a summary of the video content based on the subtitles.",
-                    "Because this needs to download the subtitles, and may take some significant time to process, you should consider asking the user for permission before using this tool."
+                    "Optionally, you can provide a query to tailor the summary of the video if the user has a specific question or request about its content.",
                 ].join(" "),
                 parameters: {
                     type: "object",
@@ -26,6 +26,10 @@ export class YoutubeVideoTool extends BaseTool {
                         videoId: {
                             type: "string",
                             description: "The video ID of the YouTube video to get the summary for. This can be found in the URL of the video, example 'https://www.youtube.com/watch?v=[videoId]' or 'https://youtu.be/[videoId]'.",
+                        },
+                        query: {
+                            type: "string",
+                            description: "An optional query to tailor the summary of the video if the user has a specific question or request about its content.",
                         }
                     },
                     required: ["videoId"],
@@ -35,7 +39,7 @@ export class YoutubeVideoTool extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
-        Logger.info(req, "YoutubeVideoTool callback", { videoId: args.videoId });
+        Logger.info(req, "YoutubeVideoTool callback", { videoId: args.videoId, query: args.query });
         if (!args.videoId) {
             return ["youtube_video_summary, videoId not provided", metadata];
         }
@@ -46,11 +50,12 @@ export class YoutubeVideoTool extends BaseTool {
 
             // use the videoId and ytdlp to fetch the video subtitles
             // then use the subtitles to generate a summary of the video
-            const summary = await handleDocument(req, filePath, args.videoId, new TextFileReader(), "Could you summarize the content of this video based on these subtitles?");
-            return [`youtube_video_summary, summary: ${summary}`, metadata];
+            const query = args.query ? args.query : "Could you summarize the content of this video based on these subtitles?";
+            const summary = await handleDocument(req, filePath, args.videoId, new TextFileReader(), query);
+            return [`youtube_video_summary, result: ${summary}`, metadata];
         } catch (err) {
             const error = err as Error;
-            Logger.error(req, "YoutubeVideoTool unable to process videoId", { videoId: args.videoId, err: error.message });
+            Logger.error(req, "YoutubeVideoTool unable to process videoId", { videoId: args.videoId, query: args.query, err: error.message });
             return [`youtube_video_summary, resulted in an error while processing videoId ${args.videoId}`, metadata];
         }
     }
