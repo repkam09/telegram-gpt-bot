@@ -1,8 +1,7 @@
 import { Logger } from "../singletons/logger";
 import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
-import { FetchGenericURLTool } from "./FetchGenericURLTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
 export class SearXNGSearch extends BaseTool {
     public static definition(): Tool {
@@ -11,10 +10,11 @@ export class SearXNGSearch extends BaseTool {
             function: {
                 name: "searxng_web_search",
                 description: [
-                    "This tool searches SearXNG for the provided query, which is a privacy-respecting search engine, that includes results from many other search engines.",
-                    "The search results returned in an easily processed JSON format containing the result title, URL, brief content, and the engine that provided the result.",
-                    "You should use this tool as often as possible to suppliment your own knowledge and provide the best possible answers to user queries.",
-                    `This tool pairs well with the '${FetchGenericURLTool.definition().function.name}' tool, which can be used to fetch specific content using the URLs of the search results.`
+                    "This core tool performs web searches through SearXNG, a privacy-respecting search engine that aggregates results from multiple sources.",
+                    "It provides search results in a JSON format, including the result title, URL, brief content, and originating search engine.",
+                    "This tool should be your go-to method for obtaining up-to-date and comprehensive external information, to enhance the accuracy and relevance of your responses.",
+                    "It is particularly useful for initial queries to gather broad insights that supplement your existing knowledge base.",
+                    "For deeper exploration, pair this tool with the 'query_webpage_content' tool to extract specific content from the URLs provided in the search results."
                 ].join(" "),
                 parameters: {
                     type: "object",
@@ -22,15 +22,15 @@ export class SearXNGSearch extends BaseTool {
                         query: {
                             type: "string",
                             description: "The search query",
-                        },
+                        }
                     },
-                    required: ["query"],
+                    required: ["query"]
                 }
             }
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(req, "SearXNGSearch callback", { query: args.query });
         if (!args.query) {
             return ["searxng_web_search, query not provided", metadata];

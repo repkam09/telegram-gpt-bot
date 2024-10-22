@@ -395,6 +395,22 @@ export class Config {
         return process.env.THE_NEWS_API_KEY;
     }
 
+    static get LAST_FM_API_KEY(): string | false {
+        if (!process.env.LAST_FM_API_KEY) {
+            return false;
+        }
+
+        return process.env.LAST_FM_API_KEY;
+    }
+
+    static get THE_MOVIE_DB_API_KEY(): string | false {
+        if (!process.env.THE_MOVIE_DB_API_KEY) {
+            return false;
+        }
+
+        return process.env.THE_MOVIE_DB_API_KEY;
+    }
+
     static get TELEGRAM_GROUP_PREFIX(): string {
         if (!process.env.TELEGRAM_GROUP_PREFIX) {
             throw new Error("Missing TELEGRAM_GROUP_PREFIX");

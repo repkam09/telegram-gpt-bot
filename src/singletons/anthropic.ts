@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import fs from "node:fs/promises";
 import { Config } from "./config";
 import { Anthropic } from "@anthropic-ai/sdk";
@@ -7,7 +8,7 @@ import { MessageParam, TextBlock, Tool } from "@anthropic-ai/sdk/resources";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
-import { HennosBaseProvider, HennosConsumer } from "./base";
+import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
 import { ALL_AVAILABLE_ANTHROPIC_MODELS } from "llamaindex";
 import { availableTools, processToolCalls } from "../tools/tools";
 
@@ -67,7 +68,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         });
     }
 
-    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
+    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<HennosResponse> {
         Logger.info(req, `Anthropic Completion Start (${Config.ANTHROPIC_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.ANTHROPIC_LLM.CTX);
@@ -114,7 +115,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
     }
 
-    private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number): Promise<string> {
+    private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number): Promise<HennosResponse> {
         if (depth > 4) {
             throw new Error("Tool Call Recursion Depth Exceeded");
         }
@@ -137,6 +138,13 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                 Logger.info(req, `Anthropic Completion Success, Resulted in ${tool_blocks.length} Tool Calls`);
                 const toolCalls = convertToolCallResponse(tool_blocks);
                 const additional = await processToolCalls(req, toolCalls);
+
+                const shouldEmptyResponse = additional.find(([_content, _metadata, type]) => type === "empty");
+                if (shouldEmptyResponse) {
+                    return {
+                        __type: "empty"
+                    };
+                }
 
                 prompt.push({
                     role: "assistant",
@@ -165,14 +173,17 @@ class HennosAnthropicProvider extends HennosBaseProvider {
             Logger.info(req, `Anthropic Completion Success, Resulted in ${text_blocks.length} Text Blocks`);
 
             const result = text_blocks.map((block) => block.text).join();
-            return result;
+            return {
+                __type: "string",
+                payload: result
+            };
         } catch (err: unknown) {
             Logger.info(req, "Anthropic Completion Error: ", err);
             throw err;
         }
     }
 
-    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: "image/jpeg" | "image/png" | "image/gif" | "image/webp"): Promise<string> {
+    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: "image/jpeg" | "image/png" | "image/gif" | "image/webp"): Promise<HennosResponse> {
         Logger.info(req, `Anthropic Vision Completion Start (${Config.ANTHROPIC_LLM_VISION.MODEL})`);
         try {
             // Take the local image and convert it to base64...
@@ -210,7 +221,10 @@ class HennosAnthropicProvider extends HennosBaseProvider {
             const text_blocks = response.content.filter((content) => content.type === "text") as TextBlock[];
             const result = text_blocks.map((block) => block.text).join();
             Logger.info(req, `Anthropic Vision Completion Success, Resulted in ${response.usage.output_tokens} output tokens`);
-            return result;
+            return {
+                __type: "string",
+                payload: result
+            };
         } catch (err: unknown) {
             Logger.info(req, "Anthropic Vision Completion Completion Error: ", err);
             throw err;
@@ -222,12 +236,12 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         return HennosOpenAISingleton.instance().moderation(req, input);
     }
 
-    public async transcription(req: HennosConsumer, path: string): Promise<string> {
+    public async transcription(req: HennosConsumer, path: string): Promise<HennosResponse> {
         Logger.warn(req, "Anthropic Transcription Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().transcription(req, path);
     }
 
-    public async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
+    public async speech(user: HennosUser, input: string): Promise<HennosResponse> {
         Logger.warn(user, "Anthropic Speech Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().speech(user, input);
     }

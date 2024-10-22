@@ -1,7 +1,7 @@
 import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { Config } from "../singletons/config";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { HennosConsumer } from "../singletons/base";
 
 export class TheNewsAPITool extends BaseTool {
@@ -19,20 +19,20 @@ export class TheNewsAPITool extends BaseTool {
             function: {
                 name: "top_news_stories",
                 description: [
-                    "Use this tool to find the latest top stories around the world or filter to get only top stories for specific countries and categories.",
-                    "The locale parameter specifies the country codes to include in the result set. Default is 'us' only.",
-                    "The categories parameter specifies the categories to include. Supported categories: general | science | sports | business | health | entertainment | tech | politics | food | travel."
+                    "This tool retrieves the latest top news stories globally or filters them by specific countries and categories.",
+                    "The 'locale' parameter allows you to specify which countries' news to include using their country codes, with 'us' as the default.",
+                    "The 'categories' parameter lets you filter news by topic, with supported categories including: general, science, sports, business, health, entertainment, tech, politics, food, and travel."
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         locale: {
                             type: "string",
-                            description: "Comma separated list of country codes to include in the result set. Default is 'us'. Ex: us,ca"
+                            description: "A comma-separated list of country codes to specify which countries' news to include. Default is 'us'. For example, 'us,ca'."
                         },
                         categories: {
                             type: "string",
-                            description: "Comma separated list of categories to include. Supported categories: general | science | sports | business | health | entertainment | tech | politics | food | travel. Ex: business,tech. Default is 'general'."
+                            description: "A comma-separated list of categories to filter news by. Available categories: general, science, sports, business, health, entertainment, tech, politics, food, and travel. For example, 'business,tech'. Default is 'general'."
                         },
                     },
                     required: [],
@@ -41,7 +41,7 @@ export class TheNewsAPITool extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         if (!args.locale) {
             args.locale = "us";
         }

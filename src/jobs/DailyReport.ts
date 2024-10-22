@@ -4,7 +4,7 @@ import { HennosOpenAISingleton } from "../singletons/openai";
 import { HennosUser } from "../singletons/user";
 import { Job } from "./job";
 import { buildPrompt } from "../handlers/text/private";
-import { TelegramBotInstance } from "../services/telegram/telegram";
+import { handleHennosResponse } from "../services/telegram/telegram";
 import { Config } from "../singletons/config";
 
 /**
@@ -52,8 +52,7 @@ export class DailyReport extends Job {
                 "If there is any other potentially relevant information from our chat history, please remind me of that as well.");
 
             await user.updateChatContext("assistant", result);
-
-            TelegramBotInstance.sendTelegramMessageWithRetry(user, result, {});
+            return handleHennosResponse(user, result, {});
         }
     }
 }

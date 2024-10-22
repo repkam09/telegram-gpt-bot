@@ -1,7 +1,7 @@
 import { Logger } from "../singletons/logger";
 import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { TelegramBotInstance } from "../services/telegram/telegram";
 
 export class MetaBugReport extends BaseTool {
@@ -11,15 +11,16 @@ export class MetaBugReport extends BaseTool {
             function: {
                 name: "bug_report",
                 description: [
-                    "This tool is used to report a bug in the Hennos system itself. If a user mentions an issue with Hennos, this tool can be used to log the issue for later review by the developer.",
-                    "You should ask the user for confirmation before logging the bug report."
+                    "Use this tool to report a bug or issue encountered within the Hennos system.",
+                    "If a user identifies a problem or anomaly, this tool logs the issue for the development team's review and resolution.",
+                    "Ensure to confirm with the user before proceeding to log the bug report."
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         report: {
                             type: "string",
-                            description: "The bug report to log.",
+                            description: "A detailed description of the bug or issue to be logged."
                         },
                     },
                     required: ["report"],
@@ -28,7 +29,7 @@ export class MetaBugReport extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(req, "MetaBugReport callback", { report: args.report });
         if (!args.report) {
             return ["bug_report, report not provided", metadata];

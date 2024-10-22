@@ -3,7 +3,7 @@ import path from "node:path";
 import { Tool } from "ollama";
 import { Logger } from "../singletons/logger";
 import { HennosConsumer } from "../singletons/base";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import ical from "node-ical";
 
@@ -14,14 +14,15 @@ export class ImportCalendar extends BaseTool {
             function: {
                 name: "ics_calendar_import",
                 description: [
-                    "This tool is used to import an ICS calendar file into the Hennos system via a URL. The tool will parse and then return the next 10 upcoming events from the calendar file.",
+                    "This tool imports an ICS calendar file into the Hennos system using a provided URL.",
+                    "It parses the calendar and returns the next 10 upcoming events for easy access and review."
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         url: {
                             type: "string",
-                            description: "The URL of the ICS calendar file to import.",
+                            description: "The URL of the ICS calendar file to be imported."
                         }
                     },
                     required: ["url"],
@@ -30,7 +31,7 @@ export class ImportCalendar extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(req, "ImportCalendar callback", { url: args.url });
         if (!args.url) {
             return ["ics_calendar_import, url not provided", metadata];

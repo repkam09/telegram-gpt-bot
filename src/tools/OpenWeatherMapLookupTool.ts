@@ -3,7 +3,7 @@ import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
 export class OpenWeatherMapLookupTool extends BaseTool {
     public static isEnabled(): boolean {
@@ -20,28 +20,28 @@ export class OpenWeatherMapLookupTool extends BaseTool {
             function: {
                 name: "open_weather_map_lookup",
                 description: [
-                    "Use the Open Weathermap API to get a weather report for a specific location.",
-                    "This tool requires the latitude and longitude of the location to be provided as parameters.",
-                    "This tool returns information such as temp, feels_like, temp_min, temp_max, pressure, humidity, and wind_speed, along with a brief description of the weather, such as 'clear sky', 'few clouds', etc."
+                    "This tool utilizes the Open Weather Map API to provide weather reports for specific locations.",
+                    "To use this tool, you must supply the latitude and longitude coordinates of the desired location.",
+                    "Returns detailed weather information, including temperature, feels like temperature, minimum and maximum temperatures, atmospheric pressure, humidity, wind speed, and a brief description of the weather (e.g., 'clear sky', 'few clouds')."
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         mode: {
                             type: "string",
-                            description: "The mode of the tool. This can be 'current' or 'forecast'. By default, 'current' mode is used.",
+                            "description": "Determines the type of weather data to retrieve. Choose 'current' for present conditions or 'forecast' for future predictions. Defaults to 'current'."
                         },
                         lat: {
                             type: "number",
-                            description: "The location latitude.",
+                            "description": "Latitude of the location for which the weather report is requested."
                         },
                         lon: {
                             type: "number",
-                            description: "The location longitude.",
+                            "description": "Longitude of the location for which the weather report is requested."
                         },
                         units: {
                             type: "string",
-                            description: "Units of measurement to return. 'metric' and 'imperial' units are available. If you do not use the units parameter, 'metric' units will be applied by default.",
+                            "description": "Selects the units of measurement. Available options are 'metric' or 'imperial'. Default is 'metric'."
                         }
                     },
                     required: ["lat", "lon"],
@@ -50,7 +50,7 @@ export class OpenWeatherMapLookupTool extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         if (!args.lat) {
             return ["open_weather_map_lookup error, lat not provided", metadata];
         }

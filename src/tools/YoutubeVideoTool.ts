@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { Tool } from "ollama";
 import { Logger } from "../singletons/logger";
 import { HennosConsumer } from "../singletons/base";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { handleDocument } from "../handlers/document";
 import { TextFileReader } from "llamaindex";
 import path from "path";
@@ -17,19 +17,19 @@ export class YoutubeVideoTool extends BaseTool {
             function: {
                 name: "youtube_video_summary",
                 description: [
-                    "This tool will download the subtitles of a YouTube video and generate a summary of the video content based on the subtitles.",
-                    "Optionally, you can provide a query to tailor the summary of the video if the user has a specific question or request about its content.",
+                    "This tool retrieves and summarizes the content of a YouTube video by downloading and analyzing its subtitles.",
+                    "You can optionally provide a query to customize the summary, focusing on specific topics or questions the user may have about the video's content."
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         videoId: {
                             type: "string",
-                            description: "The video ID of the YouTube video to get the summary for. This can be found in the URL of the video, example 'https://www.youtube.com/watch?v=[videoId]' or 'https://youtu.be/[videoId]'.",
+                            description: "The unique video ID from the YouTube URL. It appears after 'v=' in 'https://www.youtube.com/watch?v=[videoId]' or directly in 'https://youtu.be/[videoId]'.",
                         },
                         query: {
                             type: "string",
-                            description: "An optional query to tailor the summary of the video if the user has a specific question or request about its content.",
+                            description: "An optional refinement for the summary based on specific user questions or areas of interest regarding the video's content.",
                         }
                     },
                     required: ["videoId"],
@@ -38,7 +38,7 @@ export class YoutubeVideoTool extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(req, "YoutubeVideoTool callback", { videoId: args.videoId, query: args.query });
         if (!args.videoId) {
             return ["youtube_video_summary, videoId not provided", metadata];

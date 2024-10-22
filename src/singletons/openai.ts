@@ -7,7 +7,7 @@ import { Message, Tool, ToolCall } from "ollama";
 import { Logger } from "./logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
 import { getSizedChatContext } from "./context";
-import { HennosBaseProvider, HennosConsumer } from "./base";
+import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
@@ -78,7 +78,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         });
     }
 
-    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
+    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<HennosResponse> {
         Logger.info(req, `OpenAI Completion Start (${Config.OPENAI_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OPENAI_LLM.CTX);
@@ -90,7 +90,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         return this.completionWithRecursiveToolCalls(req, messages, 0);
     }
 
-    private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<string> {
+    private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
         if (depth > 4) {
             throw new Error("Tool Call Recursion Depth Exceeded");
         }
@@ -116,7 +116,10 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
             // If this is a normal response with no tool calling, return the content
             if (response.choices[0].message.content) {
                 Logger.info(req, "OpenAI Completion Success, Resulted in Text Completion");
-                return response.choices[0].message.content;
+                return {
+                    __type: "string",
+                    payload: response.choices[0].message.content
+                };
             }
 
             // If the model asked for a tool call, process it and re-trigger the completion
@@ -130,7 +133,14 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 const toolCalls = convertToolCallResponse(response.choices[0].message.tool_calls);
                 const additional = await processToolCalls(req, toolCalls);
 
-                additional.forEach(([content, metadata]: [string, OpenAI.Chat.Completions.ChatCompletionMessageToolCall]) => {
+                const shouldEmptyResponse = additional.find(([_content, _metadata, type]) => type === "empty");
+                if (shouldEmptyResponse) {
+                    return {
+                        __type: "empty"
+                    };
+                }
+
+                additional.forEach(([content, metadata]) => {
                     prompt.push({
                         role: "tool",
                         content: content,
@@ -153,7 +163,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         }
     }
 
-    public async vision(req: HennosConsumer, prompt: Message, remote: string, mime: string): Promise<string> {
+    public async vision(req: HennosConsumer, prompt: Message, remote: string, mime: string): Promise<HennosResponse> {
         Logger.info(req, `OpenAI Vision Completion Start (${Config.OPENAI_LLM_VISION.MODEL})`);
         try {
             const response = await this.openai.chat.completions.create({
@@ -187,7 +197,10 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Content");
             }
 
-            return response.choices[0].message.content;
+            return {
+                __type: "string",
+                payload: response.choices[0].message.content
+            };
         } catch (err: unknown) {
             Logger.info(req, "OpenAI Vision Completion Error: ", err);
             throw err;
@@ -219,7 +232,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         }
     }
 
-    public async transcription(req: HennosConsumer, path: string): Promise<string> {
+    public async transcription(req: HennosConsumer, path: string): Promise<HennosResponse> {
         Logger.info(req, "OpenAI Transcription Start");
         try {
             const transcription = await this.openai.audio.transcriptions.create({
@@ -228,14 +241,17 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
             });
 
             Logger.info(req, "OpenAI Transcription Success");
-            return transcription.text;
+            return {
+                __type: "string",
+                payload: transcription.text
+            };
         } catch (err: unknown) {
             Logger.error(req, "OpenAI Transcription Error: ", err);
             throw err;
         }
     }
 
-    public async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
+    public async speech(user: HennosUser, input: string): Promise<HennosResponse> {
         Logger.info(user, "OpenAI Speech Start");
         try {
             const preferences = await user.getPreferences();
@@ -247,7 +263,11 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
             });
 
             Logger.info(user, "OpenAI Speech Success");
-            return result.arrayBuffer();
+            const buffer = await result.arrayBuffer();
+            return {
+                __type: "arraybuffer",
+                payload: buffer
+            };
         } catch (err: unknown) {
             Logger.error(user, "OpenAI Speech Error: ", err);
             throw err;

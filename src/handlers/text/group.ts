@@ -3,8 +3,9 @@ import { Logger } from "../../singletons/logger";
 import { Message } from "ollama";
 import { HennosAnthropicSingleton } from "../../singletons/anthropic";
 import { HennosUser } from "../../singletons/user";
+import { HennosResponse } from "../../singletons/base";
 
-export async function handleWhitelistedGroupMessage(user: HennosUser, group: HennosGroup, text: string): Promise<string> {
+export async function handleWhitelistedGroupMessage(user: HennosUser, group: HennosGroup, text: string): Promise<HennosResponse> {
     const groupInfo = await group.getBasicInfo();
     const userInfo = await user.getBasicInfo();
 
@@ -12,16 +13,32 @@ export async function handleWhitelistedGroupMessage(user: HennosUser, group: Hen
     const prompt: Message[] = [
         {
             role: "system",
-            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly. You are a Telegram Bot chatting with users of the Telegram messaging platform. " +
-                "You should respond in short paragraphs, using Markdown formatting, seperated with two newlines to keep your responses easily readable."
+            content: "You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly."
         },
         {
             role: "system",
-            content: `You are currently assisting users within a group chat setting. The group chat is called '${groupInfo.name}'. The user you are currently assisting is '${userInfo.firstName}'.`
+            content: "As a Telegram Bot, respond in concise paragraphs with double newlines to maintain readability on the platform."
         },
         {
             role: "system",
-            content: `The current Date and Time is ${date}.`
+            content: [
+                "To ensure responses are accurate and relevant, utilize tool calls as follows:",
+                "- **Proactive Usage**: Check for relevant functions/tools to provide precise information.",
+                "- **Mandatory Scenarios**: Prioritize tool calls in time-sensitive or complex situations.",
+                "- **Confidence Threshold**: Execute tool calls when confidence in your response is low.",
+                "- **Continuous Evaluation**: Reassess the data post-tool call for inaccuracies.",
+                "- **User-Centric Focus**: Tailor responses by leveraging tool calls effectively.",
+                "- **Learning from Outcomes**: Integrate previous outcomes into future interactions for accuracy.",
+                "By prioritizing tool usage, enhance the user assistance consistently."
+            ].join("\n")
+        },
+        {
+            role: "system",
+            content: `Assisting user '${userInfo.firstName}' in a group chat called '${groupInfo.name}'.`
+        },
+        {
+            role: "system",
+            content: `Current Date and Time: ${date}`
         }
     ];
 
@@ -43,10 +60,14 @@ export async function handleWhitelistedGroupMessage(user: HennosUser, group: Hen
         const response = await HennosAnthropicSingleton.instance().completion(group, prompt, context);
         await group.updateChatContext("user", text);
         await group.updateChatContext("assistant", response);
+
         return response;
     } catch (err) {
         const error = err as Error;
         Logger.error(group, `Error processing chat completion: ${error.message}`, error.stack);
-        return "Sorry, I was unable to process your message";
+        return {
+            __type: "error",
+            payload: "I'm sorry, I was unable to process your request. Please try again later."
+        };
     }
 }

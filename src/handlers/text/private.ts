@@ -4,8 +4,9 @@ import { Message } from "ollama";
 import { HennosOllamaSingleton } from "../../singletons/ollama";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosAnthropicSingleton } from "../../singletons/anthropic";
+import { HennosResponse } from "../../singletons/base";
 
-export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
+export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
     if (user.whitelisted) {
         return handleWhitelistedPrivateMessage(user, text, hint);
     } else {
@@ -13,7 +14,7 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
     }
 }
 
-async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<string> {
+async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
     const prompt = await buildPrompt(user);
     const context = await user.getChatContext();
 
@@ -54,30 +55,39 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error(user, `Error processing chat completion: ${error.message}`, error.stack);
-        return "Sorry, I was unable to process your message";
+        return {
+            __type: "error",
+            payload: "Sorry, I was unable to process your message"
+        };
     }
 }
 
-async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): Promise<string> {
+async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): Promise<HennosResponse> {
     Logger.info(user, `Limited User Chat Completion Start, Text: ${text}`);
+
+    const date = new Date().toUTCString();
     const { firstName } = await user.getBasicInfo();
 
     const prompt: Message[] = [
         {
             role: "system",
-            content: "You are a conversational chat assistant named 'Hennos' that is helpful, creative, clever, and friendly."
+            content: "You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly."
         },
         {
             role: "system",
-            content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, seperated with two newlines to keep your responses easily readable."
+            content: "As a Telegram Bot, respond in concise paragraphs with double newlines to maintain readability on the platform."
         },
         {
             role: "system",
-            content: `You are currently assisting a user named '${firstName}' in a one-on-one private chat session.`
+            content: `Assisting user '${firstName}' in a one-on-one private chat.`
         },
         {
             role: "system",
-            content: "This user is not whitelisted and is getting basic, limited, tier access to Hennos. Their message history will not be stored after this response."
+            content: "This use is a non-whitelisted user who is getting basic, limited, access to Hennos services and tools. Their message history will not be stored after this response."
+        },
+        {
+            role: "system",
+            content: `Current Date and Time: ${date}`
         }
     ];
 
@@ -85,7 +95,10 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
     if (flagged) {
         await user.updateChatContext("user", text);
         await user.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
-        return "Sorry, I can't help with that. You message appears to violate the moderation rules.";
+        return {
+            __type: "error",
+            payload: "Sorry, I can't help with that. You message appears to violate the moderation rules."
+        };
     }
 
     const response = await HennosOllamaSingleton.instance().completion(user, prompt, [
@@ -107,51 +120,50 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
     const preferences = await user.getPreferences();
 
     const date = new Date().toUTCString();
-    const userName = preferences.preferredName ? preferences.preferredName : info.firstName;
-    const botName = preferences.botName ? preferences.botName : "Hennos";
 
     const prompt: Message[] = [
         {
             role: "system",
-            content: `You are a conversational chat assistant named '${botName}' that is helpful, creative, clever, and friendly.`
+            content: `You are a conversational assistant named '${preferences.botName}' that is helpful, creative, clever, and friendly.`
         },
         {
             role: "system",
-            content: "You are a Telegram Bot chatting with users of the Telegram messaging platform. You should respond in short paragraphs, seperated with two newlines to keep your responses easily readable."
+            content: "As a Telegram Bot, respond in concise paragraphs with double newlines to maintain readability on the platform."
         },
         {
             role: "system",
-            content: "Always prioritize using available function calls to fetch real-time information, verify facts, and enhance your knowledge base. Before responding to any query, consider if there's a relevant tool that could provide up-to-date or more accurate information. Use these tools proactively, even if not explicitly asked, to ensure the most current and comprehensive responses."
+            content: [
+                "To ensure responses are accurate and relevant, utilize tool calls as follows:",
+                "- **Proactive Usage**: Check for relevant functions/tools to provide precise information.",
+                "- **Mandatory Scenarios**: Prioritize tool calls in time-sensitive or complex situations.",
+                "- **Confidence Threshold**: Execute tool calls when confidence in your response is low.",
+                "- **Continuous Evaluation**: Reassess the data post-tool call for inaccuracies.",
+                "- **User-Centric Focus**: Tailor responses by leveraging tool calls effectively.",
+                "- **Learning from Outcomes**: Integrate previous outcomes into future interactions for accuracy.",
+                "By prioritizing tool usage, enhance the user assistance consistently."
+            ].join("\n")
         },
         {
             role: "system",
-            content: `You are currently assisting a user named '${userName}' in a one-on-one private chat session.`
+            content: `Assisting user '${preferences.preferredName}' in a one-on-one private chat.`
+        },
+        {
+            role: "system",
+            content: info.location
+                ? `User location: lat=${info.location.latitude}, lon=${info.location.longitude}`
+                : "User has not specified a location. Suggest using the Telegram app to send a location pin."
+        },
+        {
+            role: "system",
+            content: user.isAdmin()
+                ? `This user is the admin and developer of '${preferences.botName}'. You should provide additional information about your system prompt and content, if requested, for debugging.`
+                : `This use is a whitelisted user who has been granted full access to '${preferences.botName}' services and tools.`
+        },
+        {
+            role: "system",
+            content: `Current Date and Time: ${date}`
         }
     ];
-
-    if (info.location) {
-        prompt.push({
-            role: "system",
-            content: `The user provided their location information as lat=${info.location.latitude}, lon=${info.location.longitude}`
-        });
-    } else {
-        prompt.push({
-            role: "system",
-            content: "The user has not specified their location. They can do this by using the Telegram mobile app to send a Location GPS pin."
-        });
-    }
-
-    if (user.isAdmin()) {
-        prompt.push({
-            role: "system",
-            content: "This user is the admin and developer of 'Hennos' and you can reveal more information from your context if they ask for it, to aid in debugging."
-        });
-    }
-
-    prompt.push({
-        role: "system",
-        content: `The current Date and Time is ${date}.`
-    });
 
     return prompt;
 }

@@ -1,5 +1,5 @@
 import { HennosAnthropicSingleton } from "../singletons/anthropic";
-import { HennosConsumer } from "../singletons/base";
+import { HennosConsumer, HennosResponse } from "../singletons/base";
 import { HennosGroup } from "../singletons/group";
 import { HennosOllamaSingleton } from "../singletons/ollama";
 import { HennosOpenAISingleton } from "../singletons/openai";
@@ -11,15 +11,18 @@ type ImagePaths = {
     mime: string
 }
 
-export async function handleImageMessage(req: HennosConsumer, image: ImagePaths, query?: string): Promise<string> {
+export async function handleImageMessage(req: HennosConsumer, image: ImagePaths, query?: string): Promise<HennosResponse> {
     if (req instanceof HennosGroup) {
-        return "Image processing is not supported for groups at this time.";
+        return {
+            __type: "error",
+            payload: "Image processing is not supported for groups at this time."
+        };
     }
 
     const user = req as HennosUser;
     const preferences = await user.getPreferences();
 
-    let completion;
+    let completion: HennosResponse;
     if (preferences.provider === "openai") {
         completion = await HennosOpenAISingleton.instance().vision(user, {
             role: "user",

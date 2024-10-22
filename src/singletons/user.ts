@@ -67,6 +67,7 @@ export class HennosUser extends HennosConsumer {
     public async getPreferences() {
         const result = await this.db.user.findUniqueOrThrow({
             select: {
+                firstName: true,
                 preferredName: true,
                 botName: true,
                 voice: true,
@@ -80,12 +81,13 @@ export class HennosUser extends HennosConsumer {
 
         let provider = "ollama";
         if (result.whitelisted) {
-            provider = result.provider ? result.provider : "anthropic";
+            // Set a default provider of openai for whitelisted users
+            provider = result.provider ? result.provider : "openai";
         }
 
         return {
-            preferredName: result.preferredName,
-            botName: result.botName,
+            preferredName: result.preferredName ? result.preferredName : result.firstName,
+            botName: result.botName ? result.botName : "Hennos",
             voice: result.voice ? result.voice as ValidTTSNames : "onyx" as ValidTTSNames,
             provider: provider as ValidLLMProviders,
             personality: "default"

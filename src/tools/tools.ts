@@ -1,49 +1,57 @@
 import { Tool, ToolCall } from "ollama";
 import { Logger } from "../singletons/logger";
 import { OpenWeatherMapLookupTool } from "./OpenWeatherMapLookupTool";
-import { FetchGenericURLTool } from "./FetchGenericURLTool";
+import { QueryWebpageContent } from "./QueryWebpageContent";
 import { HennosConsumer } from "../singletons/base";
 import { TheNewsAPITool } from "./TheNewsAPITool";
-import { ToolCallMetadata } from "./BaseTool";
+import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
 import { MetaBugReport } from "./MetaBugReport";
 import { MetaFeatureRequest } from "./MetaFeatureRequest";
 import { YoutubeVideoTool } from "./YoutubeVideoTool";
 import { ReasoningModel } from "./Reasoning";
 import { WolframAlpha } from "./WolframAlpha";
+import { LastFMTool } from "./LastFMTool";
+import { TheMovieDBTool } from "./TheMovieDBTool";
+import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 
-const AVAILABLE_TOOLS = [
+const PUBLIC_TOOLS = [
     SearXNGSearch,
-    OpenWeatherMapLookupTool,
-    FetchGenericURLTool,
-    TheNewsAPITool,
+    QueryWebpageContent,
     MetaFeatureRequest,
     MetaBugReport
+];
+
+const WHITELIST_TOOLS = [
+    OpenWeatherMapLookupTool,
+    TheNewsAPITool,
+    LastFMTool,
+    TheMovieDBTool
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
     ReasoningModel,
     YoutubeVideoTool,
-    WolframAlpha
+    WolframAlpha,
+    AcknowledgeWithoutResponse,
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
-    if (!req.whitelisted) {
-        Logger.debug(`Tools disabled for ${req.displayName} because they are not whitelisted`);
-        return undefined;
-    }
-
-    if (!req.allowFunctionCalling()) {
-        Logger.debug(`Tools disabled for ${req.displayName} because they are not allowed to call functions`);
-        return undefined;
-    }
-
     const tools: Tool[] = [];
-    AVAILABLE_TOOLS.forEach((Tool) => {
+
+    PUBLIC_TOOLS.forEach((Tool) => {
         if (Tool.isEnabled()) {
             tools.push(Tool.definition());
         }
     });
+
+    if (req.allowFunctionCalling()) {
+        WHITELIST_TOOLS.forEach((Tool) => {
+            if (Tool.isEnabled()) {
+                tools.push(Tool.definition());
+            }
+        });
+    }
 
     if (req.experimental) {
         EXPERIMENTAL_AVAILABLE_TOOLS.forEach((Tool) => {
@@ -57,10 +65,10 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
     return tools.length > 0 ? tools : undefined;
 }
 
-export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCall, ToolCallMetadata][]): Promise<[string, ToolCallMetadata][]> {
+export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCall, ToolCallMetadata][]): Promise<ToolCallResponse[]> {
     try {
         const results = await Promise.all(tool_calls.map(async ([tool_call, metadata]) => {
-            const ToolMatch = [...AVAILABLE_TOOLS, ...EXPERIMENTAL_AVAILABLE_TOOLS].find((Tool) => Tool.definition().function.name === tool_call.function.name);
+            const ToolMatch = [...PUBLIC_TOOLS, ...WHITELIST_TOOLS, ...EXPERIMENTAL_AVAILABLE_TOOLS].find((Tool) => Tool.definition().function.name === tool_call.function.name);
             if (!ToolMatch) {
                 Logger.info(req, `Unknown tool call: ${tool_call.function.name}`);
                 Logger.debug(`Unknown tool call: ${tool_call.function.name} with args: ${JSON.stringify(tool_call.function.arguments)}`);

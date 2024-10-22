@@ -1,7 +1,7 @@
 import { Logger } from "../singletons/logger";
 import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
 export class WolframAlpha extends BaseTool {
     public static isEnabled(): boolean {
@@ -18,21 +18,21 @@ export class WolframAlpha extends BaseTool {
             function: {
                 name: "wolfram_alpha",
                 description: [
-                    "WolframAlpha understands natural language queries about entities in chemistry, physics, geography, history, art, astronomy, and more.",
-                    "WolframAlpha performs mathematical calculations, date and unit conversions, formula solving, etc.",
-                    "When calling this tool, follow these guidelines:",
-                    "- Convert inputs to simplified keyword queries whenever possible (e.g. convert \"how many people live in France\" to \"France population\").",
-                    "- ALWAYS use this exponent notation: `6*10^14`, NEVER `6e14`.",
-                    "- ALWAYS use proper Markdown formatting for all math, scientific, and chemical formulas, symbols, etc.",
-                    "- Use ONLY single-letter variable names, with or without integer subscript (e.g., n, n1, n_1).",
-                    "- Include a space between compound units (e.g., \"Ω m\" for \"ohm*meter\").",
+                    "WolframAlpha interprets natural language queries across diverse domains like chemistry, physics, geography, history, art, astronomy, and more.",
+                    "It can execute mathematical calculations, date and unit conversions, solve formulas, and handle various scientific inquiries.",
+                    "Guidelines for using this tool effectively:",
+                    "- Simplify inputs to keyword-based queries when feasible (e.g., change \"how many people live in France\" to \"France population\").",
+                    "- Always represent exponents using this notation: `6*10^14`, not `6e14`.",
+                    "- Use proper Markdown for displaying all mathematical, scientific, and chemical formulas and symbols.",
+                    "- Adopt single-letter variable naming, with optional integer subscripts (e.g., n, n1, n_1).",
+                    "- Insert spaces between compound units (e.g., \"Ω m\" for \"ohm*meter\")."
                 ].join("\n"),
                 parameters: {
                     type: "object",
                     properties: {
                         input: {
                             type: "string",
-                            description: "The natural language input question to send to the WolframAlpha API",
+                            description: "The natural language question or query to be sent to the WolframAlpha API."
                         },
                     },
                     required: ["input"],
@@ -41,7 +41,7 @@ export class WolframAlpha extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(req, "WolframAlpha callback", { input: args.input });
         if (!args.input) {
             return ["wolfram_alpha, input not provided", metadata];

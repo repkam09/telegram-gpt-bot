@@ -5,7 +5,7 @@ import { handlePrivateMessage } from "../../handlers/text/private";
 import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
-import { HennosConsumer } from "../../singletons/base";
+import { HennosConsumer, HennosResponse } from "../../singletons/base";
 
 export class DiscordBotInstance {
     static _hasCompletedInit = false;
@@ -61,7 +61,7 @@ export class DiscordBotInstance {
                             if (message.channel.type === ChannelType.DM) {
                                 try {
                                     const response = await handlePrivateMessage(user, message.content);
-                                    await message.channel.send(response);
+                                    await handleHennosResponse(response, message.channel);
                                 } catch (err: unknown) {
                                     const error = err as Error;
                                     Logger.error(user, `Error handling Discord private message from ${message.author.tag} (${message.author.id}): ${error.message}`);
@@ -78,7 +78,7 @@ export class DiscordBotInstance {
 
                                 try {
                                     const response = await handleWhitelistedGroupMessage(user, group, message.content);
-                                    await message.channel.send(response);
+                                    await handleHennosResponse(response, message.channel);
                                 } catch (err: unknown) {
                                     const error = err as Error;
                                     Logger.error(user, `Error handling Discord group message from ${message.author.tag} (${message.author.id}): ${error.message}`);
@@ -96,5 +96,26 @@ export class DiscordBotInstance {
                 }
             }, 5000);
         });
+    }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleHennosResponse(response: HennosResponse, channel: any): Promise<void> {
+    switch (response.__type) {
+        case "string": {
+            return channel.send(response.payload);
+        }
+
+        case "error": {
+            return channel.send(response.payload);
+        }
+
+        case "empty": {
+            return Promise.resolve();
+        }
+
+        case "arraybuffer": {
+            return Promise.resolve();
+        }
     }
 }

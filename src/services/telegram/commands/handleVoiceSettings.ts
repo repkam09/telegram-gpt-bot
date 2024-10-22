@@ -1,5 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
-import { TelegramBotInstance } from "../telegram";
+import { handleHennosResponse, TelegramBotInstance } from "../telegram";
 import { ValidTTSNames } from "../../../handlers/voice";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
@@ -68,14 +68,14 @@ export async function sendVoiceSettingsPrompt(user: HennosUser) {
 }
 
 export async function handleReadCommand(req: HennosUser, text: string) {
-    TelegramBotInstance.setTelegramIndicator(req, "record_voice");
+    TelegramBotInstance.setTelegramIndicator(req, "upload_voice");
+
     const trimmed = text.replace("/read", "").trim();
     try {
-        const arrayBuffer = await HennosOpenAISingleton.instance().speech(req, trimmed);
-        if (arrayBuffer) {
-            TelegramBotInstance.setTelegramIndicator(req, "upload_voice");
-            await TelegramBotInstance.sendVoiceMemoWrapper(req.chatId, Buffer.from(arrayBuffer));
-        }
+        TelegramBotInstance.setTelegramIndicator(req, "record_voice");
+        const response = await HennosOpenAISingleton.instance().speech(req, trimmed);
+        TelegramBotInstance.setTelegramIndicator(req, "upload_voice");
+        return handleHennosResponse(req, response, {});
     } catch (err) {
         Logger.error(req, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
     }

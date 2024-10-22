@@ -4,7 +4,7 @@ import ffmpeg from "fluent-ffmpeg";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
-import { HennosBaseProvider, HennosConsumer } from "./base";
+import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
 import { availableTools, processToolCalls } from "../tools/tools";
@@ -32,7 +32,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
         });
     }
 
-    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<string> {
+    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<HennosResponse> {
         Logger.info(req, `Ollama Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OLLAMA_LLM.CTX);
@@ -41,7 +41,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
         return this.completionWithRecursiveToolCalls(req, prompt, 0);
     }
 
-    private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: Message[], depth: number): Promise<string> {
+    private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: Message[], depth: number): Promise<HennosResponse> {
         if (depth > 4) {
             throw new Error("Tool Call Recursion Depth Exceeded");
         }
@@ -68,6 +68,14 @@ class HennosOllamaProvider extends HennosBaseProvider {
                 });
 
                 const results = await processToolCalls(req, tool_calls);
+
+                const shouldEmptyResponse = results.find(([_content, _metadata, type]) => type === "empty");
+                if (shouldEmptyResponse) {
+                    return {
+                        __type: "empty"
+                    };
+                }
+
                 results.forEach(([result]) => {
                     prompt.push({
                         role: "tool",
@@ -79,14 +87,17 @@ class HennosOllamaProvider extends HennosBaseProvider {
             }
 
             Logger.info(req, "Ollama Completion Success, Resulted in Text Completion");
-            return response.message.content;
+            return {
+                __type: "string",
+                payload: response.message.content
+            };
         } catch (err: unknown) {
             Logger.info(req, "Ollama Completion Error: ", err);
             throw err;
         }
     }
 
-    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: string): Promise<string> {
+    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: string): Promise<HennosResponse> {
         Logger.info(req, `Ollama Vision Completion Start (${Config.OLLAMA_LLM_VISION.MODEL})`);
         try {
             const response = await this.ollama.chat({
@@ -100,7 +111,10 @@ class HennosOllamaProvider extends HennosBaseProvider {
             });
 
             Logger.info(req, "Ollama Vision Completion Success");
-            return response.message.content;
+            return {
+                __type: "string",
+                payload: response.message.content
+            };
         } catch (err: unknown) {
             Logger.info(req, "Ollama Vision Completion Error: ", err);
             throw err;
@@ -112,12 +126,12 @@ class HennosOllamaProvider extends HennosBaseProvider {
         return HennosOpenAISingleton.instance().moderation(req, input);
     }
 
-    public async transcription(req: HennosConsumer, path: string): Promise<string> {
+    public async transcription(req: HennosConsumer, path: string): Promise<HennosResponse> {
         Logger.info(req, "Ollama Transcription Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().transcription(req, path);
     }
 
-    public async speech(user: HennosUser, input: string): Promise<ArrayBuffer> {
+    public async speech(user: HennosUser, input: string): Promise<HennosResponse> {
         Logger.warn(user, "Ollama Speech Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().speech(user, input);
     }

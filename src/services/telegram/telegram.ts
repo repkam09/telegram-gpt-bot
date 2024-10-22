@@ -15,7 +15,7 @@ import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
 import path from "node:path";
-import { HennosConsumer } from "../../singletons/base";
+import { HennosConsumer, HennosResponse } from "../../singletons/base";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { handleCalendarImport } from "../../tools/ImportCalendar";
 
@@ -56,7 +56,7 @@ export class TelegramBotInstance {
         }
     }
 
-    static async sendVoiceMemoWrapper(chatId: number, content: Buffer, options: TelegramBot.SendVoiceOptions = {}): Promise<void> {
+    static async sendVoiceMemoWrapper(req: HennosConsumer, content: Buffer, options: TelegramBot.SendVoiceOptions = {}): Promise<void> {
         if (!content) {
             throw new Error("Message content is undefined");
         }
@@ -66,7 +66,7 @@ export class TelegramBotInstance {
         }
 
         const bot = TelegramBotInstance.instance();
-        await bot.sendVoice(chatId, content, options);
+        await bot.sendVoice(req.chatId, content, options);
     }
 
     static async sendAdminMessage(content: string) {
@@ -249,7 +249,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     // If the user did @ the bot, strip out that @ prefix before processing the message
     TelegramBotInstance.setTelegramIndicator(group, "typing");
     const response = await handleWhitelistedGroupMessage(user, group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));
-    await TelegramBotInstance.sendMessageWrapper(group, response), { reply_to_message_id: msg.message_id };
+    return handleHennosResponse(group, response, { reply_to_message_id: msg.message_id });
 }
 
 async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithText) {
@@ -281,7 +281,7 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
         const response = await handlePrivateMessage(user, messages.length === 1 ? messages[0] : messages.join("\n"));
 
         // Send the response to the user
-        await TelegramBotInstance.sendMessageWrapper(user, response);
+        return handleHennosResponse(user, response, {});
     }, 2000);
 
     PendingChatTimerMap.set(user.chatId, timeout);
@@ -296,20 +296,20 @@ async function handleTelegramVoiceMessage(req: HennosConsumer, msg: TelegramBot.
 
     TelegramBotInstance.setTelegramIndicator(user, "typing");
     const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
-    const response = await handleVoiceMessage(user, tempFilePath);
+    const response1 = await handleVoiceMessage(user, tempFilePath);
 
-    TelegramBotInstance.setTelegramIndicator(user, "record_voice");
-    try {
-        const arrayBuffer = await HennosOpenAISingleton.instance().speech(user, response);
-        if (arrayBuffer) {
+    if (response1.__type === "string") {
+        TelegramBotInstance.setTelegramIndicator(user, "record_voice");
+        try {
+            const response2 = await HennosOpenAISingleton.instance().speech(user, response1.payload);
             TelegramBotInstance.setTelegramIndicator(user, "upload_voice");
-            await TelegramBotInstance.sendVoiceMemoWrapper(user.chatId, Buffer.from(arrayBuffer));
+            await handleHennosResponse(user, response2, {});
+        } catch (err) {
+            Logger.error(user, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
         }
-    } catch (err) {
-        Logger.error(user, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
     }
 
-    return TelegramBotInstance.sendMessageWrapper(user, response);
+    return handleHennosResponse(user, response1, {});
 }
 
 async function handleTelegramPhotoMessage(req: HennosConsumer, msg: TelegramBot.Message & { photo: TelegramBot.PhotoSize[] }) {
@@ -324,7 +324,27 @@ async function handleTelegramPhotoMessage(req: HennosConsumer, msg: TelegramBot.
 
     TelegramBotInstance.setTelegramIndicator(req, "typing");
     const response = await handleImageMessage(req, { remote: tempFileUrl, local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
-    return TelegramBotInstance.sendMessageWrapper(req, response);
+    return handleHennosResponse(req, response, {});
+}
+
+export async function handleHennosResponse(req: HennosConsumer, response: HennosResponse, options: TelegramBot.SendMessageOptions): Promise<void> {
+    switch (response.__type) {
+        case "string": {
+            return TelegramBotInstance.sendMessageWrapper(req, response.payload, options);
+        }
+
+        case "error": {
+            return TelegramBotInstance.sendMessageWrapper(req, response.payload, options);
+        }
+
+        case "empty": {
+            return Promise.resolve();
+        }
+
+        case "arraybuffer": {
+            await TelegramBotInstance.sendVoiceMemoWrapper(req, Buffer.from(response.payload));
+        }
+    }
 }
 
 async function handleTelegramLocationMessage(req: HennosConsumer, msg: TelegramBot.Message & { location: TelegramBot.Location }) {

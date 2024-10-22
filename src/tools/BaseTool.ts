@@ -7,9 +7,9 @@ import { HennosConsumer } from "../singletons/base";
 import { exec } from "child_process";
 import { Logger } from "../singletons/logger";
 
-
 export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;
+export type ToolCallResponse = [string, ToolCallMetadata, string?];
 
 export abstract class BaseTool {
     public static isEnabled(): boolean {
@@ -20,7 +20,7 @@ export abstract class BaseTool {
         throw new Error("Implemented by Subclass");
     }
 
-    public static async callback(_req: HennosConsumer, _args: ToolCallFunctionArgs, _metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(_req: HennosConsumer, _args: ToolCallFunctionArgs, _metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         throw new Error("Implemented by Subclass");
     }
 

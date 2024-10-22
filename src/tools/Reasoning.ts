@@ -1,6 +1,6 @@
 import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
-import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata } from "./BaseTool";
+import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { HennosConsumer } from "../singletons/base";
 import { HennosOpenAIProvider, HennosOpenAISingleton } from "../singletons/openai";
 import { Config } from "../singletons/config";
@@ -12,19 +12,20 @@ export class ReasoningModel extends BaseTool {
             function: {
                 name: "query_reasoning_model",
                 description: [
-                    "This tool provides a system for performing deep reasoning and research on a given query. If the users query is related to math, science, logic, programming, or similar topics, this tool can provide a much more in depth response.",
-                    "This tool is powered by new large language models trained with reinforcement learning to perform complex reasoning. These models think before they answer, and can produce a long internal chain of thought before responding to the user.",
+                    "This tool performs deep reasoning and research on complex queries, making it ideal for topics like math, science, logic, programming, and related areas.",
+                    "Powered by advanced large language models trained with reinforcement learning, it provides in-depth responses by simulating a thoughtful reasoning process.",
+                    "These models generate comprehensive answers by following a detailed internal chain of thought before formulating a response for the user."
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         query: {
                             type: "string",
-                            description: "The query that should be sent to the reasoning model. This can be the direct user input or a processed version of it.",
+                            description: "The primary query to be addressed by the reasoning model. This can be the user's direct input or an enhanced version of it.",
                         },
                         context: {
                             type: "string",
-                            description: "If there is additional information from your conversation that might be relevant to the query, you should provide it here so the reasoning model can be more accurate in its response.",
+                            description: "Additional relevant information from the current conversation that could improve the accuracy of the model's response.",
                         }
                     },
                     required: ["query"],
@@ -33,7 +34,7 @@ export class ReasoningModel extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<[string, ToolCallMetadata]> {
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         if (!args.query) {
             return ["query_reasoning_model error, required parameter 'query' not provided", metadata];
         }

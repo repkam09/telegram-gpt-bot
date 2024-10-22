@@ -28,7 +28,7 @@ export class CommandLineInstance {
                         "Please call out anything that looks unusual or strange in the previous chat context, as it may be a bug."
                 });
 
-                console.log("\n\n=====\n" + response + "\n=====\n\n");
+                console.log("\n\n=====\n" + JSON.stringify(response) + "\n=====\n\n");
             }
 
             query = await rl.question("Input: ");
