@@ -5,6 +5,8 @@ import { Database } from "./singletons/sqlite";
 import { DiscordBotInstance } from "./services/discord/discord";
 import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
+import Koa from "koa";
+import { setupKoaRoutes } from "./routes/koaRoutes";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -36,6 +38,16 @@ async function start() {
     if (!Config.TELEGRAM_ENABLED && !Config.DISCORD_ENABLED && Config.HENNOS_DEVELOPMENT_MODE) {
         await CommandLineInstance.run();
     }
+
+    // Initialize Koa server and define routes
+    const app = new Koa();
+    setupKoaRoutes(app);
+
+    // Start the Koa server and listen on the specified port
+    const port = process.env.HENNOS_API_PORT || 3000;
+    app.listen(port, () => {
+        console.log(`Koa server running on port ${port}`);
+    });
 }
 
 // Kick off the async function
