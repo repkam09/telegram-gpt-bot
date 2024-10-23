@@ -111,7 +111,7 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
     await user.updateChatContext("user", text);
     await user.updateChatContext("assistant", response);
 
-    Logger.info(user, `Limited User Chat Completion Success, Response: ${response}`);
+    Logger.info(user, `Limited User Chat Completion Success, Response: ${JSON.stringify(response)}`);
     return response;
 }
 
