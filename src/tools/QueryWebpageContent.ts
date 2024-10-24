@@ -81,6 +81,7 @@ export async function fetchPageContent(req: HennosConsumer, url: string): Promis
     try {
         Logger.trace(req, `fetchPageContent puppeteer: ${url}`);
         const browser = await puppeteer.launch({
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
             headless: Config.PUPPETEER_HEADLESS
         });
 
