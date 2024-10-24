@@ -34,51 +34,12 @@
             "type": "node",
             "runtimeArgs": ["--preserve-symlinks"],
             "request": "launch",
-            "name": "Launch Search",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/scripts/search.js",
-            "sourceMaps": true,
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
-            "request": "launch",
             "name": "Launch Daily Report",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "preLaunchTask": "tsc",
             "program": "${workspaceFolder}/build/scripts/daily-report.js",
-            "sourceMaps": true,
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
-            "request": "launch",
-            "name": "Launch Import",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/scripts/import.js",
-            "sourceMaps": true,
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
-            "request": "launch",
-            "name": "Launch Context",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/scripts/context.js",
             "sourceMaps": true,
             "console": "integratedTerminal"
         }

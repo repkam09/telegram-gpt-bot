@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import * as dotenv from "dotenv";
 import { HennosConsumer } from "./base";
+import { PuppeteerLifeCycleEvent } from "puppeteer";
 dotenv.config();
 
 export type HennosModelConfig = {
@@ -409,6 +410,26 @@ export class Config {
         }
 
         return process.env.THE_MOVIE_DB_API_KEY;
+    }
+
+    static get PUPPETEER_HEADLESS(): boolean {
+        if (!process.env.PUPPETEER_HEADLESS) {
+            return true;
+        }
+
+        if (process.env.PUPPETEER_HEADLESS === "false") {
+            return false;
+        }
+
+        return true;
+    }
+
+    static get PUPPETEER_WAIT_UNTIL(): PuppeteerLifeCycleEvent {
+        if (!process.env.PUPPETEER_WAIT_UNTIL) {
+            return "networkidle2";
+        }
+
+        return "networkidle2";
     }
 
     static get TELEGRAM_GROUP_PREFIX(): string {

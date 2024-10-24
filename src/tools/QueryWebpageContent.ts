@@ -1,14 +1,18 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Logger } from "../singletons/logger";
+
+import puppeteer from "puppeteer";
 import { Tool } from "ollama";
+import { HTMLReader } from "llamaindex";
+import { AxiosError } from "axios";
+
+import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { handleDocument } from "../handlers/document";
-import { HTMLReader } from "llamaindex";
 import { HennosUser } from "../singletons/user";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { HennosConsumer } from "../singletons/base";
-import { AxiosError } from "axios";
+
 
 export class QueryWebpageContent extends BaseTool {
     public static definition(): Tool {
@@ -48,8 +52,7 @@ export class QueryWebpageContent extends BaseTool {
 
         Logger.info(req, "query_webpage_content", { url: args.url, query: args.query });
         try {
-            const html = await BaseTool.fetchTextData(args.url);
-
+            const html = await fetchPageContent(req, args.url);
             const filePath = path.join(Config.LOCAL_STORAGE(req), "/", `${Date.now().toString()}.html`);
 
             await fs.writeFile(filePath, html, { encoding: "utf-8" });
@@ -66,5 +69,35 @@ export class QueryWebpageContent extends BaseTool {
             Logger.error(req, "query_webpage_content error", { url: args.url, error: err });
             return [`query_webpage_content error, unable to fetch content from URL '${args.url}'`, metadata];
         }
+    }
+}
+
+export async function fetchPageContent(req: HennosConsumer, url: string): Promise<string> {
+    if (!req.experimental) {
+        Logger.trace(req, `fetchPageContent fetchTextData: ${url}`);
+        return BaseTool.fetchTextData(url);
+    }
+
+    try {
+        Logger.trace(req, `fetchPageContent puppeteer: ${url}`);
+        const browser = await puppeteer.launch({
+            headless: Config.PUPPETEER_HEADLESS
+        });
+
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1920, height: 1080 });
+        await page.goto(url, {
+            waitUntil: Config.PUPPETEER_WAIT_UNTIL,
+        });
+
+        const content = await page.content();
+
+        await page.close();
+        await browser.close();
+
+        return content;
+    } catch (err) {
+        Logger.error(req, "fetchPageContent error", { url: url, error: err });
+        return BaseTool.fetchTextData(url);
     }
 }
