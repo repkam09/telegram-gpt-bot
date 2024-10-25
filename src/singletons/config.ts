@@ -440,6 +440,18 @@ export class Config {
         return process.env.TELEGRAM_GROUP_PREFIX + " ";
     }
 
+    static get TELEGRAM_GROUP_CONTEXT(): boolean {
+        if (!process.env.TELEGRAM_GROUP_CONTEXT) {
+            return false;
+        }
+
+        if (process.env.TELEGRAM_GROUP_CONTEXT === "true") {
+            return true;
+        }
+
+        return false;
+    }
+
     static get TELEGRAM_BOT_ADMIN(): number {
         if (!process.env.TELEGRAM_BOT_ADMIN) {
             return -1;

@@ -235,17 +235,22 @@ async function handleTelegramCommandMessage(user: HennosUser, msg: MessageWithTe
 }
 
 async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, msg: MessageWithText): Promise<void> {
-    // Check if the user @'d the bot in their message
-    if (!msg.text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
-        return;
-    }
-
-    Logger.trace(user, "text_group");
-
     if (!group.whitelisted && !user.whitelisted) {
         return;
     }
 
+    // Check if the user @'d the bot in their message
+    if (!msg.text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
+        if (Config.TELEGRAM_GROUP_CONTEXT) {
+            Logger.trace(user, "text_group_context");
+
+            // Update the chat context with the user's message without generating a response
+            return group.updateChatContext("user", `${user.displayName}: ${msg.text}`);
+        }
+        return;
+    }
+
+    Logger.trace(user, "text_group");
     // If the user did @ the bot, strip out that @ prefix before processing the message
     TelegramBotInstance.setTelegramIndicator(group, "typing");
     const response = await handleWhitelistedGroupMessage(user, group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));

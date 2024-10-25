@@ -56,7 +56,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
 
             Logger.info(req, `Ollama Completion Success, Resulted in ${response.eval_count} output tokens`);
             if (response.message.tool_calls && response.message.tool_calls.length > 0) {
-                Logger.info(req, `Ollama Completion Success, Resulted in ${response.message.tool_calls} Tool Calls`);
+                Logger.info(req, `Ollama Completion Success, Resulted in ${response.message.tool_calls.length} Tool Calls`);
                 const tool_calls = response.message.tool_calls.map((tool_call) => {
                     return [tool_call, {}] as [ToolCall, ToolCallMetadata];
                 });

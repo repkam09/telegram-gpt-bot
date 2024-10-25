@@ -101,7 +101,7 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
         };
     }
 
-    const response = await HennosOllamaSingleton.instance().completion(user, prompt, [
+    const response = await HennosOpenAISingleton.instance().completion(user, prompt, [
         {
             content: text,
             role: "user"
