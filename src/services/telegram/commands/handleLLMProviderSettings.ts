@@ -1,10 +1,10 @@
 import TelegramBot from "node-telegram-bot-api";
 import { TelegramBotInstance } from "../telegram";
 import { Logger } from "../../../singletons/logger";
-import { HennosUser } from "../../../singletons/user";
+import { HennosUser, ValidLLMProviders } from "../../../singletons/user";
 
 export async function handleLLMProviderSettingsCallback(user: HennosUser, queryId: string, data: string) {
-    const provider = data.replace("llm-settings-", "").trim();
+    const provider = data.replace("llm-settings-", "").trim() as ValidLLMProviders;
 
     const bot = TelegramBotInstance.instance();
     user.setPreferredProvider(provider).then(() => {
@@ -77,11 +77,11 @@ export async function handleAdminSetProviderCommand(user: HennosUser, text: stri
         if (parts[1]) {
             // Grab the provider name
             const validProviders = ["openai", "anthropic", "ollama"];
-            if (!validProviders.includes(parts[1])) {
+            if (!validProviders.includes(parts[1] as ValidLLMProviders)) {
                 return bot.sendMessage(user.chatId, `ChatId ${input} is a known user, but requested provider ${parts[1]} is invalid.`);
             }
 
-            await exists.setPreferredProvider(parts[1]);
+            await exists.setPreferredProvider(parts[1] as ValidLLMProviders);
             return bot.sendMessage(user.chatId, `ChatId ${input} has been configured to use ${parts[1]}.`);
         } else {
             const current = await exists.getPreferences();

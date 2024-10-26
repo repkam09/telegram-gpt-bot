@@ -3,7 +3,7 @@ import { Config } from "./config";
 import { ValidTTSNames } from "../handlers/voice";
 import { HennosConsumer } from "./base";
 
-type ValidLLMProviders = "openai" | "ollama" | "anthropic"
+export type ValidLLMProviders = "openai" | "ollama" | "anthropic" | "mock";
 
 export class HennosUser extends HennosConsumer {
     constructor(chatId: number) {
@@ -127,7 +127,7 @@ export class HennosUser extends HennosConsumer {
         });
     }
 
-    public async setPreferredProvider(provider: string): Promise<void> {
+    public async setPreferredProvider(provider: ValidLLMProviders): Promise<void> {
         await this.db.user.update({
             where: {
                 chatId: this.chatId

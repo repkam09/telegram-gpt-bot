@@ -36,6 +36,15 @@ model Messages {
   role     String
 }
 
+model Media {
+  id       Int      @id @default(autoincrement())
+  type     String
+  mimeType String
+  chatId   BigInt
+  local    String
+  datetime DateTime @default(now())
+}
+
 model Blacklist {
   chatId   BigInt   @id
   datetime DateTime @default(now())

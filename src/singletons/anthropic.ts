@@ -4,18 +4,23 @@ import { Config } from "./config";
 import { Anthropic } from "@anthropic-ai/sdk";
 import { HennosUser } from "./user";
 import { Message, ToolCall } from "ollama";
-import { MessageParam, TextBlock, Tool } from "@anthropic-ai/sdk/resources";
+import { ImageBlockParam, MessageParam, TextBlock, TextBlockParam, Tool } from "@anthropic-ai/sdk/resources";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
-import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
+import { HennosBaseProvider, HennosConsumer, HennosEncodedImage, HennosMediaRecord, HennosResponse } from "./base";
 import { ALL_AVAILABLE_ANTHROPIC_MODELS } from "llamaindex";
 import { availableTools, processToolCalls } from "../tools/tools";
+import { HennosMockSingleton } from "./mock";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;
 
     public static instance(): HennosBaseProvider {
+        if (Config.HENNOS_MOCK_PROVIDERS) {
+            return HennosMockSingleton.instance();
+        }
+        
         if (!HennosAnthropicSingleton._instance) {
             HennosAnthropicSingleton._instance = new HennosAnthropicProvider();
         }
@@ -57,6 +62,87 @@ function getAvailableTools(req: HennosConsumer): [
     return [tool_choice, converted];
 }
 
+type HennosMessageParam = {
+    content: Array<TextBlockParam | ImageBlockParam>;
+    role: "user" | "assistant";
+}
+
+export function convertMessages(messages: Message[]): Anthropic.Messages.MessageParam[] {
+    const converted: HennosMessageParam[] = [];
+    for (const message of messages) {
+        if (message.role === "system") {
+            // throw away system messages within the conversation for now
+        } else {
+            if (message.images && message.images.length > 0) {
+                const media: HennosMediaRecord = JSON.parse(message.content);
+                converted.push({
+                    role: "user",
+                    content: [
+                        {
+                            type: "image",
+                            source: {
+                                type: "base64",
+                                data: message.images[0] as HennosEncodedImage,
+                                media_type: media.mimeType as ImageBlockParam.Source["media_type"]
+                            }
+                        }
+                    ]
+                });
+            } else {
+                converted.push({
+                    role: message.role as MessageParam["role"],
+                    content: [
+                        {
+                            type: "text",
+                            text: message.content
+                        }
+                    ]
+                });
+            }
+        }
+    }
+
+    const result = converted.reduce(
+        (acc, current, index: number) => {
+            if (index === 0) {
+                acc.result.push(current);
+                acc.previous = current;
+                return acc;
+            }
+
+            if (acc.previous?.role === current.role) {
+                // If the roles are the same, combine the messages
+                acc.previous?.content.push(...current.content);
+                return acc;
+            }
+
+            if (acc.previous?.role === "user" && current.role === "assistant") {
+                // If the roles are different, add the new message to the result
+                acc.result.push(current);
+                acc.previous = current;
+                return acc;
+            }
+
+            if (acc.previous?.role === "assistant" && current.role === "user") {
+                // If the roles are different, add the new message to the result
+                acc.result.push(current);
+                acc.previous = current;
+                return acc;
+            }
+
+            return acc;
+        }, { result: [] as HennosMessageParam[], previous: undefined as HennosMessageParam | undefined });
+
+
+    // The first message must also be a user message...
+    if (result.result[0].role === "assistant") {
+        result.result.shift();
+    }
+
+    return result.result;
+}
+
+
 class HennosAnthropicProvider extends HennosBaseProvider {
     private anthropic: Anthropic;
 
@@ -73,46 +159,10 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
         const chat = await getSizedChatContext(req, system, complete, Config.ANTHROPIC_LLM.CTX);
 
-        const messages = chat.map(
-            (entry) => {
-                if (entry.role === "system") {
-                    // Anthropic doesn't support system messages in the middle of the conversation, so we need to convert them to assistant messages
-                    return {
-                        role: "assistant",
-                        content: `SYSTEM_CONTEXT: ${entry.content}`
-                    };
-                }
-                return entry;
-            }).filter(
-                (entry) => entry.role !== "system").reduce(
-                    (acc: MessageParam[], current: Message, index: number) => {
-                        if (index === 0) {
-                            return [current as MessageParam];
-                        }
+        const messages = convertMessages(chat);
 
-                        const previous = acc[acc.length - 1];
-
-                        if (previous.role === current.role) {
-                            // If the roles are the same, combine the messages
-                            previous.content += "\n" + current.content;
-                            return acc;
-                        } else if (
-                            (previous.role === "user" && current.role === "assistant") ||
-                            (previous.role === "assistant" && current.role === "user")
-                        ) {
-                            return [...acc, current as MessageParam];
-                        } else {
-                            return acc;
-                        }
-                    }, [] as MessageParam[]);
-
-        // The first message must also be a user message...
-        if (messages[0].role === "assistant") {
-            messages.shift();
-        }
         const combinedSystemPrompt = system.map((message) => message.content).join("\n");
         return this.completionWithRecursiveToolCalls(req, combinedSystemPrompt, messages, 0);
-
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number): Promise<HennosResponse> {

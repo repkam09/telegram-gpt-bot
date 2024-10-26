@@ -32,6 +32,16 @@ export class Config {
         return true;
     }
 
+    static _HENNOS_MOCK_PROVIDERS = false;
+    static get HENNOS_MOCK_PROVIDERS(): boolean {
+        return Config._HENNOS_MOCK_PROVIDERS;
+    }
+
+
+    static set HENNOS_MOCK_PROVIDERS(value: boolean) {
+        Config._HENNOS_MOCK_PROVIDERS = value;
+    }
+
     static get HENNOS_VERBOSE_LOGGING(): boolean {
         if (!process.env.HENNOS_VERBOSE_LOGGING) {
             return false;
@@ -126,7 +136,6 @@ export class Config {
 
         return process.env.OPENAI_BASE_URL;
     }
-
 
     static get OLLAMA_LLM_EMBED(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM_EMBED) {

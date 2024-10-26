@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createReadStream } from "node:fs";
 import { Config } from "./config";
@@ -5,10 +6,11 @@ import OpenAI, { OpenAIError } from "openai";
 import { HennosUser } from "./user";
 import { Message, Tool, ToolCall } from "ollama";
 import { Logger } from "./logger";
-import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
+import { ChatCompletionAssistantMessageParam, ChatCompletionContentPartImage, ChatCompletionUserMessageParam } from "openai/resources";
 import { getSizedChatContext } from "./context";
-import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
+import { HennosBaseProvider, HennosConsumer, HennosEncodedImage, HennosMediaRecord, HennosResponse } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
+import { HennosMockSingleton } from "./mock";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 
@@ -16,6 +18,10 @@ export class HennosOpenAISingleton {
     private static _instance: HennosBaseProvider | null = null;
 
     public static instance(): HennosBaseProvider {
+        if (Config.HENNOS_MOCK_PROVIDERS) {
+            return HennosMockSingleton.instance();
+        }
+
         if (!HennosOpenAISingleton._instance) {
             HennosOpenAISingleton._instance = new HennosOpenAIProvider();
         }
@@ -66,6 +72,33 @@ function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMe
     });
 }
 
+export function convertMessages(messages: Message[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    return messages.map((message) => {
+        if (message.images && message.images.length > 0) {
+            return {
+                role: "user",
+                content: [
+                    {
+                        type: "text",
+                        text: ""
+                    },
+                    {
+                        type: "image_url",
+                        image_url: {
+                            detail: "auto",
+                            url: message.images[0] as HennosEncodedImage
+                        }
+                    }
+                ]
+            };
+        }
+        return {
+            content: message.content,
+            role: message.role as MessageRoles,
+        };
+    });
+}
+
 export class HennosOpenAIProvider extends HennosBaseProvider {
     public openai: OpenAI;
 
@@ -83,10 +116,9 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
 
         const chat = await getSizedChatContext(req, system, complete, Config.OPENAI_LLM.CTX);
         const prompt = system.concat(chat);
-        const messages = prompt.map((message) => ({
-            content: message.content,
-            role: message.role as MessageRoles,
-        }));
+
+        const messages = convertMessages(prompt);
+
         return this.completionWithRecursiveToolCalls(req, messages, 0);
     }
 
@@ -159,50 +191,6 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 Logger.error(req, "OpenAI Error Response: ", err.message);
             }
 
-            throw err;
-        }
-    }
-
-    public async vision(req: HennosConsumer, prompt: Message, remote: string, mime: string): Promise<HennosResponse> {
-        Logger.info(req, `OpenAI Vision Completion Start (${Config.OPENAI_LLM_VISION.MODEL})`);
-        try {
-            const response = await this.openai.chat.completions.create({
-                stream: false,
-                model: Config.OPENAI_LLM_VISION.MODEL,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: prompt.content
-                            },
-                            {
-                                type: "image_url",
-                                image_url: {
-                                    detail: "auto",
-                                    url: remote
-                                }
-                            }]
-                    }
-                ]
-            });
-
-            Logger.info(req, `OpenAI Vision Completion Success, Resulted in ${response.usage?.completion_tokens} output tokens`);
-            if (!response.choices && !response.choices[0]) {
-                throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
-            }
-
-            if (!response.choices[0].message.content) {
-                throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Content");
-            }
-
-            return {
-                __type: "string",
-                payload: response.choices[0].message.content
-            };
-        } catch (err: unknown) {
-            Logger.info(req, "OpenAI Vision Completion Error: ", err);
             throw err;
         }
     }

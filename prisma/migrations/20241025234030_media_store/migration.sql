@@ -1,0 +1,9 @@
+-- CreateTable
+CREATE TABLE "Media" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "type" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "chatId" BIGINT NOT NULL,
+    "local" TEXT NOT NULL,
+    "datetime" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

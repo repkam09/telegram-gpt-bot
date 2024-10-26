@@ -1,19 +1,23 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Message, Ollama, ToolCall } from "ollama";
-import ffmpeg from "fluent-ffmpeg";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
-import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
+import { HennosBaseProvider, HennosConsumer, HennosEncodedImage, HennosResponse } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { ToolCallMetadata } from "../tools/BaseTool";
+import { HennosMockSingleton } from "./mock";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;
 
     public static instance(): HennosBaseProvider {
+        if (Config.HENNOS_MOCK_PROVIDERS) {
+            return HennosMockSingleton.instance();
+        }
+        
         if (!HennosOllamaSingleton._instance) {
             HennosOllamaSingleton._instance = new HennosOllamaProvider();
         }
@@ -35,7 +39,9 @@ class HennosOllamaProvider extends HennosBaseProvider {
     public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<HennosResponse> {
         Logger.info(req, `Ollama Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 
-        const chat = await getSizedChatContext(req, system, complete, Config.OLLAMA_LLM.CTX);
+        const messages: Message[] = convertMessages(complete);
+
+        const chat = await getSizedChatContext(req, system, messages, Config.OLLAMA_LLM.CTX);
         const prompt = system.concat(chat);
 
         return this.completionWithRecursiveToolCalls(req, prompt, 0);
@@ -69,7 +75,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
 
                 const results = await processToolCalls(req, tool_calls);
 
-                const shouldEmptyResponse = results.find(([_content, _metadata, type]) => type === "empty");
+                const shouldEmptyResponse = results.find((result) => result[2] === "empty");
                 if (shouldEmptyResponse) {
                     return {
                         __type: "empty"
@@ -97,30 +103,6 @@ class HennosOllamaProvider extends HennosBaseProvider {
         }
     }
 
-    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: string): Promise<HennosResponse> {
-        Logger.info(req, `Ollama Vision Completion Start (${Config.OLLAMA_LLM_VISION.MODEL})`);
-        try {
-            const response = await this.ollama.chat({
-                stream: false,
-                model: Config.OLLAMA_LLM_VISION.MODEL,
-                messages: [{
-                    role: prompt.role,
-                    content: prompt.content,
-                    images: [local]
-                }]
-            });
-
-            Logger.info(req, "Ollama Vision Completion Success");
-            return {
-                __type: "string",
-                payload: response.message.content
-            };
-        } catch (err: unknown) {
-            Logger.info(req, "Ollama Vision Completion Error: ", err);
-            throw err;
-        }
-    }
-
     public async moderation(req: HennosConsumer, input: string): Promise<boolean> {
         Logger.warn(req, "Ollama Moderation Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().moderation(req, input);
@@ -135,4 +117,25 @@ class HennosOllamaProvider extends HennosBaseProvider {
         Logger.warn(user, "Ollama Speech Start (OpenAI Fallback)");
         return HennosOpenAISingleton.instance().speech(user, input);
     }
+}
+
+export function convertMessages(messages: Message[]): Message[] {
+    return messages.map((message) => {
+        if (message.role === "user_image") {
+            return {
+                role: "user",
+                content: "",
+                images: [message.images![0] as HennosEncodedImage]
+            };
+        }
+
+        if (message.role === "assistant_image") {
+            return {
+                role: "assistant",
+                content: "",
+                images: [message.images![0] as HennosEncodedImage]
+            };
+        }
+        return message;
+    });
 }

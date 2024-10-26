@@ -5,6 +5,7 @@ import { HennosOllamaSingleton } from "../../singletons/ollama";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosAnthropicSingleton } from "../../singletons/anthropic";
 import { HennosResponse } from "../../singletons/base";
+import { HennosMockSingleton } from "../../singletons/mock";
 
 export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
     if (user.whitelisted) {
@@ -45,8 +46,15 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
                 return response;
             }
 
-            default: {
+            case "ollama": {
                 const response = await HennosOllamaSingleton.instance().completion(user, prompt, context);
+                await user.updateChatContext("user", text);
+                await user.updateChatContext("assistant", response);
+                return response;
+            }
+
+            default: {
+                const response = await HennosMockSingleton.instance().completion(user, prompt, context);
                 await user.updateChatContext("user", text);
                 await user.updateChatContext("assistant", response);
                 return response;

@@ -5,6 +5,7 @@ import { HennosUser } from "../singletons/user";
 import { HennosOllamaSingleton } from "../singletons/ollama";
 import { HennosAnthropicSingleton } from "../singletons/anthropic";
 import { HennosResponse } from "../singletons/base";
+import { HennosMockSingleton } from "../singletons/mock";
 
 export type ValidTTSNames = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
 
@@ -17,16 +18,17 @@ export async function handleVoiceMessage(user: HennosUser, path: string): Promis
             transcription = await HennosOpenAISingleton.instance().transcription(user, path);
         } else if (preferences.provider === "anthropic") {
             transcription = await HennosAnthropicSingleton.instance().transcription(user, path);
-        } else {
+        } else if (preferences.provider === "ollama") {
             transcription = await HennosOllamaSingleton.instance().transcription(user, path);
+        } else {
+            transcription = await HennosMockSingleton.instance().transcription(user, path);
         }
 
         if (transcription.__type === "string") {
-            const response = await handlePrivateMessage(user, transcription.payload, {
+            return handlePrivateMessage(user, transcription.payload, {
                 role: "system",
                 content: "The user sent their message via a voice recording. The voice recording has been transcribed into text for your convenience."
             });
-            return response;
         }
 
         return transcription;

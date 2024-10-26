@@ -6,8 +6,8 @@ export class Database {
     private static _prismaClient: PrismaClient;
     private static _qdrantClient: QdrantClient;
 
-    public static async init() {
-        this._prismaClient = new PrismaClient();
+    public static async init(client?: PrismaClient) {
+        this._prismaClient = client ? client : new PrismaClient();
         if (Config.QDRANT_ENABLED) {
             this._qdrantClient = new QdrantClient({ url: `http://${Config.QDRANT_HOST}:${Config.QDRANT_PORT}` });
         }

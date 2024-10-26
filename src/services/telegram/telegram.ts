@@ -323,12 +323,11 @@ async function handleTelegramPhotoMessage(req: HennosConsumer, msg: TelegramBot.
     });
 
     TelegramBotInstance.setTelegramIndicator(req, "upload_photo");
-    const tempFileUrl = await TelegramBotInstance.instance().getFileLink(largestImage.file_id);
     const tempFilePath = await TelegramBotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(req));
     const mime_type = mimetype.contentType(path.extname(tempFilePath));
 
     TelegramBotInstance.setTelegramIndicator(req, "typing");
-    const response = await handleImageMessage(req, { remote: tempFileUrl, local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
+    const response = await handleImageMessage(req, { local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
     return handleHennosResponse(req, response, {});
 }
 
