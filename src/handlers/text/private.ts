@@ -10,7 +10,7 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
     if (user.whitelisted) {
         return handleWhitelistedPrivateMessage(user, text, hint);
     } else {
-        return handleLimitedUserPrivateMessage(user, text);
+        return handleLimitedUserPrivateMessage(user, text, hint);
     }
 }
 
@@ -62,7 +62,7 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     }
 }
 
-async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): Promise<HennosResponse> {
+async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
     Logger.info(user, `Limited User Chat Completion Start, Text: ${text}`);
 
     const date = new Date().toUTCString();
@@ -75,7 +75,7 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
         },
         {
             role: "system",
-            content: "As a Telegram Bot, respond in concise paragraphs with double newlines to maintain readability on the platform."
+            content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms."
         },
         {
             role: "system",
@@ -99,6 +99,11 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
             __type: "error",
             payload: "Sorry, I can't help with that. You message appears to violate the moderation rules."
         };
+    }
+
+    // If a hint is provided, push it to the context right before the user message
+    if (hint) {
+        prompt.push(hint);
     }
 
     const response = await HennosOpenAISingleton.instance().completion(user, prompt, [
@@ -128,7 +133,7 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
         },
         {
             role: "system",
-            content: "As a Telegram Bot, respond in concise paragraphs with double newlines to maintain readability on the platform."
+            content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms."
         },
         {
             role: "system",

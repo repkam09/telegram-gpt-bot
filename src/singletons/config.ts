@@ -56,6 +56,41 @@ export class Config {
         return process.env.DISCORD_ENABLED === "true";
     }
 
+    static get TWITCH_ENABLED(): boolean {
+        if (!process.env.TWITCH_ENABLED) {
+            return true;
+        }
+
+        return process.env.TWITCH_ENABLED === "true";
+    }
+
+    static get TWITCH_BOT_TOKEN(): string {
+        if (!process.env.TWITCH_BOT_TOKEN) {
+            throw new Error("Missing TWITCH_BOT_TOKEN");
+        }
+
+        return process.env.TWITCH_BOT_TOKEN;
+    }
+
+    static get TWITCH_BOT_USERNAME(): string {
+        if (!process.env.TWITCH_BOT_USERNAME) {
+            throw new Error("Missing TWITCH_BOT_USERNAME");
+        }
+
+        return process.env.TWITCH_BOT_USERNAME;
+    }
+
+    static get TWITCH_JOIN_CHANNELS(): string[] {
+        if (!process.env.TWITCH_JOIN_CHANNELS) {
+            return [];
+        }
+
+        const value = process.env.TWITCH_JOIN_CHANNELS;
+        const array = value.split(",").map((channel) => channel.trim());
+        return array;
+    }
+
+
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
