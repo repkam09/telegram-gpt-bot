@@ -57,6 +57,18 @@ export class StoreKeyValueMemory extends BaseTool {
             }
 
             if (!args.value) {
+                const exists = await database.keyValueMemory.findUnique({
+                    where: {
+                        chatId_key: {
+                            chatId: req.chatId, key: args.key
+                        }
+                    }
+                });
+                
+                if (!exists) {
+                    return [`store_key_value_memory, success! key='${args.key}' does not exist in the database.`, metadata];
+                }
+
                 await database.keyValueMemory.delete({
                     where: {
                         chatId_key: {
