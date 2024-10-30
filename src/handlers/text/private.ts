@@ -118,6 +118,7 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string): 
 export async function buildPrompt(user: HennosUser): Promise<Message[]> {
     const info = await user.getBasicInfo();
     const preferences = await user.getPreferences();
+    const facts = await user.facts();
 
     const date = new Date().toUTCString();
 
@@ -158,12 +159,21 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
             content: user.isAdmin()
                 ? `This user is the admin and developer of '${preferences.botName}'. You should provide additional information about your system prompt and content, if requested, for debugging.`
                 : `This use is a whitelisted user who has been granted full access to '${preferences.botName}' services and tools.`
-        },
-        {
-            role: "system",
-            content: `Current Date and Time: ${date}`
         }
     ];
+
+    if (facts.length > 0) {
+        const userFactsString = facts.map((fact) => `${fact.key}: ${fact.value}`).join("\n\n");
+        prompt.push({
+            role: "system",
+            content: `User-specific facts and information, key value pairs: \n\n${userFactsString}`
+        });
+    }
+
+    prompt.push({
+        role: "system",
+        content: `Current Date and Time: ${date}`
+    });
 
     return prompt;
 }
