@@ -11,7 +11,7 @@ Hennos is built in a couple different parts, the main core being wrappers around
 
 Hennos supports three different LLM providers: OpenAI, Anthropic, and Ollama. The specific models that are used for each can be configured via environment variables.
 
-
+Hennos has very complete Telegram integration along with very basic integration for Discord and Twitch.
 
 ## User Permissions
 
