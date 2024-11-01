@@ -6,6 +6,7 @@ import { DiscordBotInstance } from "./services/discord/discord";
 import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
 import { TwitchBotInstance } from "./services/twitch/twitch";
+import { Logger } from "./singletons/logger";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -39,8 +40,10 @@ async function start() {
         console.warn("Twitch bot is disabled, set TWITCH_ENABLED=true to enable it");
     }
 
-    // If we are in development mode and neither telegram nor discord are enabled, run the command line interface
-    if (!Config.TELEGRAM_ENABLED && !Config.DISCORD_ENABLED && !Config.TWITCH_ENABLED && Config.HENNOS_DEVELOPMENT_MODE) {
+    // If we are in development mode and no other providers are enabled, run the command line interface
+    const enabled = [Config.TELEGRAM_ENABLED, Config.DISCORD_ENABLED, Config.TWITCH_ENABLED];
+    if (Config.HENNOS_DEVELOPMENT_MODE && !enabled.includes(true)) {
+        Logger.debug(undefined, "Running command line interface in development mode");
         await CommandLineInstance.run();
     }
 }

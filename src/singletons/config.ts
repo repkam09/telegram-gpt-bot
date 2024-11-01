@@ -42,7 +42,7 @@ export class Config {
 
     static get TELEGRAM_ENABLED(): boolean {
         if (!process.env.TELEGRAM_ENABLED) {
-            return true;
+            return false;
         }
 
         return process.env.TELEGRAM_ENABLED === "true";
@@ -50,7 +50,7 @@ export class Config {
 
     static get DISCORD_ENABLED(): boolean {
         if (!process.env.DISCORD_ENABLED) {
-            return true;
+            return false;
         }
 
         return process.env.DISCORD_ENABLED === "true";
@@ -58,7 +58,7 @@ export class Config {
 
     static get TWITCH_ENABLED(): boolean {
         if (!process.env.TWITCH_ENABLED) {
-            return true;
+            return false;
         }
 
         return process.env.TWITCH_ENABLED === "true";
