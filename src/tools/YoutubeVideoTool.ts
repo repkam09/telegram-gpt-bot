@@ -72,13 +72,13 @@ export async function extractSubtitles(videoId: string): Promise<string> {
 
     try {
         await fs.access(`${output}.en.srt`);
-        Logger.debug("extractSubtitles, already exists", { output: `${output}.en.srt` });
+        Logger.debug(undefined, "extractSubtitles, already exists", { output: `${output}.en.srt` });
         return `${output}.en.srt`;
     } catch (err) {
         // If the file does not exist, continue
     }
 
-    Logger.debug("extractSubtitles, downloading", { output: `${output}.en.srt` });
+    Logger.debug(undefined, "extractSubtitles, downloading", { output: `${output}.en.srt` });
     await BaseTool.exec(`yt-dlp --skip-download --write-auto-subs --write-subs --sub-lang en --convert-subs srt --output "${output}" https://youtu.be/${videoId}`);
     return `${output}.en.srt`;
 }

@@ -16,9 +16,13 @@ export class Logger {
         console.error(new Date().toISOString(), user.toString(), message, ...optionalParams);
     }
 
-    static debug(message?: any, ...optionalParams: any[]): void {
+    static debug(req: HennosConsumer | undefined, message?: any, ...optionalParams: any[]): void {
         if (Config.HENNOS_VERBOSE_LOGGING) {
-            console.log(new Date().toISOString(), "DEBUG:", message, ...optionalParams);
+            if (req) {
+                console.log(new Date().toISOString(), "DEBUG:", req.toString(), message, ...optionalParams);
+            } else {
+                console.log(new Date().toISOString(), "DEBUG:", message, ...optionalParams);
+            }
         }
     }
 

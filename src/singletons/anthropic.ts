@@ -30,18 +30,13 @@ function getAvailableTools(req: HennosConsumer): [
     Anthropic.Messages.MessageCreateParams.ToolChoiceAuto | undefined,
     Tool[] | undefined
 ] {
-    if (!req.whitelisted) {
-        Logger.debug(`Tools disabled for ${req.displayName} because they are not whitelisted`);
-        return [undefined, undefined];
-    }
-
     const tool_choice: Anthropic.Messages.MessageCreateParams.ToolChoiceAuto = {
         type: "auto"
     };
 
     const tools = availableTools(req);
     if (!tools) {
-        Logger.debug(`Tools disabled for ${req.displayName} because no tools are available`);
+        Logger.debug(req, `Tools disabled for ${req.displayName} because no tools are available`);
         return [undefined, undefined];
     }
 
@@ -53,7 +48,7 @@ function getAvailableTools(req: HennosConsumer): [
         }
     }));
 
-    Logger.debug(`Tools enabled for ${req.displayName}`);
+    Logger.debug(req, `Tools enabled for ${req.displayName}`);
     return [tool_choice, converted];
 }
 

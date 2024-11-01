@@ -9,7 +9,7 @@ import { handleVoiceMessage } from "../../handlers/voice";
 import { handleVoiceSettingsCallback } from "./commands/handleVoiceSettings";
 import { handleGeneralSettingsCallback } from "./commands/handleGeneralSettings";
 import { handlePrivateMessage } from "../../handlers/text/private";
-import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
+import { handleGroupMessage } from "../../handlers/text/group";
 import { handleCommandGroupMessage, handleCommandMessage } from "./commands";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
@@ -106,7 +106,7 @@ export class TelegramBotInstance {
 
         // @ts-expect-error - The Types are wrong for the bot instance, it does support setMessageReaction 
         TelegramBotInstance.instance().setMessageReaction(req.chatId, msg.message_id, options).then(() => {
-            Logger.debug(`Set reaction on Telegram message ${msg.message_id} for user ${req.displayName}`);
+            Logger.debug(req, `Set reaction on Telegram message ${msg.message_id}`);
         }).catch((err: unknown) => {
             Logger.error(req, `Error while setting reaction on Telegram message ${msg.message_id}: `, err);
         });
@@ -146,15 +146,9 @@ export class TelegramBotInstance {
                 }
 
                 // Check if this is a command sent in a group chat
-                if (msg.text.startsWith(`${Config.TELEGRAM_GROUP_PREFIX}/`)) {
+                if (hasGroupCommandPrefix(msg.text)) {
                     Logger.trace(user, `text_command: ${msg.text}`);
                     return handleTelegramCommandGroupMessage(user, group, msg as MessageWithText);
-                }
-
-                // If the user has experimental features enabled, also enable for the group request
-                if (user.experimental) {
-                    Logger.debug("User has experimental features enabled, enabling for group");
-                    group.experimental = true;
                 }
 
                 return handleTelegramGroupMessage(user, group, msg as MessageWithText);
@@ -225,9 +219,54 @@ export class TelegramBotInstance {
     }
 }
 
+function hasGroupPrefix(text: string) {
+    if (text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
+        Logger.debug(undefined, "hasGroupPrefix", { text, result: true });
+        return true;
+    }
+
+    if (text.startsWith(`@${Config.TELEGRAM_GROUP_PREFIX}`)) {
+        Logger.debug(undefined, "hasGroupPrefix", { text, result: true });
+        return true;
+    }
+
+    Logger.debug(undefined, "hasGroupPrefix", { text, result: false });
+    return false;
+}
+
+function hasGroupCommandPrefix(text: string) {
+    if (text.startsWith(`${Config.TELEGRAM_GROUP_PREFIX}/`)) {
+        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
+        return true;
+    }
+
+    if (text.startsWith(`@${Config.TELEGRAM_GROUP_PREFIX}/`)) {
+        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
+        return true;
+    }
+
+    if (text.startsWith(`${Config.TELEGRAM_GROUP_PREFIX} /`)) {
+        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
+        return true;
+    }
+
+    if (text.startsWith(`@${Config.TELEGRAM_GROUP_PREFIX} /`)) {
+        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
+        return true;
+    }
+
+    Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: false });
+    return false;
+}
+
+function stripGroupPrefix(text: string) {
+    const result = text.replace(new RegExp(`^@?${Config.TELEGRAM_GROUP_PREFIX}`, "i"), "").trim();
+    Logger.debug(undefined, "stripGroupPrefix", { text, result });
+    return result;
+}
+
 async function handleTelegramCommandGroupMessage(user: HennosUser, group: HennosGroup, msg: MessageWithText) {
-    const converted = msg.text.replace(`${Config.TELEGRAM_GROUP_PREFIX}`, "").trim();
-    return handleCommandGroupMessage(user, group, converted);
+    return handleCommandGroupMessage(user, group, stripGroupPrefix(msg.text));
 }
 
 async function handleTelegramCommandMessage(user: HennosUser, msg: MessageWithText) {
@@ -235,12 +274,14 @@ async function handleTelegramCommandMessage(user: HennosUser, msg: MessageWithTe
 }
 
 async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, msg: MessageWithText): Promise<void> {
-    if (!group.whitelisted && !user.whitelisted) {
-        return;
+    // If the user has experimental features enabled, also enable for the group request
+    if (user.experimental) {
+        Logger.debug(group, `User ${user.displayName} has experimental features enabled, enabling for group`);
+        group.experimental = true;
     }
 
     // Check if the user @'d the bot in their message
-    if (!msg.text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
+    if (!hasGroupPrefix(msg.text)) {
         if (Config.TELEGRAM_GROUP_CONTEXT) {
             Logger.trace(user, "text_group_context");
 
@@ -253,7 +294,8 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     Logger.trace(user, "text_group");
     // If the user did @ the bot, strip out that @ prefix before processing the message
     TelegramBotInstance.setTelegramIndicator(group, "typing");
-    const response = await handleWhitelistedGroupMessage(user, group, msg.text.replace(Config.TELEGRAM_GROUP_PREFIX, ""));
+
+    const response = await handleGroupMessage(user, group, stripGroupPrefix(msg.text));
     return handleHennosResponse(group, response, { reply_to_message_id: msg.message_id });
 }
 

@@ -42,7 +42,7 @@ export class SearXNGSearch extends BaseTool {
                 return [`searxng_web_search, query '${args.query}', returned no results`, metadata];
             }
 
-            Logger.debug("SearXNGSearch callback", { query: args.query, result_length: json.results.length });
+            Logger.debug(req, "SearXNGSearch callback", { query: args.query, result_length: json.results.length });
 
             const limited = json.results.slice(0, 8);
             const cleaned = limited.map((result) => ({

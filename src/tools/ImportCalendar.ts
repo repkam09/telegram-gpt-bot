@@ -60,13 +60,13 @@ export class ImportCalendar extends BaseTool {
 
 
 export async function handleCalendarImport(req: HennosConsumer, file: string): Promise<CalendarEvent[]> {
-    Logger.debug("handleCalendarImport", { file });
+    Logger.debug(req, "handleCalendarImport", { file });
     const events = ical.sync.parseFile(file);
 
     const result: CalendarEvent[] = [];
     for (const event of Object.values(events)) {
         if (event.type === "VEVENT") {
-            Logger.debug("handleCalendarImport, VEVENT", { summary: event.summary });
+            Logger.debug(req, "handleCalendarImport, VEVENT", { summary: event.summary });
             result.push({
                 summary: event.summary,
                 description: event.description,
@@ -75,12 +75,12 @@ export async function handleCalendarImport(req: HennosConsumer, file: string): P
                 location: event.location
             });
         } else {
-            Logger.debug("handleCalendarImport, skipping non-VEVENT", { type: event.type });
+            Logger.debug(req, "handleCalendarImport, skipping non-VEVENT", { type: event.type });
         }
     }
 
     const cleaned = result.reverse().slice(0, 10);
-    Logger.debug("handleCalendarImport, cleaned", { count: cleaned.length });
+    Logger.debug(req, "handleCalendarImport, cleaned", { count: cleaned.length });
     return cleaned;
 }
 
