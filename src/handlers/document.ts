@@ -117,12 +117,12 @@ export async function handleDocument(req: HennosConsumer, path: string, uuid: st
     const documents = await reader.loadData(path);
     const serviceContext = await buildServiceContext(req);
 
-    Logger.debug(`Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
+    Logger.debug(req, `Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
     const index = await SummaryIndex.fromDocuments(documents, {
         serviceContext
     });
 
-    Logger.debug(`Created a summary index from ${documents.length} documents at path: ${path} with UUID: ${uuid}.`);
+    Logger.debug(req, `Created a summary index from ${documents.length} documents at path: ${path} with UUID: ${uuid}.`);
     const queryEngine = index.asQueryEngine({
         responseSynthesizer: new ResponseSynthesizer({
             serviceContext
@@ -132,12 +132,12 @@ export async function handleDocument(req: HennosConsumer, path: string, uuid: st
         })
     });
 
-    Logger.debug(`Created a query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
+    Logger.debug(req, `Created a query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
     const response = await queryEngine.query({
         query: prompt ? prompt : "Can you provide a summary of this document?"
     });
 
-    Logger.debug(`Queried the query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
+    Logger.debug(req, `Queried the query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
     const summary = response.toString();
 
     Logger.info(req, `Completed processing document at path: ${path} with UUID: ${uuid}.`);

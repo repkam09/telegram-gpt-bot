@@ -80,6 +80,14 @@ export class Config {
         return process.env.TWITCH_BOT_USERNAME;
     }
 
+    static get TWITCH_BOT_ADMIN(): string {
+        if (!process.env.TWITCH_BOT_ADMIN) {
+            throw new Error("Missing TWITCH_BOT_ADMIN");
+        }
+
+        return process.env.TWITCH_BOT_ADMIN;
+    }
+
     static get TWITCH_JOIN_CHANNELS(): string[] {
         if (!process.env.TWITCH_JOIN_CHANNELS) {
             return [];

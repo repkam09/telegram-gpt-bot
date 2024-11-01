@@ -71,10 +71,10 @@ export abstract class BaseTool {
                 }
 
                 if (stderr) {
-                    Logger.debug("stderr", stderr);
+                    Logger.debug(undefined, "stderr", stderr);
                 }
 
-                Logger.debug("stdout", stdout);
+                Logger.debug(undefined, "stdout", stdout);
                 return resolve(stdout);
             });
         });

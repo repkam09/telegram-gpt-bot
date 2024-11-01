@@ -42,7 +42,7 @@ export class DailyReport extends Job {
 
         const result = await HennosOpenAISingleton.instance().completion(user, prompt, context);
 
-        Logger.debug(`Finished Daily Report for ${user.displayName}: \n ${result}`);
+        Logger.debug(user, `Finished Daily Report for ${user.displayName}: \n ${result}`);
 
         if (!Config.HENNOS_DEVELOPMENT_MODE) {
             await user.updateChatContext("system", "The Hennos Daily Report is a scheduled task that runs every day and is triggered by this automated message. " +

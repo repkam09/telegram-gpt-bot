@@ -10,11 +10,17 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
     if (user.whitelisted) {
         return handleWhitelistedPrivateMessage(user, text, hint);
     } else {
-        return handleLimitedUserPrivateMessage(user, text, hint);
+        return handleLimitedUserPrivateMessage(user, text, true, hint);
     }
 }
 
+export async function handleOneOffPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
+    return handleLimitedUserPrivateMessage(user, text, false, hint);
+}
+
 async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
+    Logger.debug(user, `Whitelisted User Chat Completion Start, Text: ${text}`);
+
     const prompt = await buildPrompt(user);
     const context = await user.getChatContext();
 
@@ -62,7 +68,7 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     }
 }
 
-async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
+async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, context: boolean, hint?: Message): Promise<HennosResponse> {
     Logger.info(user, `Limited User Chat Completion Start, Text: ${text}`);
 
     const date = new Date().toUTCString();
@@ -76,6 +82,19 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, h
         {
             role: "system",
             content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms."
+        },
+        {
+            role: "system",
+            content: [
+                "To ensure responses are accurate and relevant, utilize tool calls as follows:",
+                "- **Proactive Usage**: Check for relevant functions/tools to provide precise information.",
+                "- **Mandatory Scenarios**: Prioritize tool calls in time-sensitive or complex situations.",
+                "- **Confidence Threshold**: Execute tool calls when confidence in your response is low.",
+                "- **Continuous Evaluation**: Reassess the data post-tool call for inaccuracies.",
+                "- **User-Centric Focus**: Tailor responses by leveraging tool calls effectively.",
+                "- **Learning from Outcomes**: Integrate previous outcomes into future interactions for accuracy.",
+                "By prioritizing tool usage, enhance the user assistance consistently."
+            ].join("\n")
         },
         {
             role: "system",
@@ -93,8 +112,11 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, h
 
     const flagged = await HennosOpenAISingleton.instance().moderation(user, text);
     if (flagged) {
-        await user.updateChatContext("user", text);
-        await user.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
+        if (context) {
+            await user.updateChatContext("user", text);
+            await user.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
+        }
+
         return {
             __type: "error",
             payload: "Sorry, I can't help with that. You message appears to violate the moderation rules."
@@ -113,8 +135,10 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, h
         }
     ]);
 
-    await user.updateChatContext("user", text);
-    await user.updateChatContext("assistant", response);
+    if (context) {
+        await user.updateChatContext("user", text);
+        await user.updateChatContext("assistant", response);
+    }
 
     Logger.info(user, `Limited User Chat Completion Success, Response: ${JSON.stringify(response)}`);
     return response;

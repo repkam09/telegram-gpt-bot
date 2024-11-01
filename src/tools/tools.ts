@@ -63,7 +63,7 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
         });
     }
 
-    Logger.debug(`Tools allowed for ${req.displayName}, there are ${tools.length} tools available: ${tools.map((tool) => tool.function.name).join(", ")}`);
+    Logger.debug(req, `Tools allowed for ${req.displayName}, there are ${tools.length} tools available: ${tools.map((tool) => tool.function.name).join(", ")}`);
     return tools.length > 0 ? tools : undefined;
 }
 
@@ -73,7 +73,7 @@ export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCal
             const ToolMatch = [...PUBLIC_TOOLS, ...WHITELIST_TOOLS, ...EXPERIMENTAL_AVAILABLE_TOOLS].find((Tool) => Tool.definition().function.name === tool_call.function.name);
             if (!ToolMatch) {
                 Logger.info(req, `Unknown tool call: ${tool_call.function.name}`);
-                Logger.debug(`Unknown tool call: ${tool_call.function.name} with args: ${JSON.stringify(tool_call.function.arguments)}`);
+                Logger.debug(req, `Unknown tool call: ${tool_call.function.name} with args: ${JSON.stringify(tool_call.function.arguments)}`);
                 return [`Unknown tool call: ${tool_call.function.name}`, metadata] as [string, ToolCallMetadata];
             }
 

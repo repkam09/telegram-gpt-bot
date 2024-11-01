@@ -49,7 +49,7 @@ export class WolframAlpha extends BaseTool {
 
         try {
             const response = await BaseTool.fetchTextData(`https://www.wolframalpha.com/api/v1/llm-api?appid=${process.env.WOLFRAM_ALPHA_APP_ID}&maxchars=4096&input=${encodeURI(args.input)}`);
-            Logger.debug("WolframAlpha callback", { input: args.input, response_length: response.length });
+            Logger.debug(req, "WolframAlpha callback", { input: args.input, response_length: response.length });
             return [`wolfram_alpha, input '${args.input}', returned the following response: ${response}`, metadata];
         } catch (err) {
             const error = err as Error;

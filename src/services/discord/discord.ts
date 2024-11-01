@@ -2,7 +2,7 @@ import { ChannelType, Client, Events, GatewayIntentBits, Partials } from "discor
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { handlePrivateMessage } from "../../handlers/text/private";
-import { handleWhitelistedGroupMessage } from "../../handlers/text/group";
+import { handleGroupMessage } from "../../handlers/text/group";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
 import { HennosConsumer, HennosResponse } from "../../singletons/base";
@@ -34,7 +34,7 @@ export class DiscordBotInstance {
 
                     client.once(Events.ClientReady, readyClient => {
                         if (DiscordBotInstance._hasCompletedInit) {
-                            Logger.debug("Discord Client has already completed initialization.");
+                            Logger.debug(undefined, "Discord Client has already completed initialization.");
                             return;
                         }
                         DiscordBotInstance._hasCompletedInit = true;
@@ -44,7 +44,7 @@ export class DiscordBotInstance {
 
                             // Right now only let the admin send messages to the bot
                             if (Number(message.author.id) !== Config.DISCORD_BOT_ADMIN) {
-                                Logger.debug(`Ignoring discord message from non-admin user ${message.author.tag} (${message.author.id})`);
+                                Logger.debug(undefined, `Ignoring discord message from non-admin user ${message.author.tag} (${message.author.id})`);
                                 return;
                             }
 
@@ -77,7 +77,7 @@ export class DiscordBotInstance {
                                 }
 
                                 try {
-                                    const response = await handleWhitelistedGroupMessage(user, group, message.content);
+                                    const response = await handleGroupMessage(user, group, message.content);
                                     await handleHennosResponse(response, message.channel);
                                 } catch (err: unknown) {
                                     const error = err as Error;

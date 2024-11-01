@@ -27,11 +27,6 @@ function getAvailableTools(req: HennosConsumer): [
     OpenAI.Chat.Completions.ChatCompletionToolChoiceOption | undefined,
     OpenAI.Chat.Completions.ChatCompletionTool[] | undefined
 ] {
-    if (!req.whitelisted) {
-        return [undefined, undefined];
-    }
-
-    const tool_choice = req.whitelisted ? "auto" : "none";
     const tools = availableTools(req);
 
     if (!tools) {
@@ -43,7 +38,7 @@ function getAvailableTools(req: HennosConsumer): [
         function: tool.function
     }));
 
-    return [tool_choice, converted];
+    return ["auto", converted];
 }
 
 function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]): [ToolCall, OpenAI.Chat.Completions.ChatCompletionMessageToolCall][] {
@@ -135,6 +130,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
 
                 const shouldEmptyResponse = additional.find(([_content, _metadata, type]) => type === "empty");
                 if (shouldEmptyResponse) {
+                    Logger.debug(req, "OpenAI Completion Requested Empty Response, Stopping Processing");
                     return {
                         __type: "empty"
                     };
