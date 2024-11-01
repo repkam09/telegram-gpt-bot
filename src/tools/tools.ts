@@ -14,19 +14,21 @@ import { WolframAlpha } from "./WolframAlpha";
 import { LastFMTool } from "./LastFMTool";
 import { TheMovieDBTool } from "./TheMovieDBTool";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
+import { StoreKeyValueMemory } from "./UserFactsTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
-    QueryWebpageContent,
-    MetaFeatureRequest,
-    MetaBugReport
+    QueryWebpageContent
 ];
 
 const WHITELIST_TOOLS = [
+    MetaFeatureRequest,
+    MetaBugReport,
     OpenWeatherMapLookupTool,
     TheNewsAPITool,
     LastFMTool,
-    TheMovieDBTool
+    TheMovieDBTool,
+    StoreKeyValueMemory
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [

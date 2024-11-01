@@ -54,6 +54,20 @@ export abstract class HennosConsumer {
         return `${this.displayName} ${String(this.chatId)}`;
     }
 
+    public async facts(): Promise<{ key: string, value: string }[]> {
+        const result = await this.db.keyValueMemory.findMany({
+            where: {
+                chatId: this.chatId
+            },
+            select: {
+                key: true,
+                value: true
+            }
+        });
+
+        return result;
+    }
+
     public async updateChatContext(role: "user" | "assistant" | "system", content: string | HennosResponse): Promise<void> {
         if (Config.QDRANT_ENABLED) {
             const collection = await Database.vector().collectionExists(String(this.chatId));
