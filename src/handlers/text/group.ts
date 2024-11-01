@@ -63,8 +63,8 @@ async function handleLimitedGroupMessage(user: HennosUser, group: HennosGroup, c
     const flagged = await HennosOpenAISingleton.instance().moderation(user, text);
     if (flagged) {
         if (context) {
-            await user.updateChatContext("user", text);
-            await user.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
+            await group.updateChatContext("user", text);
+            await group.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
         }
 
         return {
