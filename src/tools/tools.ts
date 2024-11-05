@@ -15,6 +15,7 @@ import { LastFMTool } from "./LastFMTool";
 import { TheMovieDBTool } from "./TheMovieDBTool";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { StoreKeyValueMemory } from "./UserFactsTool";
+import { ElectionResultsTool } from "./ElectionResultsTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -28,7 +29,8 @@ const WHITELIST_TOOLS = [
     TheNewsAPITool,
     LastFMTool,
     TheMovieDBTool,
-    StoreKeyValueMemory
+    StoreKeyValueMemory,
+    ElectionResultsTool
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
