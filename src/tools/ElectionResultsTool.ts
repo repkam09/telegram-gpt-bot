@@ -76,6 +76,8 @@ export class ElectionResultsTool extends BaseTool {
                 return acc;
             }, {});
 
+            const bopDataBar = result.bopData.bar;
+
             const response = {
                 "electionType": "general",
                 "electionSeason": "2024",
@@ -83,7 +85,19 @@ export class ElectionResultsTool extends BaseTool {
                 "electionDate": result.electionDate,
                 "lastModified": result.lastModified,
                 "lastModifiedFormatted": result.lastModifiedFormatted,
-                states: mapData
+                states: mapData,
+                national: {
+                    dem: {
+                        "name": bopDataBar.dem.name,
+                        total: bopDataBar.dem.total,
+                        isWinner: bopDataBar.dem.isWinner,
+                    },
+                    rep: {
+                        "name": bopDataBar.rep.name,
+                        total: bopDataBar.rep.total,
+                        isWinner: bopDataBar.rep.isWinner,
+                    }
+                }
             };
 
             return [`election_results: ${JSON.stringify(response)}.`, metadata];
