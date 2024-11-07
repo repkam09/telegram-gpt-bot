@@ -383,7 +383,12 @@ export async function handleHennosResponse(req: HennosConsumer, response: Hennos
         }
 
         case "arraybuffer": {
-            await TelegramBotInstance.sendVoiceMemoWrapper(req, Buffer.from(response.payload));
+            try {
+                await TelegramBotInstance.sendVoiceMemoWrapper(req, Buffer.from(response.payload));
+            } catch (err) {
+                const error = err as Error;
+                Logger.warn(req, "Unable to send voice memo.", error.message);
+            }
         }
     }
 }
