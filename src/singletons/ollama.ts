@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Message, Ollama, ToolCall } from "ollama";
-import ffmpeg from "fluent-ffmpeg";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
-import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
+import { HennosBaseProvider, HennosConsumer } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { ToolCallMetadata } from "../tools/BaseTool";
+import { HennosImage, HennosMessage, HennosMessageRole, HennosResponse, HennosTextMessage } from "../types";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -19,6 +19,30 @@ export class HennosOllamaSingleton {
         }
         return HennosOllamaSingleton._instance;
     }
+}
+
+function convertHennosMessages(messages: HennosMessage[]): Message[] {
+    return messages.reduce((acc, val) => {
+        if (val.type === "text") {
+            acc.push({
+                role: val.role,
+                content: val.content
+            });
+        }
+
+        if (val.type === "image") {
+            // Image messages are not supported by Ollama
+            // until llama3.2-vision is better supported.
+
+            // acc.push({
+            //     role: val.role,
+            //     content: "",
+            //     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            //     images: [val.image!.local]
+            // });
+        }
+        return acc;
+    }, [] as Message[]);
 }
 
 class HennosOllamaProvider extends HennosBaseProvider {
@@ -32,13 +56,14 @@ class HennosOllamaProvider extends HennosBaseProvider {
         });
     }
 
-    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<HennosResponse> {
+    public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `Ollama Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OLLAMA_LLM.CTX);
         const prompt = system.concat(chat);
 
-        return this.completionWithRecursiveToolCalls(req, prompt, 0);
+        const converted = convertHennosMessages(prompt);
+        return this.completionWithRecursiveToolCalls(req, converted, 0);
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: Message[], depth: number): Promise<HennosResponse> {
@@ -93,30 +118,6 @@ class HennosOllamaProvider extends HennosBaseProvider {
             };
         } catch (err: unknown) {
             Logger.info(req, "Ollama Completion Error: ", err);
-            throw err;
-        }
-    }
-
-    public async vision(req: HennosConsumer, prompt: Message, local: string, mime: string): Promise<HennosResponse> {
-        Logger.info(req, `Ollama Vision Completion Start (${Config.OLLAMA_LLM_VISION.MODEL})`);
-        try {
-            const response = await this.ollama.chat({
-                stream: false,
-                model: Config.OLLAMA_LLM_VISION.MODEL,
-                messages: [{
-                    role: prompt.role,
-                    content: prompt.content,
-                    images: [local]
-                }]
-            });
-
-            Logger.info(req, "Ollama Vision Completion Success");
-            return {
-                __type: "string",
-                payload: response.message.content
-            };
-        } catch (err: unknown) {
-            Logger.info(req, "Ollama Vision Completion Error: ", err);
             throw err;
         }
     }

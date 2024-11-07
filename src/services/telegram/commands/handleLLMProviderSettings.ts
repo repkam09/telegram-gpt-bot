@@ -2,12 +2,13 @@ import TelegramBot from "node-telegram-bot-api";
 import { TelegramBotInstance } from "../telegram";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
+import { ValidLLMProvider, ValidLLMProviders } from "../../../types";
 
 export async function handleLLMProviderSettingsCallback(user: HennosUser, queryId: string, data: string) {
     const provider = data.replace("llm-settings-", "").trim();
 
     const bot = TelegramBotInstance.instance();
-    user.setPreferredProvider(provider).then(() => {
+    user.setPreferredProvider(provider as ValidLLMProvider).then(() => {
         bot.answerCallbackQuery(queryId, {
             text: "Future messages will be powered by " + provider + "."
         });
@@ -76,20 +77,17 @@ export async function handleAdminSetProviderCommand(user: HennosUser, text: stri
 
         if (parts[1]) {
             // Grab the provider name
-            const validProviders = ["openai", "anthropic", "ollama"];
-            if (!validProviders.includes(parts[1])) {
+            if (!ValidLLMProviders.includes(parts[1] as ValidLLMProvider)) {
                 return bot.sendMessage(user.chatId, `ChatId ${input} is a known user, but requested provider ${parts[1]} is invalid.`);
             }
 
-            await exists.setPreferredProvider(parts[1]);
+            await exists.setPreferredProvider(parts[1] as ValidLLMProvider);
             return bot.sendMessage(user.chatId, `ChatId ${input} has been configured to use ${parts[1]}.`);
         } else {
-            const current = await exists.getPreferences();
-            return bot.sendMessage(user.chatId, `ChatId ${input} has been configured to use ${current.provider}.`);
+            return bot.sendMessage(user.chatId, `ChatId ${input} has been configured to use ${exists.provider}.`);
         }
     } else {
-        const preferences = await user.getPreferences();
-        return bot.sendMessage(user.chatId, `You are configured to use ${preferences.provider}.`);
+        return bot.sendMessage(user.chatId, `You are configured to use ${user.provider}.`);
     }
 }
 

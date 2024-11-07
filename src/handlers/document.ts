@@ -16,7 +16,6 @@ import {
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
-import { ValidAnthropicModels } from "../singletons/anthropic";
 import { HennosConsumer } from "../singletons/base";
 import { HennosGroup } from "../singletons/group";
 
@@ -40,13 +39,7 @@ export async function handleDocumentMessage(req: HennosConsumer, path: string, f
 }
 
 async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext> {
-    let provider = "openai";
-    if (req instanceof HennosUser) {
-        const preferences = await req.getPreferences();
-        provider = preferences.provider;
-    }
-
-    if (provider === "ollama") {
+    if (req.provider === "ollama") {
         Logger.info(req, "Creating an Ollama service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new Ollama({
@@ -71,7 +64,7 @@ async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext>
         return serviceContext;
     }
 
-    if (provider === "openai") {
+    if (req.provider === "openai") {
         Logger.info(req, "Creating an OpenAI service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new OpenAI({
@@ -90,11 +83,11 @@ async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext>
         return serviceContext;
     }
 
-    if (provider === "anthropic") {
+    if (req.provider === "anthropic") {
         Logger.info(req, "Creating an Anthropic service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
             llm: new Anthropic({
-                model: Config.ANTHROPIC_LLM.MODEL as ValidAnthropicModels,
+                model: Config.ANTHROPIC_LLM.MODEL,
                 apiKey: Config.ANTHROPIC_API_KEY,
             }),
             embedModel: new OpenAIEmbedding({
@@ -108,7 +101,7 @@ async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext>
         });
         return serviceContext;
     }
-    throw new Error(`Invalid LLM provider for ${req.displayName} with value ${provider}`);
+    throw new Error(`Invalid LLM provider for ${req.displayName} with value ${req.provider}`);
 }
 
 export async function handleDocument(req: HennosConsumer, path: string, uuid: string, reader: BaseReader, prompt?: string): Promise<string> {

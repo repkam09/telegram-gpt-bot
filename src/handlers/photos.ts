@@ -1,54 +1,26 @@
-import { HennosAnthropicSingleton } from "../singletons/anthropic";
-import { HennosConsumer, HennosResponse } from "../singletons/base";
-import { HennosGroup } from "../singletons/group";
-import { HennosOllamaSingleton } from "../singletons/ollama";
-import { HennosOpenAISingleton } from "../singletons/openai";
+import fs from "fs/promises";
 import { HennosUser } from "../singletons/user";
+import { HennosImage, HennosResponse } from "../types";
+import { handlePrivateMessage } from "./text/private";
+import { Logger } from "../singletons/logger";
 
-type ImagePaths = {
-    local: string,
-    remote: string,
-    mime: string
+export async function handleImageMessage(req: HennosUser, image: HennosImage, caption?: string): Promise<HennosResponse> {
+    Logger.debug(req, `Processing image input: ${image.local} with ${caption ? "caption: " + caption : "no caption"}`);
+    await req.updateChatImageContext("user", image);
+    if (caption) {
+        return handlePrivateMessage(req, caption);
+    }
+
+    return {
+        __type: "empty"
+    };
 }
 
-export async function handleImageMessage(req: HennosConsumer, image: ImagePaths, query?: string): Promise<HennosResponse> {
-    if (req instanceof HennosGroup) {
-        return {
-            __type: "error",
-            payload: "Image processing is not supported for groups at this time."
-        };
-    }
 
-    const user = req as HennosUser;
-    const preferences = await user.getPreferences();
-
-    let completion: HennosResponse;
-    if (preferences.provider === "openai") {
-        completion = await HennosOpenAISingleton.instance().vision(user, {
-            role: "user",
-            content: query ? query : "Describe this image in as much detail as possible."
-        }, image.remote, image.mime);
-    } else if (preferences.provider === "anthropic") {
-        completion = await HennosAnthropicSingleton.instance().vision(user, {
-            role: "user",
-            content: query ? query : "Describe this image in as much detail as possible."
-        }, image.local, image.mime as "image/jpeg" | "image/png" | "image/gif" | "image/webp");
-    } else {
-        completion = await HennosOllamaSingleton.instance().vision(user, {
-            role: "user",
-            content: query ? query : "Describe this image in as much detail as possible."
-        }, image.local, image.mime);
-    }
-
-    await user.updateChatContext("user", "<metadata>The user sent an image message that was handled by a vision processing system.</metadata>");
-    if (query) {
-        await user.updateChatContext("user", query);
-        await user.updateChatContext("assistant", completion);
-    }
-
-    if (!query) {
-        await user.updateChatContext("user", `<metadata>Here is a description of the image: ${completion}</metadata>`);
-    }
-
-    return completion;
+export async function loadHennosImage(image: HennosImage): Promise<string> {
+    Logger.debug(undefined, `Loading image from ${image.local} Start`);
+    const raw = await fs.readFile(image.local);
+    const data = Buffer.from(raw).toString("base64");
+    Logger.debug(undefined, `Loading image from ${image.local} Finish: ${data.length} bytes`);
+    return data;
 }

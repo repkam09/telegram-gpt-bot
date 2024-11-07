@@ -31,12 +31,14 @@ export class DailyReport extends Job {
             {
                 role: "system",
                 content: "The Hennos Daily Report is a scheduled task that runs every day and is triggered by this automated message. " +
-                    "Please answer the following request to the best of your ability, making use of the information available to you via your own knowledge and available Tool calls."
+                    "Please answer the following request to the best of your ability, making use of the information available to you via your own knowledge and available Tool calls.",
+                type: "text"
             },
             {
                 role: "user",
                 content: "Could you please provide me with a few paragraphs of a daily brief that includes the weather, if my location is available, and the top news headlines for today?" +
-                    "If there is any other potentially relevant information from our chat history, please remind me of that as well."
+                    "If there is any other potentially relevant information from our chat history, please remind me of that as well.",
+                type: "text"
             }
         );
 

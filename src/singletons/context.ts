@@ -1,9 +1,9 @@
 import { encoding_for_model } from "tiktoken";
-import { Message } from "ollama";
 import { Logger } from "./logger";
 import { HennosConsumer } from "./base";
+import { HennosMessage } from "../types";
 
-export async function getSizedChatContext(req: HennosConsumer, prompt: Message[], currentChatContext: Message[], limit: number): Promise<Message[]> {
+export async function getSizedChatContext(req: HennosConsumer, prompt: HennosMessage[], currentChatContext: HennosMessage[], limit: number): Promise<HennosMessage[]> {
     const promptTokens = getChatContextTokenCount(prompt);
     let totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
     while (totalTokens > limit) {
@@ -12,6 +12,7 @@ export async function getSizedChatContext(req: HennosConsumer, prompt: Message[]
             throw new Error("Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
         }
 
+        Logger.debug(req, `getSizedChatContext removing message from context, current total tokens: ${totalTokens}`);
         currentChatContext.shift();
         totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
     }
@@ -20,16 +21,20 @@ export async function getSizedChatContext(req: HennosConsumer, prompt: Message[]
     return currentChatContext;
 }
 
-function getChatContextTokenCount(context: Message[]): number {
-    const encoder = encoding_for_model("gpt-3.5-turbo");
-    const total = context.reduce((acc, val) => {
-        if (!val || !val.content || typeof val.content !== "string") {
-            Logger.debug(undefined, `getChatContextTokenCount encountered an invalid message, skipping. ${val}`);
-            return acc;
+function getChatContextTokenCount(context: HennosMessage[]): number {
+    const encoder = encoding_for_model("gpt-4o-mini");
+    const total = context.reduce((acc: number, val: HennosMessage) => {
+        if (val.type === "text") {
+            const tokens = encoder.encode(val.content).length;
+            return acc + tokens;
         }
 
-        const tokens = encoder.encode(val.content).length;
-        return acc + tokens;
+        if (val.type === "image") {
+            const tokens = 512; // This is a horrible hack
+            return acc + tokens;
+        }
+        return acc;
+
     }, 0);
 
     encoder.free();

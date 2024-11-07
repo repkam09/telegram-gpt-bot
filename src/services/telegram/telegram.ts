@@ -15,9 +15,10 @@ import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
 import path from "node:path";
-import { HennosConsumer, HennosResponse } from "../../singletons/base";
+import { HennosConsumer } from "../../singletons/base";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { handleCalendarImport } from "../../tools/ImportCalendar";
+import { HennosResponse } from "../../types";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -334,13 +335,7 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
     PendingChatTimerMap.set(user.chatId, timeout);
 }
 
-async function handleTelegramVoiceMessage(req: HennosConsumer, msg: TelegramBot.Message & { voice: TelegramBot.Voice }) {
-    if (req instanceof HennosGroup) {
-        return TelegramBotInstance.sendMessageWrapper(req, "Voice messages are not supported for groups at this time.");
-    }
-
-    const user = req as HennosUser;
-
+async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Message & { voice: TelegramBot.Voice }) {
     TelegramBotInstance.setTelegramIndicator(user, "typing");
     const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
     const response1 = await handleVoiceMessage(user, tempFilePath);
@@ -359,19 +354,18 @@ async function handleTelegramVoiceMessage(req: HennosConsumer, msg: TelegramBot.
     return handleHennosResponse(user, response1, {});
 }
 
-async function handleTelegramPhotoMessage(req: HennosConsumer, msg: TelegramBot.Message & { photo: TelegramBot.PhotoSize[] }) {
+async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Message & { photo: TelegramBot.PhotoSize[] }) {
     const largestImage = msg.photo.reduce((max, obj) => {
         return (obj.width * obj.height > max.width * max.height) ? obj : max;
     });
 
-    TelegramBotInstance.setTelegramIndicator(req, "upload_photo");
-    const tempFileUrl = await TelegramBotInstance.instance().getFileLink(largestImage.file_id);
-    const tempFilePath = await TelegramBotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(req));
+    TelegramBotInstance.setTelegramIndicator(user, "upload_photo");
+    const tempFilePath = await TelegramBotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(user));
     const mime_type = mimetype.contentType(path.extname(tempFilePath));
 
-    TelegramBotInstance.setTelegramIndicator(req, "typing");
-    const response = await handleImageMessage(req, { remote: tempFileUrl, local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
-    return handleHennosResponse(req, response, {});
+    TelegramBotInstance.setTelegramIndicator(user, "typing");
+    const response = await handleImageMessage(user, { local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
+    return handleHennosResponse(user, response, {});
 }
 
 export async function handleHennosResponse(req: HennosConsumer, response: HennosResponse, options: TelegramBot.SendMessageOptions): Promise<void> {
@@ -394,26 +388,22 @@ export async function handleHennosResponse(req: HennosConsumer, response: Hennos
     }
 }
 
-async function handleTelegramLocationMessage(req: HennosConsumer, msg: TelegramBot.Message & { location: TelegramBot.Location }) {
-    if (req instanceof HennosGroup) {
-        return TelegramBotInstance.sendMessageWrapper(req, "Location sharing is not supported for groups at this time.");
-    }
-    const user = req as HennosUser;
-    TelegramBotInstance.setTelegramIndicator(req, "find_location");
+async function handleTelegramLocationMessage(user: HennosUser, msg: TelegramBot.Message & { location: TelegramBot.Location }) {
+    TelegramBotInstance.setTelegramIndicator(user, "find_location");
     await user.updateLocation(msg.location.latitude, msg.location.longitude);
     return TelegramBotInstance.sendMessageWrapper(user, "Location information updated.");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function handleTelegramAudioMessage(req: HennosConsumer, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
-    TelegramBotInstance.setTelegramIndicator(req, "typing");
-    return TelegramBotInstance.sendMessageWrapper(req, "Error: Audio messages are not yet supported");
+async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
+    TelegramBotInstance.setTelegramIndicator(user, "typing");
+    return TelegramBotInstance.sendMessageWrapper(user, "Error: Audio messages are not yet supported");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function handleTelegramContactMessage(req: HennosConsumer, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
-    TelegramBotInstance.setTelegramIndicator(req, "typing");
-    return TelegramBotInstance.sendMessageWrapper(req, "Error: Contacts are not supported yet.");
+async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.Message & { contact: TelegramBot.Contact }) {
+    TelegramBotInstance.setTelegramIndicator(user, "typing");
+    return TelegramBotInstance.sendMessageWrapper(user, "Error: Contacts are not supported yet.");
 }
 
 async function handleTelegramCalendarMessage(req: HennosConsumer, file: string) {
@@ -432,22 +422,22 @@ async function handleTelegramCalendarMessage(req: HennosConsumer, file: string) 
     }
 }
 
-async function handleTelegramDocumentMessage(req: HennosConsumer, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
-    TelegramBotInstance.setTelegramMessageReact(req, msg, "👀");
-    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.document.file_id, Config.LOCAL_STORAGE(req));
+async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
+    TelegramBotInstance.setTelegramMessageReact(user, msg, "👀");
+    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.document.file_id, Config.LOCAL_STORAGE(user));
     const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : ".bin";
 
 
     if (ext === "ics") {
-        return handleTelegramCalendarMessage(req, tempFilePath);
+        return handleTelegramCalendarMessage(user, tempFilePath);
     }
 
-    const response = await handleDocumentMessage(req, tempFilePath, ext, msg.document.file_unique_id);
-    await req.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
-    await req.updateChatContext("assistant", response);
+    const response = await handleDocumentMessage(user, tempFilePath, ext, msg.document.file_unique_id);
+    await user.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
+    await user.updateChatContext("assistant", response);
 
-    TelegramBotInstance.setTelegramMessageReact(req, msg);
-    return TelegramBotInstance.sendMessageWrapper(req, response);
+    TelegramBotInstance.setTelegramMessageReact(user, msg);
+    return TelegramBotInstance.sendMessageWrapper(user, response);
 }
 
 async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker: TelegramBot.Sticker }) {
@@ -476,7 +466,7 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function validateIncomingMessage(msg: unknown, requiredProperty: keyof TelegramBot.Message, handler: (req: HennosConsumer, msg: any) => Promise<void>): Promise<void> {
+async function validateIncomingMessage(msg: unknown, requiredProperty: keyof TelegramBot.Message, handler: (req: HennosUser, msg: any) => Promise<void>): Promise<void> {
     const message = msg as TelegramBot.Message;
     if (message.chat.type !== "private" || !message.from) {
         return;

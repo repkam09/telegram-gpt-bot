@@ -5,7 +5,8 @@ import { handlePrivateMessage } from "../../handlers/text/private";
 import { handleGroupMessage } from "../../handlers/text/group";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
-import { HennosConsumer, HennosResponse } from "../../singletons/base";
+import { HennosConsumer } from "../../singletons/base";
+import { HennosResponse } from "../../types";
 
 export class DiscordBotInstance {
     static _hasCompletedInit = false;

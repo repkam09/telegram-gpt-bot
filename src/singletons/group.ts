@@ -1,4 +1,5 @@
 import { HennosConsumer } from "./base";
+import { HennosOpenAISingleton } from "./openai";
 import { Database } from "./sqlite";
 
 export class HennosGroup extends HennosConsumer {
@@ -49,6 +50,13 @@ export class HennosGroup extends HennosConsumer {
         return {
             name: result.name
         };
+    }
+
+    public getProvider() {
+        if (this.whitelisted) {
+            return HennosOpenAISingleton.instance();
+        }
+        return HennosOpenAISingleton.mini();
     }
 
     public setWhitelisted(whitelisted: boolean) {

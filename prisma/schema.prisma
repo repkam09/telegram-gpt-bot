@@ -42,6 +42,7 @@ model Messages {
   id       Int      @id @default(autoincrement())
   chatId   BigInt
   content  String
+  type     String   @default("text")
   datetime DateTime @default(now())
   role     String
 }

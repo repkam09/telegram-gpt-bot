@@ -9,11 +9,6 @@ export async function handleGeneralSettingsCallback(user: HennosUser, queryId: s
 
     // Set the voice and return to the user.
     const command = data.replace("customize-", "").trim();
-    if (command === "personality") {
-        bot.answerCallbackQuery(queryId);
-        bot.sendMessage(user.chatId, "This feature is not available yet, but is coming soon.");
-    }
-
     if (command === "my-name") {
         bot.answerCallbackQuery(queryId);
         registerInputCallback(user, (msg: TelegramBot.Message) => {

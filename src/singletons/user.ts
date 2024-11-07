@@ -1,9 +1,11 @@
 import { Database } from "./sqlite";
 import { Config } from "./config";
-import { ValidTTSNames } from "../handlers/voice";
 import { HennosConsumer } from "./base";
-
-type ValidLLMProviders = "openai" | "ollama" | "anthropic"
+import { ValidLLMProvider, ValidTTSName } from "../types";
+import { HennosOllamaSingleton } from "./ollama";
+import { HennosOpenAISingleton } from "./openai";
+import { HennosAnthropicSingleton } from "./anthropic";
+import { Logger } from "./logger";
 
 export class HennosUser extends HennosConsumer {
     constructor(chatId: number) {
@@ -34,6 +36,27 @@ export class HennosUser extends HennosConsumer {
         return false;
     }
 
+    public getProvider() {
+        if (this.whitelisted) {
+            switch (this.provider) {
+                case "openai": {
+                    return HennosOpenAISingleton.instance();
+                }
+                case "ollama": {
+                    return HennosOllamaSingleton.instance();
+                }
+                case "anthropic": {
+                    return HennosAnthropicSingleton.instance();
+                }
+                default: {
+                    Logger.warn(this, `Unknown provider ${this.provider}, defaulting to OpenAI`);
+                    return HennosOpenAISingleton.instance();
+                }
+            }
+        }
+        return HennosOpenAISingleton.mini();
+    }
+
     public async getBasicInfo() {
         const result = await this.db.user.findUniqueOrThrow({
             select: {
@@ -43,7 +66,8 @@ export class HennosUser extends HennosConsumer {
                 username: true,
                 latitude: true,
                 longitude: true,
-                experimental: true
+                experimental: true,
+                provider: true
             },
             where: {
                 chatId: this.chatId
@@ -53,6 +77,8 @@ export class HennosUser extends HennosConsumer {
         this.whitelisted = this.isAdmin() ? true : result.whitelisted;
         this.experimental = this.isAdmin() ? true : result.experimental;
         this.displayName = `${result.firstName} ${result.lastName}`.trim();
+        this.provider = result.provider as ValidLLMProvider;
+
         return {
             firstName: result.firstName,
             lastName: result.lastName,
@@ -71,7 +97,6 @@ export class HennosUser extends HennosConsumer {
                 preferredName: true,
                 botName: true,
                 voice: true,
-                provider: true,
                 whitelisted: true
             },
             where: {
@@ -79,17 +104,10 @@ export class HennosUser extends HennosConsumer {
             }
         });
 
-        let provider = "ollama";
-        if (result.whitelisted) {
-            // Set a default provider of openai for whitelisted users
-            provider = result.provider ? result.provider : "openai";
-        }
-
         return {
             preferredName: result.preferredName ? result.preferredName : result.firstName,
             botName: result.botName ? result.botName : "Hennos",
-            voice: result.voice ? result.voice as ValidTTSNames : "onyx" as ValidTTSNames,
-            provider: provider as ValidLLMProviders,
+            voice: result.voice ? result.voice as ValidTTSName : "onyx" as ValidTTSName,
             personality: "default"
         };
     }
@@ -127,7 +145,7 @@ export class HennosUser extends HennosConsumer {
         });
     }
 
-    public async setPreferredProvider(provider: string): Promise<void> {
+    public async setPreferredProvider(provider: ValidLLMProvider): Promise<void> {
         await this.db.user.update({
             where: {
                 chatId: this.chatId
@@ -136,6 +154,7 @@ export class HennosUser extends HennosConsumer {
                 provider: provider
             }
         });
+        this.provider = provider;
     }
 
     public async setBasicInfo(firstName: string, lastName?: string, username?: string) {

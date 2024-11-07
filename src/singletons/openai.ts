@@ -1,25 +1,39 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
-import { Config } from "./config";
+import { Config, HennosModelConfig } from "./config";
 import OpenAI, { OpenAIError } from "openai";
 import { HennosUser } from "./user";
 import { Message, Tool, ToolCall } from "ollama";
 import { Logger } from "./logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
 import { getSizedChatContext } from "./context";
-import { HennosBaseProvider, HennosConsumer, HennosResponse } from "./base";
+import { HennosBaseProvider, HennosConsumer } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
+import { HennosImage, HennosMessage, HennosResponse } from "../types";
+import { HennosGroup } from "./group";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 
 export class HennosOpenAISingleton {
     private static _instance: HennosBaseProvider | null = null;
+    private static _mini: HennosBaseProvider | null = null;
 
     public static instance(): HennosBaseProvider {
         if (!HennosOpenAISingleton._instance) {
-            HennosOpenAISingleton._instance = new HennosOpenAIProvider();
+            HennosOpenAISingleton._instance = new HennosOpenAIProvider(Config.OPENAI_LLM);
         }
         return HennosOpenAISingleton._instance;
+    }
+
+    public static mini(): HennosBaseProvider {
+        if (!HennosOpenAISingleton._mini) {
+            HennosOpenAISingleton._mini = new HennosOpenAIProvider({
+                MODEL: "gpt-4o-mini",
+                CTX: 16000
+            });
+        }
+        return HennosOpenAISingleton._mini;
     }
 }
 
@@ -63,26 +77,62 @@ function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMe
 
 export class HennosOpenAIProvider extends HennosBaseProvider {
     public openai: OpenAI;
+    private model: HennosModelConfig;
+    private moderationModel: string;
+    private transcriptionModel: string;
+    private speechModel: string;
 
-    constructor() {
+    constructor(model: HennosModelConfig) {
         super();
 
         this.openai = new OpenAI({
             baseURL: Config.OPENAI_BASE_URL,
             apiKey: Config.OPENAI_API_KEY,
         });
+
+        this.model = model;
+        this.moderationModel = "omni-moderation-latest";
+        this.transcriptionModel = "whisper-1";
+        this.speechModel = "tts-1";
     }
 
-    public async completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<HennosResponse> {
-        Logger.info(req, `OpenAI Completion Start (${Config.OPENAI_LLM.MODEL})`);
+    public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
+        Logger.info(req, `OpenAI Completion Start (${this.model.MODEL})`);
 
-        const chat = await getSizedChatContext(req, system, complete, Config.OPENAI_LLM.CTX);
+        const chat = await getSizedChatContext(req, system, complete, this.model.CTX);
         const prompt = system.concat(chat);
-        const messages = prompt.map((message) => ({
-            content: message.content,
-            role: message.role as MessageRoles,
-        }));
+        const messages = this.convertHennosMessages(prompt);
         return this.completionWithRecursiveToolCalls(req, messages, 0);
+    }
+
+    private convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+        return messages.reduce((acc, val) => {
+            if (val.type === "text") {
+                acc.push({
+                    role: val.role as MessageRoles,
+                    content: val.content
+                });
+            }
+
+            if (val.type === "image") {
+                acc.push({
+                    role: val.role as "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: `Image: ${val.image.local}`
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                detail: "auto",
+                                url: `data:${val.image.mime};base64,${val.encoded}`
+                            }
+                        }]
+                });
+            }
+            return acc;
+        }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
@@ -93,13 +143,13 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         const [tool_choice, tools] = getAvailableTools(req);
         try {
             const response = await this.openai.chat.completions.create({
-                model: Config.OPENAI_LLM.MODEL,
+                model: this.model.MODEL,
                 messages: prompt,
                 tool_choice,
                 tools: tools
             });
 
-            Logger.info(req, `OpenAI Completion Success, Resulted in ${response.usage?.completion_tokens} output tokens (depth=${depth})`);
+            Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(req, response.usage)} (depth=${depth})`);
             if (!response.choices && !response.choices[0]) {
                 throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
             }
@@ -110,6 +160,15 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
 
             // If this is a normal response with no tool calling, return the content
             if (response.choices[0].message.content) {
+                if (response.choices[0].finish_reason === "length") {
+                    Logger.info(req, "OpenAI Completion Success, Resulted in Length Limit");
+                    prompt.push({
+                        role: "assistant",
+                        content: response.choices[0].message.content
+                    });
+                    return this.completionWithRecursiveToolCalls(req, prompt, depth + 1);
+                }
+
                 Logger.info(req, "OpenAI Completion Success, Resulted in Text Completion");
                 return {
                     __type: "string",
@@ -159,55 +218,11 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         }
     }
 
-    public async vision(req: HennosConsumer, prompt: Message, remote: string, mime: string): Promise<HennosResponse> {
-        Logger.info(req, `OpenAI Vision Completion Start (${Config.OPENAI_LLM_VISION.MODEL})`);
-        try {
-            const response = await this.openai.chat.completions.create({
-                stream: false,
-                model: Config.OPENAI_LLM_VISION.MODEL,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: prompt.content
-                            },
-                            {
-                                type: "image_url",
-                                image_url: {
-                                    detail: "auto",
-                                    url: remote
-                                }
-                            }]
-                    }
-                ]
-            });
-
-            Logger.info(req, `OpenAI Vision Completion Success, Resulted in ${response.usage?.completion_tokens} output tokens`);
-            if (!response.choices && !response.choices[0]) {
-                throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
-            }
-
-            if (!response.choices[0].message.content) {
-                throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Content");
-            }
-
-            return {
-                __type: "string",
-                payload: response.choices[0].message.content
-            };
-        } catch (err: unknown) {
-            Logger.info(req, "OpenAI Vision Completion Error: ", err);
-            throw err;
-        }
-    }
-
     public async moderation(req: HennosConsumer, input: string): Promise<boolean> {
         Logger.info(req, "OpenAI Moderation Start");
         try {
             const response = await this.openai.moderations.create({
-                model: "omni-moderation-latest",
+                model: this.moderationModel,
                 input
             });
 
@@ -232,7 +247,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         Logger.info(req, "OpenAI Transcription Start");
         try {
             const transcription = await this.openai.audio.transcriptions.create({
-                model: "whisper-1",
+                model: this.transcriptionModel,
                 file: createReadStream(path)
             });
 
@@ -247,12 +262,18 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         }
     }
 
-    public async speech(user: HennosUser, input: string): Promise<HennosResponse> {
-        Logger.info(user, "OpenAI Speech Start");
+    public async speech(req: HennosConsumer, input: string): Promise<HennosResponse> {
+        Logger.info(req, "OpenAI Speech Start");
+
+        if (req instanceof HennosGroup) {
+            throw new Error("Speech API is not available for group chats");
+        }
+
+        const user = req as HennosUser;
         try {
             const preferences = await user.getPreferences();
             const result = await this.openai.audio.speech.create({
-                model: "tts-1",
+                model: this.speechModel,
                 voice: preferences.voice,
                 input: input,
                 response_format: "opus"
@@ -269,4 +290,12 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
             throw err;
         }
     }
+}
+
+function calculateUsage(req: HennosConsumer, usage: OpenAI.Completions.CompletionUsage | undefined): string {
+    if (!usage) {
+        return "Unknown";
+    }
+
+    return `Input: ${usage.prompt_tokens} tokens, Output: ${usage.completion_tokens}`;
 }

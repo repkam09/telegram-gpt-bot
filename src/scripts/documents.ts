@@ -12,7 +12,7 @@ async function test() {
         throw new Error("Existing admin user account not found");
     }
 
-    await user.setPreferredProvider("anthropic");
+    await user.setPreferredProvider("openai");
 
     const filePath = path.join(__dirname, "../../README.md",);
 

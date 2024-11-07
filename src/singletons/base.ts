@@ -1,36 +1,16 @@
-import { Message } from "ollama";
-import { HennosUser } from "./user";
 import { Database } from "./sqlite";
 import { PrismaClient } from "@prisma/client";
 import { Config } from "./config";
-
-export type HennosResponse = HennosStringResponse | HennosEmptyResponse | HennosArrayBufferResponse | HennosErrorResponse;
-
-export type HennosErrorResponse = {
-    __type: "error"
-    payload: string
-}
-
-export type HennosStringResponse = {
-    __type: "string"
-    payload: string
-}
-
-export type HennosEmptyResponse = {
-    __type: "empty"
-}
-
-export type HennosArrayBufferResponse = {
-    __type: "arraybuffer"
-    payload: ArrayBuffer
-}
+import { HennosImage, HennosMessage, HennosMessageRole, HennosResponse, HennosTextMessage, ValidLLMProvider } from "../types";
+import { Qdrant } from "./qdrant";
+import { loadHennosImage } from "../handlers/photos";
+import { Logger } from "./logger";
 
 export abstract class HennosBaseProvider {
-    public abstract completion(req: HennosConsumer, system: Message[], complete: Message[]): Promise<HennosResponse>;
-    public abstract vision(req: HennosConsumer, prompt: Message, remote: string, mime: string): Promise<HennosResponse>;
+    public abstract completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse>;
     public abstract moderation(req: HennosConsumer, input: string): Promise<boolean>;
     public abstract transcription(req: HennosConsumer, path: string): Promise<HennosResponse>;
-    public abstract speech(user: HennosUser, input: string): Promise<HennosResponse>;
+    public abstract speech(req: HennosConsumer, input: string): Promise<HennosResponse>;
 }
 
 export abstract class HennosConsumer {
@@ -39,6 +19,7 @@ export abstract class HennosConsumer {
     public db: PrismaClient;
     public whitelisted: boolean;
     public experimental: boolean;
+    public provider: ValidLLMProvider;
 
     constructor(chatId: number, displayName: string) {
         this.chatId = chatId;
@@ -46,6 +27,7 @@ export abstract class HennosConsumer {
         this.displayName = displayName;
         this.whitelisted = false;
         this.experimental = false;
+        this.provider = "openai";
     }
 
     public abstract allowFunctionCalling(): boolean;
@@ -68,11 +50,27 @@ export abstract class HennosConsumer {
         return result;
     }
 
+    public abstract getProvider(): HennosBaseProvider;
+
+    public async updateChatImageContext(role: "user" | "assistant" | "system", image: HennosImage): Promise<void> {
+        await this.db.messages.create({
+            data: {
+                chatId: this.chatId,
+                role,
+                type: "image",
+                content: JSON.stringify({
+                    local: image.local,
+                    mime: image.mime,
+                })
+            }
+        });
+    }
+
     public async updateChatContext(role: "user" | "assistant" | "system", content: string | HennosResponse): Promise<void> {
         if (Config.QDRANT_ENABLED) {
-            const collection = await Database.vector().collectionExists(String(this.chatId));
+            const collection = await Qdrant.instance().collectionExists(String(this.chatId));
             if (!collection.exists) {
-                await Database.vector().createCollection(String(this.chatId), {});
+                await Qdrant.instance().createCollection(String(this.chatId), {});
             }
         }
 
@@ -105,14 +103,15 @@ export abstract class HennosConsumer {
         });
     }
 
-    public async getChatContext(): Promise<Message[]> {
+    public async getChatContext(): Promise<HennosMessage[]> {
         const result = await this.db.messages.findMany({
             where: {
-                chatId: this.chatId
+                chatId: this.chatId,
             },
             select: {
                 role: true,
-                content: true
+                content: true,
+                type: true
             },
             orderBy: {
                 id: "desc"
@@ -120,7 +119,35 @@ export abstract class HennosConsumer {
             take: 100
         });
 
-        return result.reverse();
+        const messages: HennosMessage[] = [];
+        for (const message of result) {
+            if (message.type === "image") {
+                try {
+                    const image = JSON.parse(message.content) as HennosImage;
+                    const encoded = await loadHennosImage(image);
+                    Logger.debug(this, `Loaded image from disk: ${image.local}`);
+                    messages.push({
+                        type: "image",
+                        role: message.role as HennosMessageRole,
+                        image,
+                        encoded
+                    });
+                } catch (err) {
+                    const error = err as Error;
+                    Logger.error(this, `Unable to load image ${message.content}: ${error.message}`);
+                }
+            } else if (message.type === "text") {
+                messages.push({
+                    type: "text",
+                    role: message.role as HennosMessageRole,
+                    content: message.content
+                });
+            } else {
+                Logger.warn(this, `Unknown message type ${message.type}`);
+            }
+        }
+
+        return messages.reverse();
     }
 
     public static async isBlacklisted(chatId: number): Promise<{ chatId: number, datetime: Date } | false> {

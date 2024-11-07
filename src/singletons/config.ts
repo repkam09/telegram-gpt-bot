@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
@@ -7,7 +8,7 @@ import { PuppeteerLifeCycleEvent } from "puppeteer";
 dotenv.config();
 
 export type HennosModelConfig = {
-    MODEL: string
+    MODEL: any
     CTX: number
 }
 
@@ -102,7 +103,7 @@ export class Config {
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
-                MODEL: "llama3.2",
+                MODEL: "llama3.2:latest",
                 CTX: 16000
             };
         }
@@ -123,7 +124,7 @@ export class Config {
     static get OLLAMA_LLM_LARGE(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM_LARGE) {
             return {
-                MODEL: "llama3.1",
+                MODEL: "llama3.2:latest",
                 CTX: 16000
             };
         }
@@ -133,27 +134,6 @@ export class Config {
 
         if (Number.isNaN(ctx)) {
             throw new Error("Invalid context length value for OLLAMA_LLM_LARGE");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
-    }
-
-    static get OLLAMA_LLM_VISION(): HennosModelConfig {
-        if (!process.env.OLLAMA_LLM_VISION) {
-            return {
-                MODEL: "llava:7b",
-                CTX: 20480
-            };
-        }
-
-        const parts = process.env.OLLAMA_LLM_VISION.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OLLAMA_LLM_VISION");
         }
 
         return {
@@ -250,27 +230,6 @@ export class Config {
         };
     }
 
-    static get OPENAI_LLM_VISION(): HennosModelConfig {
-        if (!process.env.OPENAI_LLM_VISION) {
-            return {
-                MODEL: "gpt-4o-mini",
-                CTX: 32000
-            };
-        }
-
-        const parts = process.env.OPENAI_LLM_VISION.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OPENAI_LLM_VISION");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
-    }
-
     static get OPENAI_LLM_LARGE(): HennosModelConfig {
         if (!process.env.OPENAI_LLM_LARGE) {
             return {
@@ -342,25 +301,34 @@ export class Config {
         };
     }
 
-    static get ANTHROPIC_LLM_VISION(): HennosModelConfig {
-        if (!process.env.ANTHROPIC_LLM_VISION) {
-            return {
-                MODEL: "claude-3-haiku-20240307",
-                CTX: 200000
-            };
+    static get WS_SERVER_PORT(): number {
+        if (!process.env.WS_SERVER_PORT) {
+            return 8080;
         }
 
-        const parts = process.env.ANTHROPIC_LLM_VISION.split(",");
-        const ctx = parseInt(parts[1]);
+        const port = parseInt(process.env.WS_SERVER_PORT);
 
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for ANTHROPIC_LLM_VISION");
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid WS_SERVER_PORT value");
         }
 
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
+        return port;
+    }
+
+    static get WS_SERVER_ENABLED(): boolean {
+        if (!process.env.WS_SERVER_ENABLED) {
+            return false;
+        }
+
+        return process.env.WS_SERVER_ENABLED === "true";
+    }
+
+    static get WS_SERVER_TOKEN(): string {
+        if (!process.env.WS_SERVER_TOKEN) {
+            throw new Error("Missing WS_SERVER_TOKEN");
+        }
+
+        return process.env.WS_SERVER_TOKEN;
     }
 
     static get OLLAMA_PORT(): number {

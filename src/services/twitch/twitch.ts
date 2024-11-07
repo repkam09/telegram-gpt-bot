@@ -64,7 +64,8 @@ async function handleTwitchMessage(channel: string, context: tmi.ChatUserstate, 
 
     const response = await handleOneOffGroupMessage(user, group, cleaned, {
         content: `This user is sending their message from Twitch.tv chat on channel ${channel}. Keep your response especially short and to the point.`,
-        role: "system"
+        role: "system",
+        type: "text"
     });
 
     if (response.__type === "string") {

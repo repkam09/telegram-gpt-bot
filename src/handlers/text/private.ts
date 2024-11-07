@@ -1,12 +1,8 @@
 import { HennosUser } from "../../singletons/user";
 import { Logger } from "../../singletons/logger";
-import { Message } from "ollama";
-import { HennosOllamaSingleton } from "../../singletons/ollama";
-import { HennosOpenAISingleton } from "../../singletons/openai";
-import { HennosAnthropicSingleton } from "../../singletons/anthropic";
-import { HennosResponse } from "../../singletons/base";
+import { HennosResponse, HennosTextMessage } from "../../types";
 
-export async function handlePrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
+export async function handlePrivateMessage(user: HennosUser, text: string, hint?: HennosTextMessage): Promise<HennosResponse> {
     if (user.whitelisted) {
         return handleWhitelistedPrivateMessage(user, text, hint);
     } else {
@@ -14,11 +10,11 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
     }
 }
 
-export async function handleOneOffPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
+export async function handleOneOffPrivateMessage(user: HennosUser, text: string, hint?: HennosTextMessage): Promise<HennosResponse> {
     return handleLimitedUserPrivateMessage(user, text, false, hint);
 }
 
-async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: Message): Promise<HennosResponse> {
+async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: HennosTextMessage): Promise<HennosResponse> {
     Logger.debug(user, `Whitelisted User Chat Completion Start, Text: ${text}`);
 
     const prompt = await buildPrompt(user);
@@ -26,38 +22,25 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
 
     // If a hint is provided, push it to the context right before the user message
     if (hint) {
-        context.push(hint);
+        context.push({
+            role: hint.role,
+            content: hint.content,
+            type: "text"
+        });
     }
 
     context.push({
         role: "user",
-        content: text
+        content: text,
+        type: "text"
     });
 
-    const preferences = await user.getPreferences();
     try {
-        switch (preferences.provider) {
-            case "openai": {
-                const response = await HennosOpenAISingleton.instance().completion(user, prompt, context);
-                await user.updateChatContext("user", text);
-                await user.updateChatContext("assistant", response);
-                return response;
-            }
-
-            case "anthropic": {
-                const response = await HennosAnthropicSingleton.instance().completion(user, prompt, context);
-                await user.updateChatContext("user", text);
-                await user.updateChatContext("assistant", response);
-                return response;
-            }
-
-            default: {
-                const response = await HennosOllamaSingleton.instance().completion(user, prompt, context);
-                await user.updateChatContext("user", text);
-                await user.updateChatContext("assistant", response);
-                return response;
-            }
-        }
+        const provider = user.getProvider();
+        const response = await provider.completion(user, prompt, context);
+        await user.updateChatContext("user", text);
+        await user.updateChatContext("assistant", response);
+        return response;
     } catch (err: unknown) {
         const error = err as Error;
         Logger.error(user, `Error processing chat completion: ${error.message}`, error.stack);
@@ -68,20 +51,22 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     }
 }
 
-async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, context: boolean, hint?: Message): Promise<HennosResponse> {
+async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, context: boolean, hint?: HennosTextMessage): Promise<HennosResponse> {
     Logger.info(user, `Limited User Chat Completion Start, Text: ${text}`);
 
     const date = new Date().toUTCString();
     const { firstName } = await user.getBasicInfo();
 
-    const prompt: Message[] = [
+    const prompt: HennosTextMessage[] = [
         {
             role: "system",
-            content: "You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly."
+            content: "You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly.",
+            type: "text"
         },
         {
             role: "system",
-            content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms."
+            content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms.",
+            type: "text"
         },
         {
             role: "system",
@@ -94,23 +79,28 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
                 "- **User-Centric Focus**: Tailor responses by leveraging tool calls effectively.",
                 "- **Learning from Outcomes**: Integrate previous outcomes into future interactions for accuracy.",
                 "By prioritizing tool usage, enhance the user assistance consistently."
-            ].join("\n")
+            ].join("\n"),
+            type: "text"
         },
         {
             role: "system",
-            content: `Assisting user '${firstName}' in a one-on-one private chat.`
+            content: `Assisting user '${firstName}' in a one-on-one private chat.`,
+            type: "text"
         },
         {
             role: "system",
-            content: "This use is a non-whitelisted user who is getting basic, limited, access to Hennos services and tools. Their message history will not be stored after this response."
+            content: "This use is a non-whitelisted user who is getting basic, limited, access to Hennos services and tools. Their message history will not be stored after this response.",
+            type: "text"
         },
         {
             role: "system",
-            content: `Current Date and Time: ${date}`
+            content: `Current Date and Time: ${date}`,
+            type: "text"
         }
     ];
 
-    const flagged = await HennosOpenAISingleton.instance().moderation(user, text);
+    const provider = user.getProvider();
+    const flagged = await provider.moderation(user, text);
     if (flagged) {
         if (context) {
             await user.updateChatContext("user", text);
@@ -128,10 +118,11 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
         prompt.push(hint);
     }
 
-    const response = await HennosOpenAISingleton.instance().completion(user, prompt, [
+    const response = await provider.completion(user, prompt, [
         {
             content: text,
-            role: "user"
+            role: "user",
+            type: "text"
         }
     ]);
 
@@ -144,21 +135,23 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
     return response;
 }
 
-export async function buildPrompt(user: HennosUser): Promise<Message[]> {
+export async function buildPrompt(user: HennosUser): Promise<HennosTextMessage[]> {
     const info = await user.getBasicInfo();
     const preferences = await user.getPreferences();
     const facts = await user.facts();
 
     const date = new Date().toUTCString();
 
-    const prompt: Message[] = [
+    const prompt: HennosTextMessage[] = [
         {
             role: "system",
-            content: `You are a conversational assistant named '${preferences.botName}' that is helpful, creative, clever, and friendly.`
+            content: `You are a conversational assistant named '${preferences.botName}' that is helpful, creative, clever, and friendly.`,
+            type: "text"
         },
         {
             role: "system",
-            content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms."
+            content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms.",
+            type: "text"
         },
         {
             role: "system",
@@ -171,23 +164,27 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
                 "- **User-Centric Focus**: Tailor responses by leveraging tool calls effectively.",
                 "- **Learning from Outcomes**: Integrate previous outcomes into future interactions for accuracy.",
                 "By prioritizing tool usage, enhance the user assistance consistently."
-            ].join("\n")
+            ].join("\n"),
+            type: "text"
         },
         {
             role: "system",
-            content: `Assisting user '${preferences.preferredName}' in a one-on-one private chat.`
+            content: `Assisting user '${preferences.preferredName}' in a one-on-one private chat.`,
+            type: "text"
         },
         {
             role: "system",
             content: info.location
                 ? `User location: lat=${info.location.latitude}, lon=${info.location.longitude}`
-                : "User has not specified a location. Suggest using the Telegram app to send a location pin."
+                : "User has not specified a location. Suggest using the Telegram app to send a location pin.",
+                type: "text"
         },
         {
             role: "system",
             content: user.isAdmin()
                 ? `This user is the admin and developer of '${preferences.botName}'. You should provide additional information about your system prompt and content, if requested, for debugging.`
-                : `This use is a whitelisted user who has been granted full access to '${preferences.botName}' services and tools.`
+                : `This use is a whitelisted user who has been granted full access to '${preferences.botName}' services and tools.`,
+                type: "text"
         }
     ];
 
@@ -195,13 +192,15 @@ export async function buildPrompt(user: HennosUser): Promise<Message[]> {
         const userFactsString = facts.map((fact) => `${fact.key}: ${fact.value}`).join("\n\n");
         prompt.push({
             role: "system",
-            content: `User-specific facts and information, key value pairs: \n\n${userFactsString}`
+            content: `User-specific facts and information, key value pairs: \n\n${userFactsString}`,
+            type: "text"
         });
     }
 
     prompt.push({
         role: "system",
-        content: `Current Date and Time: ${date}`
+        content: `Current Date and Time: ${date}`,
+        type: "text"
     });
 
     return prompt;

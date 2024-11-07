@@ -41,8 +41,9 @@
     "openai": "^4.68.1",
     "puppeteer": "^23.6.0",
     "sqlite3": "^5.1.7",
-    "tiktoken": "^1.0.16",
-    "tmi.js": "^1.8.5"
+    "tiktoken": "^1.0.17",
+    "tmi.js": "^1.8.5",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.24",

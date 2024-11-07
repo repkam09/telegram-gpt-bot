@@ -1,16 +1,16 @@
 import TelegramBot from "node-telegram-bot-api";
 import { handleHennosResponse, TelegramBotInstance } from "../telegram";
-import { ValidTTSNames } from "../../../handlers/voice";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
 import { HennosOpenAISingleton } from "../../../singletons/openai";
+import { ValidTTSName } from "../../../types";
 
 export async function handleVoiceSettingsCallback(user: HennosUser, queryId: string, data: string) {
     // Set the voice and return to the user.
     const name = data.replace("voice-settings-", "").trim();
 
     const bot = TelegramBotInstance.instance();
-    user.setPreferredVoice(name as ValidTTSNames).then(() => {
+    user.setPreferredVoice(name as ValidTTSName).then(() => {
         bot.answerCallbackQuery(queryId, {
             text: "Future audio messages will use the " + name + " voice."
         });

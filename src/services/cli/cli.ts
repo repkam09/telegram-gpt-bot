@@ -25,7 +25,8 @@ export class CommandLineInstance {
                 const response = await handlePrivateMessage(user, query, {
                     role: "system",
                     content: "The user is sending their messsage via the command line interface in Hennos Development Mode, not via Telegram. " +
-                        "Please call out anything that looks unusual or strange in the previous chat context, as it may be a bug."
+                        "Please call out anything that looks unusual or strange in the previous chat context, as it may be a bug.",
+                    type: "text"
                 });
 
                 console.log("\n\n=====\n" + JSON.stringify(response) + "\n=====\n\n");
