@@ -17,7 +17,7 @@ export async function getSizedChatContext(req: HennosConsumer, prompt: HennosMes
         totalTokens = getChatContextTokenCount(currentChatContext) + promptTokens;
     }
 
-    Logger.info(req, `getSizedChatContext set total tokens to ${totalTokens}`);
+    Logger.debug(req, `getSizedChatContext set total tokens to ${totalTokens}`);
     return currentChatContext;
 }
 

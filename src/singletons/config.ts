@@ -303,7 +303,7 @@ export class Config {
 
     static get WS_SERVER_PORT(): number {
         if (!process.env.WS_SERVER_PORT) {
-            return 8080;
+            return 16006;
         }
 
         const port = parseInt(process.env.WS_SERVER_PORT);

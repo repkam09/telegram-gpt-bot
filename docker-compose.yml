@@ -1,12 +1,13 @@
-version: '3.3'
 services:
-  hennos: 
+  hennos:
     container_name: hennos
     restart: unless-stopped
     image: hennos-gpt:latest
+    ports:
+      - "16006:16006"
     volumes:
-      - '.env:/app/hennos/.env'
-      - './data/:/app/hennos/data/'
+      - ".env:/app/hennos/.env"
+      - "./data/:/app/hennos/data/"
   qdrant:
     image: qdrant/qdrant
     ports:
