@@ -16,6 +16,7 @@ import { TheMovieDBTool } from "./TheMovieDBTool";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { StoreKeyValueMemory } from "./UserFactsTool";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
+import { TransmissionActive } from "./TransmissionTools";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -41,7 +42,8 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
-    HomeAssistantStatesTool
+    HomeAssistantStatesTool,
+    TransmissionActive
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
@@ -84,13 +86,14 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
 export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCall, ToolCallMetadata][]): Promise<ToolCallResponse[]> {
     try {
         const results = await Promise.all(tool_calls.map(async ([tool_call, metadata]) => {
-            const ToolMatch = [...PUBLIC_TOOLS, ...WHITELIST_TOOLS, ...EXPERIMENTAL_AVAILABLE_TOOLS, ...ADMIN_TOOLS].find((Tool) => Tool.definition().function.name === tool_call.function.name);
+            const ToolMatch = [...PUBLIC_TOOLS, ...WHITELIST_TOOLS, ...EXPERIMENTAL_AVAILABLE_TOOLS, ...ADMIN_TOOLS].find((Tool) => Tool.functionName() === tool_call.function.name);
             if (!ToolMatch) {
                 Logger.info(req, `Unknown tool call: ${tool_call.function.name}`);
                 Logger.debug(req, `Unknown tool call: ${tool_call.function.name} with args: ${JSON.stringify(tool_call.function.arguments)}`);
                 return [`Unknown tool call: ${tool_call.function.name}`, metadata] as [string, ToolCallMetadata];
             }
 
+            ToolMatch.start(req, tool_call.function.arguments);
             return ToolMatch.callback(req, tool_call.function.arguments, metadata);
         }));
 

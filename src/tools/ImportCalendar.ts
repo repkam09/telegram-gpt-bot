@@ -8,11 +8,15 @@ import { Config } from "../singletons/config";
 import ical from "node-ical";
 
 export class ImportCalendar extends BaseTool {
+    public static functionName(): string {
+        return "ics_calendar_import";
+    }
+
     public static definition(): Tool {
         return {
             type: "function",
             function: {
-                name: "ics_calendar_import",
+                name: this.functionName(),
                 description: [
                     "This tool imports an ICS calendar file into the Hennos system using a provided URL.",
                     "It parses the calendar and returns the next 10 upcoming events for easy access and review."
@@ -32,9 +36,9 @@ export class ImportCalendar extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "ImportCalendar callback", { url: args.url });
+        this.start(req, args);
         if (!args.url) {
-            return ["ics_calendar_import, url not provided", metadata];
+            return this.error(req, "required parameter 'url' not provided", new Error("Invalid ToolCallFunctionArgs"), metadata);
         }
 
         try {
@@ -43,21 +47,12 @@ export class ImportCalendar extends BaseTool {
             await fs.writeFile(calendarFilePath, binary);
 
             const result = await handleCalendarImport(req, calendarFilePath);
-            if (result.length > 0) {
-                Logger.info(req, "ImportCalendar imported successfully", { result: result.length });
-                return [`ics_calendar_import, imported successfully, here are the most recent ${result.length} events: ${JSON.stringify(result)}`, metadata];
-            } else {
-                Logger.info(req, "ImportCalendar imported zero events", { result: result.length });
-                return ["ics_calendar_import, imported successfully but returned zero events", metadata];
-            }
+            return this.success(req, `Succesfully imported calendar. Found ${result.length} events: ${JSON.stringify(result)}`, metadata);
         } catch (err) {
-            const error = err as Error;
-            Logger.error(req, "ImportCalendar unable to process url", { url: args.url, err: error.message });
-            return ["ics_calendar_import, unable to import provided url", metadata];
+            return this.error(req, "Unable to import calendar from provided URL.", err as Error, metadata);
         }
     }
 }
-
 
 export async function handleCalendarImport(req: HennosConsumer, file: string): Promise<CalendarEvent[]> {
     Logger.debug(req, "handleCalendarImport", { file });

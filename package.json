@@ -43,6 +43,7 @@
     "sqlite3": "^5.1.7",
     "tiktoken": "^1.0.17",
     "tmi.js": "^1.8.5",
+    "transmission": "^0.4.10",
     "ws": "^8.18.0"
   },
   "devDependencies": {

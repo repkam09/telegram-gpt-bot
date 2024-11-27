@@ -8,6 +8,7 @@ import { CommandLineInstance } from "./services/cli/cli";
 import { TwitchBotInstance } from "./services/twitch/twitch";
 import { Logger } from "./singletons/logger";
 import { WSServerInstance } from "./services/socket/socket";
+import { TransmissionWrapper } from "./singletons/transmission";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -45,6 +46,10 @@ async function start() {
         await WSServerInstance.init();
     } else {
         console.warn("Web Socket server is disabled, set WS_SERVER_ENABLED=true to enable it");
+    }
+
+    if (Config.TRANSMISSION_ENABLED) {
+        await TransmissionWrapper.init();
     }
 
     // If we are in development mode and no other providers are enabled, run the command line interface

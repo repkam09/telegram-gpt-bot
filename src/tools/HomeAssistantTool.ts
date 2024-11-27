@@ -1,10 +1,13 @@
-import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { HennosConsumer } from "../singletons/base";
 
 export class HomeAssistantStatesTool extends BaseTool {
+    public static functionName(): string {
+        return "home_assistant_states";
+    }
+
     public static isEnabled(): boolean {
         if (Config.HOME_ASSISTANT_BASE_URL && Config.HOME_ASSISTANT_API_KEY) {
             return true;
@@ -17,7 +20,7 @@ export class HomeAssistantStatesTool extends BaseTool {
         return {
             "type": "function",
             "function": {
-                "name": "home_assistant_states",
+                "name": this.functionName(),
                 "description": [
                     "This tool uses the Home Assistant API to retrieve the states of requested entities within Home Assistant.",
                     "Each entity will return the following properties: entity_id, state, last_changed and attributes. The attributes field contains additional information about the entity.",
@@ -37,13 +40,13 @@ export class HomeAssistantStatesTool extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        this.start(req, args);
+
         if (!args.entity_id) {
-            return ["home_assistant_states error, required parameter 'entity_id' not provided", metadata];
+            return this.error(req, "required parameter 'entity_id' not provided", new Error("Invalid ToolCallFunctionArgs"), metadata);
         }
 
         const entity_ids: string[] = args.entity_id.split(",").map((entity_id: string) => entity_id.trim());
-
-        Logger.info(req, "home_assistant_states", { entity_ids });
         try {
 
             const entities = await BaseTool.fetchJSONData<HomeAssistantEntityResult[]>(`${Config.HOME_ASSISTANT_BASE_URL}/api/states`, {
@@ -62,17 +65,19 @@ export class HomeAssistantStatesTool extends BaseTool {
                 }
             });
 
-            Logger.debug(req, `HomeAssistantTool, results: ${JSON.stringify(results)}`);
-            return [`HomeAssistantTool: ${JSON.stringify(results)}`, metadata];
+            return this.success(req, JSON.stringify(results), metadata);
         } catch (err: unknown) {
-            Logger.error(req, `HomeAssistantTool error: ${err}`);
-            return [`HomeAssistantTool unable to fetch entity_ids ${args.entity_id}`, metadata];
+            return this.error(req, `unable to fetch entity_ids ${args.entity_id}`, err as Error, metadata);
         }
     }
 }
 
 
 export class HomeAssistantEntitiesTool extends BaseTool {
+    public static functionName(): string {
+        return "home_assistant_entities";
+    }
+
     public static isEnabled(): boolean {
         if (Config.HOME_ASSISTANT_BASE_URL && Config.HOME_ASSISTANT_API_KEY) {
             return true;
@@ -85,7 +90,7 @@ export class HomeAssistantEntitiesTool extends BaseTool {
         return {
             "type": "function",
             "function": {
-                "name": "home_assistant_entities",
+                "name": this.functionName(),
                 "description": [
                     "This tool uses the Home Assistant API to retrieve the list of available entities within Home Assistant.",
                     "This is a useful tool to get a list of all entities and their respective entity_ids before fetching more detailed information."
@@ -100,7 +105,7 @@ export class HomeAssistantEntitiesTool extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "home_assistant_states");
+        this.start(req, args);
         try {
             const entities = await BaseTool.fetchJSONData<HomeAssistantEntityResult[]>(`${Config.HOME_ASSISTANT_BASE_URL}/api/states`, {
                 "Authorization": `Bearer ${Config.HOME_ASSISTANT_API_KEY}`
@@ -109,16 +114,12 @@ export class HomeAssistantEntitiesTool extends BaseTool {
             const invalidStates = ["unavailable", "unknown"];
             const availableEntities = entities.filter((entity) => !invalidStates.includes(entity.state)).map((entity) => entity.entity_id);
 
-            Logger.debug(req, `HomeAssistantTool, available entity_ids: ${JSON.stringify(availableEntities)}`);
-            return [`HomeAssistantTool, available entity_ids: ${JSON.stringify(availableEntities)}`, metadata];
+            return this.success(req, JSON.stringify(availableEntities), metadata);
         } catch (err: unknown) {
-            Logger.error(req, `HomeAssistantTool all error: ${err}`);
-            return ["HomeAssistantTool, unable to fetch available entity_ids", metadata];
+            return this.error(req, "Unable to fetch available entity_ids", err as Error, metadata);
         }
     }
 }
-
-
 
 type HomeAssistantEntityResult = {
     "entity_id": string,

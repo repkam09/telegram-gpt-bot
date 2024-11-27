@@ -439,6 +439,61 @@ export class Config {
         return process.env.HOME_ASSISTANT_API_KEY;
     }
 
+    static get TRANSMISSION_ENABLED(): boolean {
+        if (!process.env.TRANSMISSION_ENABLED) {
+            return false;
+        }
+
+        return process.env.TRANSMISSION_ENABLED === "true";
+    }
+
+    static get TRANSMISSION_HOST(): string {
+        if (!process.env.TRANSMISSION_HOST) {
+            return "localhost";
+        }
+
+        return process.env.TRANSMISSION_HOST;
+    }
+
+    static get TRANSMISSION_PORT(): number {
+        if (!process.env.TRANSMISSION_PORT) {
+            return 9091;
+        }
+
+        const port = parseInt(process.env.TRANSMISSION_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid TRANSMISSION_PORT value");
+        }
+
+        return port;
+    }
+
+    static get TRANSMISSION_USERNAME(): string | undefined {
+        if (!process.env.TRANSMISSION_USERNAME) {
+            return undefined;
+        }
+
+        return process.env.TRANSMISSION_USERNAME;
+    }
+
+    static get TRANSMISSION_PASSWORD(): string | undefined {
+        if (!process.env.TRANSMISSION_PASSWORD) {
+            return undefined;
+        }
+
+        return process.env.TRANSMISSION_PASSWORD;
+    }
+
+    static get TRANSMISSION_URL(): string {
+        if (!process.env.TRANSMISSION_URL) {
+            return "/transmission/rpc";
+        }
+
+        return process.env.TRANSMISSION_URL;
+    }
+
+
     static get PUPPETEER_HEADLESS(): boolean {
         if (!process.env.PUPPETEER_HEADLESS) {
             return true;

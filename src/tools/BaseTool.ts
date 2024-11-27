@@ -12,6 +12,28 @@ export type ToolCallMetadata = any;
 export type ToolCallResponse = [string, ToolCallMetadata, string?];
 
 export abstract class BaseTool {
+    public static functionName(): string {
+        throw new Error("Implemented by Subclass");
+    }
+
+    public static start(req: HennosConsumer, args: ToolCallFunctionArgs | undefined): void {
+        if (args) {
+            Logger.info(req, `${this.functionName()} called with arguments: ${JSON.stringify(args)}`);
+        } else {
+            Logger.info(req, `${this.functionName()} called`);
+        }
+    }
+
+    public static success(req: HennosConsumer, message: string, metadata: ToolCallMetadata, response?: string): ToolCallResponse {
+        Logger.debug(req, `${this.functionName()}: ${message}`);
+        return [`${this.functionName()}: ${message}`, metadata, response];
+    }
+
+    public static error(req: HennosConsumer, message: string, error: Error, metadata: ToolCallMetadata, response?: string): ToolCallResponse {
+        Logger.error(req, `${this.functionName()}: ${message}, Error: ${error.message}`, error.stack);
+        return [`${this.functionName()}: ${message}`, metadata, response];
+    }
+
     public static isEnabled(): boolean {
         return true;
     }
