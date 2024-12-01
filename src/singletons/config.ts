@@ -423,6 +423,22 @@ export class Config {
         return process.env.THE_MOVIE_DB_API_KEY;
     }
 
+    static get HOME_ASSISTANT_BASE_URL(): string | false {
+        if (!process.env.HOME_ASSISTANT_BASE_URL) {
+            return false;
+        }
+
+        return process.env.HOME_ASSISTANT_BASE_URL;
+    }
+
+    static get HOME_ASSISTANT_API_KEY(): string | false {
+        if (!process.env.HOME_ASSISTANT_API_KEY) {
+            return false;
+        }
+
+        return process.env.HOME_ASSISTANT_API_KEY;
+    }
+
     static get PUPPETEER_HEADLESS(): boolean {
         if (!process.env.PUPPETEER_HEADLESS) {
             return true;

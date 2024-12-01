@@ -37,10 +37,11 @@ export abstract class BaseTool {
         return result.data;
     }
 
-    public static async fetchJSONData<T = any>(url: string): Promise<T> {
+    public static async fetchJSONData<T = any>(url: string, headers?: Record<string, string>): Promise<T> {
         const result = await axios({
             headers: {
-                "User-Agent": "HennosBot/1.0"
+                ...headers,
+                "User-Agent": "HennosBot/1.0",
             },
             method: "get",
             url: url,

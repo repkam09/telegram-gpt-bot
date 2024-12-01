@@ -51,6 +51,7 @@ export abstract class HennosConsumer {
     }
 
     public abstract getProvider(): HennosBaseProvider;
+    public abstract isAdmin(): boolean
 
     public async updateChatImageContext(role: "user" | "assistant" | "system", image: HennosImage): Promise<void> {
         await this.db.messages.create({

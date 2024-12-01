@@ -15,6 +15,10 @@ export class HennosGroup extends HennosConsumer {
         return false;
     }
 
+    public isAdmin(): boolean {
+        return false;
+    }
+
     public async setBasicInfo(name: string | undefined) {
         const result = await this.db.group.upsert({
             select: {
