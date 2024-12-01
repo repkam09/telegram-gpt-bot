@@ -9,6 +9,7 @@ import { handleReadCommand } from "./commands/handleVoiceSettings";
 import { handleExperimentalCommand } from "./commands/handleExperimental";
 import { HennosGroup } from "../../singletons/group";
 import { handleBlacklistCommand } from "./commands/handleBlacklist";
+import { handleCreateHennosLink } from "./commands/handleHennosLink";
 
 export async function handleCommandGroupMessage(user: HennosUser, group: HennosGroup, msg: string) {
     if (msg === "/reset") {
@@ -45,6 +46,11 @@ export async function handleCommandMessage(user: HennosUser, msg: TelegramBot.Me
 
     if (msg.text === "/settings" && user.whitelisted) {
         return handleGeneralSettingsCommand(user);
+    }
+
+
+    if (msg.text === "/link" && user.whitelisted) {
+        return handleCreateHennosLink(user);
     }
 
     if (msg.text.startsWith("/read ") && user.whitelisted) {

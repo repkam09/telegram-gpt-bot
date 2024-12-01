@@ -24,22 +24,30 @@ async function handleWebSocketMessage(ws: WebSocket, data: any): Promise<void> {
     try {
         parsed = JSON.parse(data);
     } catch (e) {
-        ws.send(JSON.stringify({ error: "Invalid JSON" }));
+        Logger.debug(undefined, "WebSocket request invalid JSON, ignoring");
         return;
     }
 
-    if (!parsed.auth || !parsed.__type || !parsed.requestId) {
-        Logger.debug(undefined, "WebSocket request missing required fields");
+    if (!parsed.auth || !parsed.__type || !parsed.requestId || !parsed.hennosId) {
+        Logger.debug(undefined, "WebSocket request missing required fields, ignoring");
         return;
     }
 
     if (parsed.auth !== Config.WS_SERVER_TOKEN) {
         Logger.debug(undefined, "WebSocket request invalid auth token");
+        ws.send(JSON.stringify({ error: "Bad Request", requestId: parsed.requestId }));
         return;
     }
 
-    if (parsed.__type === "users") {
-        Logger.debug(undefined, `WebSocket whitelist request received: ${parsed.requestId}`);
+    const user = await HennosUser.fromHennosLink(parsed.hennosId);
+    if (!user) {
+        Logger.debug(undefined, "WebSocket request user not found");
+        ws.send(JSON.stringify({ error: "Bad Request", requestId: parsed.requestId }));
+        return;
+    }
+
+    if (parsed.__type === "users" && user.isAdmin()) {
+        Logger.debug(user, `WebSocket whitelist request received: ${parsed.requestId}`);
 
         const db = await Database.instance();
         const users = await db.user.findMany({
@@ -66,13 +74,6 @@ async function handleWebSocketMessage(ws: WebSocket, data: any): Promise<void> {
             })
         }));
         Logger.debug(undefined, "WebSocket users response sent");
-        return;
-    }
-
-    const user = await HennosUser.exists(parsed.chatId);
-    if (!user) {
-        Logger.debug(undefined, "WebSocket request user not found");
-        ws.send(JSON.stringify({ error: "User not found", requestId: parsed.requestId }));
         return;
     }
 

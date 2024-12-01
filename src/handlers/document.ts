@@ -64,25 +64,6 @@ async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext>
         return serviceContext;
     }
 
-    if (req.provider === "openai") {
-        Logger.info(req, "Creating an OpenAI service context for document processing based on user preferences");
-        const serviceContext = serviceContextFromDefaults({
-            llm: new OpenAI({
-                model: Config.OPENAI_LLM_LARGE.MODEL,
-                apiKey: Config.OPENAI_API_KEY
-            }),
-            embedModel: new OpenAIEmbedding({
-                model: Config.OPENAI_LLM_EMBED.MODEL,
-                apiKey: Config.OPENAI_API_KEY,
-            }),
-            nodeParser: new SimpleNodeParser({
-                chunkSize: 2048,
-                chunkOverlap: 256
-            })
-        });
-        return serviceContext;
-    }
-
     if (req.provider === "anthropic") {
         Logger.info(req, "Creating an Anthropic service context for document processing based on user preferences");
         const serviceContext = serviceContextFromDefaults({
@@ -101,7 +82,23 @@ async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext>
         });
         return serviceContext;
     }
-    throw new Error(`Invalid LLM provider for ${req.displayName} with value ${req.provider}`);
+
+    Logger.info(req, "Creating an OpenAI service context");
+    const serviceContext = serviceContextFromDefaults({
+        llm: new OpenAI({
+            model: Config.OPENAI_LLM_LARGE.MODEL,
+            apiKey: Config.OPENAI_API_KEY
+        }),
+        embedModel: new OpenAIEmbedding({
+            model: Config.OPENAI_LLM_EMBED.MODEL,
+            apiKey: Config.OPENAI_API_KEY,
+        }),
+        nodeParser: new SimpleNodeParser({
+            chunkSize: 2048,
+            chunkOverlap: 256
+        })
+    });
+    return serviceContext;
 }
 
 export async function handleDocument(req: HennosConsumer, path: string, uuid: string, reader: BaseReader, prompt?: string): Promise<string> {

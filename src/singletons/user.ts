@@ -246,4 +246,24 @@ export class HennosUser extends HennosConsumer {
         await user.getBasicInfo();
         return user;
     }
+
+    static async fromHennosLink(link: string): Promise<HennosUser | null> {
+        const db = Database.instance();
+        const result = await db.hennosLink.findUnique({
+            select: {
+                chatId: true
+            },
+            where: {
+                link
+            }
+        });
+
+        if (!result) {
+            return null;
+        }
+
+        const instance = new HennosUser(Number(result.chatId));
+        await instance.getBasicInfo();
+        return instance;
+    }
 }

@@ -243,12 +243,12 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         }
     }
 
-    public async transcription(req: HennosConsumer, path: string): Promise<HennosResponse> {
+    public async transcription(req: HennosConsumer, path: string | Buffer): Promise<HennosResponse> {
         Logger.info(req, "OpenAI Transcription Start");
         try {
             const transcription = await this.openai.audio.transcriptions.create({
                 model: this.transcriptionModel,
-                file: createReadStream(path)
+                file: (typeof path === "string") ? createReadStream(path) : new File([path], "audio", { type: "audio/wav" })
             });
 
             Logger.info(req, "OpenAI Transcription Success");

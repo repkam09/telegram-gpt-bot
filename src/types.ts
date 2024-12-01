@@ -1,6 +1,5 @@
 export type HennosResponse = HennosStringResponse | HennosEmptyResponse | HennosArrayBufferResponse | HennosErrorResponse;
 
-
 export type HennosMessageRole = "user" | "assistant" | "system";
 export type HennosTextMessage = {
     type: "text",

@@ -47,6 +47,13 @@ model Messages {
   role     String
 }
 
+model HennosLink {
+  id       Int      @id @default(autoincrement())
+  chatId   BigInt   @unique
+  link     String   @unique
+  datetime DateTime @default(now())
+}
+
 model Blacklist {
   chatId   BigInt   @id
   datetime DateTime @default(now())
