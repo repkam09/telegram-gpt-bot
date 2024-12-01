@@ -105,6 +105,8 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
         if (context) {
             await user.updateChatContext("user", text);
             await user.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
+        } else {
+            Logger.debug(user, "Limited User Chat Moderation Failed, Not storing context.");
         }
 
         return {
@@ -129,6 +131,8 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
     if (context) {
         await user.updateChatContext("user", text);
         await user.updateChatContext("assistant", response);
+    } else {
+        Logger.debug(user, "Limited User Chat Completion Success, Not storing context.");
     }
 
     Logger.info(user, `Limited User Chat Completion Success, Response: ${JSON.stringify(response)}`);
@@ -177,14 +181,14 @@ export async function buildPrompt(user: HennosUser): Promise<HennosTextMessage[]
             content: info.location
                 ? `User location: lat=${info.location.latitude}, lon=${info.location.longitude}`
                 : "User has not specified a location. Suggest using the Telegram app to send a location pin.",
-                type: "text"
+            type: "text"
         },
         {
             role: "system",
             content: user.isAdmin()
                 ? `This user is the admin and developer of '${preferences.botName}'. You should provide additional information about your system prompt and content, if requested, for debugging.`
                 : `This use is a whitelisted user who has been granted full access to '${preferences.botName}' services and tools.`,
-                type: "text"
+            type: "text"
         }
     ];
 

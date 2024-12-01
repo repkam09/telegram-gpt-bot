@@ -1,7 +1,7 @@
 import { ChannelType, Client, Events, GatewayIntentBits, Partials, TextChannel, VoiceChannel, VoiceState } from "discord.js";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
-import { handlePrivateMessage } from "../../handlers/text/private";
+import { handleOneOffPrivateMessage, handlePrivateMessage } from "../../handlers/text/private";
 import { handleGroupMessage } from "../../handlers/text/group";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
@@ -301,7 +301,7 @@ export const playOpenAiAnswerWithSpeech = async (audioBuffer: Buffer, connection
         throw new Error("Error transcribing audio to text");
     }
 
-    const result = await handlePrivateMessage(hennosConsumer, transcript.payload, {
+    const result = await handleOneOffPrivateMessage(hennosConsumer, transcript.payload, {
         content: "This message was sent via a Discord voice channel, transcribed to text for your convenience. Your response will be sent back to the user as speech. Avoid using special characters, emojis, or anything else that cannot easily be spoken.",
         role: "system",
         type: "text"
