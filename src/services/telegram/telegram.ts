@@ -19,6 +19,8 @@ import { HennosConsumer } from "../../singletons/base";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { handleCalendarImport } from "../../tools/ImportCalendar";
 import { HennosResponse } from "../../types";
+import { handleAudioMessage } from "../../handlers/audio";
+import { StoreKeyValueMemory } from "../../tools/UserFactsTool";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -399,16 +401,39 @@ async function handleTelegramLocationMessage(user: HennosUser, msg: TelegramBot.
     return TelegramBotInstance.sendMessageWrapper(user, "Location information updated.");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
     TelegramBotInstance.setTelegramIndicator(user, "typing");
-    return TelegramBotInstance.sendMessageWrapper(user, "Error: Audio messages are not yet supported");
+    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.audio.file_id, Config.LOCAL_STORAGE(user));
+    const response1 = await handleAudioMessage(user, tempFilePath);
+
+    if (response1.__type === "string") {
+        TelegramBotInstance.setTelegramIndicator(user, "record_voice");
+        try {
+            const response2 = await HennosOpenAISingleton.instance().speech(user, response1.payload);
+            TelegramBotInstance.setTelegramIndicator(user, "upload_voice");
+            await handleHennosResponse(user, response2, {});
+        } catch (err) {
+            Logger.error(user, "handleTelegramAudioMessage unable to process LLM response into speech.", err);
+        }
+    }
+
+    return handleHennosResponse(user, response1, {});
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.Message & { contact: TelegramBot.Contact }) {
     TelegramBotInstance.setTelegramIndicator(user, "typing");
-    return TelegramBotInstance.sendMessageWrapper(user, "Error: Contacts are not supported yet.");
+    Logger.debug(user, "contact", msg.contact);
+
+    await StoreKeyValueMemory.callback(user, {
+        key: JSON.stringify({
+            type: "contact",
+            first_name: msg.contact.first_name,
+            last_name: msg.contact.last_name
+        }), value: JSON.stringify(msg.contact)
+    }, {});
+
+    return TelegramBotInstance.sendMessageWrapper(user, "Contact information stored.");
 }
 
 async function handleTelegramCalendarMessage(req: HennosConsumer, file: string) {
@@ -435,6 +460,13 @@ async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.
 
     if (ext === "ics") {
         return handleTelegramCalendarMessage(user, tempFilePath);
+    }
+
+    if (ext === "mp3" || ext === "ogg" || ext === "wav" || ext === "flac" || ext === "oga" || ext === "m4a") {
+        return handleTelegramAudioMessage(user, {
+            ...msg,
+            audio: { file_id: msg.document.file_id, duration: -1, file_unique_id: msg.document.file_unique_id }
+        });
     }
 
     const response = await handleDocumentMessage(user, tempFilePath, ext, msg.document.file_unique_id);

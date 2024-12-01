@@ -1,6 +1,7 @@
 import { HennosUser } from "../../singletons/user";
 import { Logger } from "../../singletons/logger";
 import { HennosResponse, HennosTextMessage } from "../../types";
+import { FILE_EXT_TO_READER } from "llamaindex";
 
 export async function handlePrivateMessage(user: HennosUser, text: string, hint?: HennosTextMessage): Promise<HennosResponse> {
     if (user.whitelisted) {
@@ -57,6 +58,8 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
     const date = new Date().toUTCString();
     const { firstName } = await user.getBasicInfo();
 
+    const valid_file_types = Object.keys(FILE_EXT_TO_READER).join(", ");
+
     const prompt: HennosTextMessage[] = [
         {
             role: "system",
@@ -66,6 +69,11 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
         {
             role: "system",
             content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms.",
+            type: "text"
+        },
+        {
+            role: "system",
+            content: `You can process different types of user input including text, audio, and image, as well as document uploads (${valid_file_types}), contact cards, and location/GPS pins.`,
             type: "text"
         },
         {
@@ -146,6 +154,9 @@ export async function buildPrompt(user: HennosUser): Promise<HennosTextMessage[]
 
     const date = new Date().toUTCString();
 
+
+    const valid_file_types = Object.keys(FILE_EXT_TO_READER).join(", ");
+
     const prompt: HennosTextMessage[] = [
         {
             role: "system",
@@ -155,6 +166,11 @@ export async function buildPrompt(user: HennosUser): Promise<HennosTextMessage[]
         {
             role: "system",
             content: "You should respond in concise paragraphs with double newlines to maintain readability on different platforms.",
+            type: "text"
+        },
+        {
+            role: "system",
+            content: `You can process different types of user input including text, audio, and image, as well as document uploads (${valid_file_types}), contact cards, and location/GPS pins.`,
             type: "text"
         },
         {
