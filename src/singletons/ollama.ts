@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Message, Ollama, ToolCall } from "ollama";
+import { whisper } from "whisper-node";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
@@ -8,7 +9,10 @@ import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { ToolCallMetadata } from "../tools/BaseTool";
+import { randomUUID } from "node:crypto";
 import { HennosImage, HennosMessage, HennosMessageRole, HennosResponse, HennosTextMessage } from "../types";
+import path from "node:path";
+import fs from "node:fs/promises";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -127,9 +131,23 @@ class HennosOllamaProvider extends HennosBaseProvider {
         return HennosOpenAISingleton.instance().moderation(req, input);
     }
 
-    public async transcription(req: HennosConsumer, path: string): Promise<HennosResponse> {
-        Logger.info(req, "Ollama Transcription Start (OpenAI Fallback)");
-        return HennosOpenAISingleton.instance().transcription(req, path);
+    public async transcription(req: HennosConsumer, file: string | Buffer): Promise<HennosResponse> {
+        let pathString: string;
+        if (typeof file !== "string") {
+            Logger.debug(req, "Ollama Transcription Start (Buffer)");
+            pathString = path.join(Config.LOCAL_STORAGE(req), `discord_${randomUUID()}.wav`);
+            await fs.writeFile(pathString, file);
+        } else {
+            Logger.debug(req, "Ollama Transcription Start (Path)");
+            pathString = file;
+        }
+
+        const transcript = await whisper(pathString);
+        const result = transcript.map((entry) => entry.speech).join(" ");
+        return {
+            __type: "error",
+            payload: result
+        };
     }
 
     public async speech(user: HennosUser, input: string): Promise<HennosResponse> {

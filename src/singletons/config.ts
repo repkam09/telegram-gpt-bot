@@ -391,6 +391,14 @@ export class Config {
         return process.env.DISCORD_BOT_TOKEN;
     }
 
+    static get DISCORD_DISPLAY_NAME(): string {
+        if (!process.env.DISCORD_DISPLAY_NAME) {
+            return "Hennos";
+        }
+
+        return process.env.DISCORD_DISPLAY_NAME;
+    }
+
     static get OPEN_WEATHER_API(): string | false {
         if (!process.env.OPEN_WEATHER_API) {
             return false;
