@@ -23,7 +23,6 @@ async function start() {
     await Database.init();
     await ScheduleJob.init();
 
-
     const paralleleInit = [];
 
     if (Config.TELEGRAM_ENABLED) {

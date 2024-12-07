@@ -24,6 +24,9 @@ COPY prisma/migrations prisma/migrations
 # Install dependencies
 RUN npm install
 
+RUN ./node_modules/nodejs-whisper/cpp/whisper.cpp/models/download-ggml-model.sh base.en
+RUN ./node_modules/nodejs-whisper/cpp/whisper.cpp/models/download-ggml-model.sh tiny.en
+
 # Copy the rest of the application code
 COPY src src
 

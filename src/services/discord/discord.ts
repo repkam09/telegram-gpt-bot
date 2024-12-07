@@ -1,7 +1,7 @@
 import { ChannelType, Client, Events, GatewayIntentBits, Partials, TextChannel, VoiceChannel, VoiceState } from "discord.js";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
-import { handleOneOffPrivateMessage, handlePrivateMessage } from "../../handlers/text/private";
+import { handlePrivateMessage } from "../../handlers/text/private";
 import { handleGroupMessage } from "../../handlers/text/group";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
@@ -15,6 +15,15 @@ import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosOllamaSingleton } from "../../singletons/ollama";
 
 type ChannelCommonType = TextChannel | VoiceChannel | null;
+
+const triggerPhrases = [
+    `${Config.DISCORD_DISPLAY_NAME}`,
+    "Henos",
+    "Hennos",
+    "Enos",
+    "Hennas",
+    "Hello, "
+];
 
 export class DiscordBotInstance {
     static _hasCompletedInit = false;
@@ -116,6 +125,7 @@ export class DiscordBotInstance {
                 const initVoiceChannelConnection = getVoiceConnection(newState.guild.id);
                 if (!initVoiceChannelConnection) {
                     Logger.debug(undefined, "Creating voice connection...");
+                    const group = await HennosGroup.async(Number(currentChannelId), undefined);
                     const connection = joinVoiceChannel({
                         channelId: currentChannelId,
                         guildId: newState.guild.id,
@@ -139,7 +149,7 @@ export class DiscordBotInstance {
                             connection.receiver.subscribe(userId, {
                                 end: {
                                     behavior: EndBehaviorType.AfterSilence,
-                                    duration: 1000,
+                                    duration: 2000,
                                 },
                             });
                         });
@@ -154,22 +164,29 @@ export class DiscordBotInstance {
 
                                 connection.subscribe(audioPlayer);
                                 const transcript = await HennosOllamaSingleton.instance().transcription(user, voiceAudioBuffer);
-                                if (transcript.__type !== "string") {
-                                    throw new Error("Error transcribing audio to text");
-                                }
-
-                                const triggerPhrases = [
-                                    `Hey ${Config.DISCORD_DISPLAY_NAME}`,
-                                    `Hey ${Config.DISCORD_DISPLAY_NAME.toLowerCase()}`,
-                                    `Hey ${Config.DISCORD_DISPLAY_NAME.toUpperCase()}`,
-                                ];
-
-                                if (!triggerPhrases.some((phrase) => transcript.payload.includes(phrase))) {
-                                    Logger.debug(user, "User did not say a trigger phrase, ignoring...");
+                                if (transcript.__type === "empty") {
+                                    Logger.debug(user, "Empty transcription result, ignoring...");
                                     return;
                                 }
 
-                                const result = await handleOneOffPrivateMessage(user, transcript.payload, {
+                                if (transcript.__type === "arraybuffer") {
+                                    Logger.debug(user, "This should not happen, ignoring...");
+                                    return;
+                                }
+
+                                if (transcript.__type === "error") {
+                                    Logger.error(user, `Error transcribing voice audio: ${transcript.payload}`);
+                                    return;
+                                }
+
+                                if (!triggerPhrases.map((entry) => entry.toLowerCase()).some((phrase) => transcript.payload.toLowerCase().includes(phrase))) {
+                                    Logger.trace(user, "discord_voice_context");
+                                    await group.updateChatContext("user", transcript.payload);
+                                    return;
+                                }
+
+                                Logger.trace(user, "discord_voice");
+                                const result = await handleGroupMessage(user, group, transcript.payload, {
                                     content: "This message was sent via a Discord voice channel, transcribed to text for your convenience. Your response will be sent back to the user as speech. Avoid using special characters, emojis, or anything else that cannot easily be spoken.",
                                     role: "system",
                                     type: "text"
@@ -224,6 +241,7 @@ export class DiscordBotInstance {
             Logger.info(user, `Received Discord message from ${message.author.tag} (${message.author.id}) in ${message.channel.id}`);
             if (message.channel.type === ChannelType.DM) {
                 try {
+                    Logger.trace(user, "discord_message_dm");
                     const response = await handlePrivateMessage(user, message.content);
                     await handleHennosResponse(response, message.channel);
                 } catch (err: unknown) {
@@ -241,6 +259,7 @@ export class DiscordBotInstance {
                 }
 
                 try {
+                    Logger.trace(user, "discord_message_group");
                     const response = await handleGroupMessage(user, group, message.content);
                     await handleHennosResponse(response, message.channel);
                 } catch (err: unknown) {
@@ -253,10 +272,10 @@ export class DiscordBotInstance {
 
     static convertOpusStreamToWavBuffer(opusStream: AudioReceiveStream): Promise<Buffer> {
         return new Promise((resolve, reject) => {
-            const _opusEncoder = new opus.OpusEncoder(48000, 2);
+            const _opusEncoder = new opus.OpusEncoder(16000, 2);
             const _wavEncoder = new wav.Writer({
                 channels: 2,
-                sampleRate: 48000,
+                sampleRate: 16000,
                 bitDepth: 16,
             });
 
