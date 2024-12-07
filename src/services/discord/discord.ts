@@ -22,7 +22,8 @@ const triggerPhrases = [
     "Hennos",
     "Enos",
     "Hennas",
-    "Hello, "
+    "Hello,",
+    "Heados,"
 ];
 
 export class DiscordBotInstance {
