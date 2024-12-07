@@ -23,29 +23,33 @@ async function start() {
     await Database.init();
     await ScheduleJob.init();
 
+    const paralleleInit = [];
+
     if (Config.TELEGRAM_ENABLED) {
-        await TelegramBotInstance.init();
+        paralleleInit.push(TelegramBotInstance.init());
     } else {
         console.warn("Telegram bot is disabled, set TELEGRAM_ENABLED=true to enable it");
     }
 
     if (Config.DISCORD_ENABLED) {
-        await DiscordBotInstance.init();
+        paralleleInit.push(DiscordBotInstance.init());
     } else {
         console.warn("Discord bot is disabled, set DISCORD_ENABLED=true to enable it");
     }
 
     if (Config.TWITCH_ENABLED) {
-        await TwitchBotInstance.init();
+        paralleleInit.push(TwitchBotInstance.init());
     } else {
         console.warn("Twitch bot is disabled, set TWITCH_ENABLED=true to enable it");
     }
 
     if (Config.WS_SERVER_ENABLED) {
-        await WSServerInstance.init();
+        paralleleInit.push(WSServerInstance.init());
     } else {
         console.warn("Web Socket server is disabled, set WS_SERVER_ENABLED=true to enable it");
     }
+
+    await Promise.all(paralleleInit);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
     const enabled = [Config.TELEGRAM_ENABLED, Config.DISCORD_ENABLED, Config.TWITCH_ENABLED, Config.WS_SERVER_ENABLED];

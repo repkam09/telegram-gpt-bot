@@ -121,6 +121,28 @@ export class Config {
         };
     }
 
+    static get WHISPER_MODEL(): string {
+        if (!process.env.WHISPER_MODEL) {
+            return "base.en";
+        }
+
+        return process.env.WHISPER_MODEL;
+    }
+
+    static get WHISPER_MAX_PARALLEL(): number {
+        if (!process.env.WHISPER_MAX_PARALLEL) {
+            return 1;
+        }
+
+        const max = parseInt(process.env.WHISPER_MAX_PARALLEL);
+
+        if (Number.isNaN(max)) {
+            throw new Error("Invalid WHISPER_MAX_PARALLEL value");
+        }
+
+        return max;
+    }
+
     static get OLLAMA_LLM_LARGE(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM_LARGE) {
             return {
@@ -389,6 +411,14 @@ export class Config {
         }
 
         return process.env.DISCORD_BOT_TOKEN;
+    }
+
+    static get DISCORD_DISPLAY_NAME(): string {
+        if (!process.env.DISCORD_DISPLAY_NAME) {
+            return "Hennos";
+        }
+
+        return process.env.DISCORD_DISPLAY_NAME;
     }
 
     static get OPEN_WEATHER_API(): string | false {

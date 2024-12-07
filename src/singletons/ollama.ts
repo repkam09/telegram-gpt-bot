@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Message, Ollama, ToolCall } from "ollama";
+import { nodewhisper } from "nodejs-whisper";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
@@ -8,7 +9,10 @@ import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { ToolCallMetadata } from "../tools/BaseTool";
+import { randomUUID } from "node:crypto";
 import { HennosImage, HennosMessage, HennosMessageRole, HennosResponse, HennosTextMessage } from "../types";
+import path from "node:path";
+import fs from "node:fs/promises";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -47,6 +51,7 @@ function convertHennosMessages(messages: HennosMessage[]): Message[] {
 
 class HennosOllamaProvider extends HennosBaseProvider {
     private ollama: Ollama;
+    private static _parallel = 0;
 
     constructor() {
         super();
@@ -127,9 +132,59 @@ class HennosOllamaProvider extends HennosBaseProvider {
         return HennosOpenAISingleton.instance().moderation(req, input);
     }
 
-    public async transcription(req: HennosConsumer, path: string): Promise<HennosResponse> {
-        Logger.info(req, "Ollama Transcription Start (OpenAI Fallback)");
-        return HennosOpenAISingleton.instance().transcription(req, path);
+    public async transcription(req: HennosConsumer, file: string | Buffer): Promise<HennosResponse> {
+        if (HennosOllamaProvider._parallel >= Config.WHISPER_MAX_PARALLEL) {
+            Logger.info(req, "Ollama Transcription Disabled");
+            return {
+                __type: "empty"
+            };
+        }
+
+        HennosOllamaProvider._parallel = HennosOllamaProvider._parallel + 1;
+
+        try {
+            let pathString: string;
+            let deleteAfter = false;
+            if (typeof file === "string") {
+                Logger.info(req, `Ollama Transcription Start (Path) [instance=${HennosOllamaProvider._parallel}]`);
+                pathString = file;
+                deleteAfter = false;
+            } else {
+                Logger.info(req, `Ollama Transcription Start (Buffer) [instance=${HennosOllamaProvider._parallel}]`);
+                pathString = path.join(Config.LOCAL_STORAGE(req), `discord_${randomUUID()}.wav`);
+                deleteAfter = true;
+                await fs.writeFile(pathString, file);
+            }
+
+            const transcript = await nodewhisper(pathString, {
+                modelName: Config.WHISPER_MODEL,
+                verbose: Config.HENNOS_VERBOSE_LOGGING,
+                removeWavFileAfterTranscription: deleteAfter,
+            });
+
+            const result = transcript.trim().replace(/\[\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}\]/g, "").trim();
+
+            HennosOllamaProvider._parallel = HennosOllamaProvider._parallel - 1;
+
+            if (transcript === "") {
+                Logger.info(req, "Ollama Transcription Empty Result");
+                return {
+                    __type: "empty"
+                };
+            }
+
+            Logger.info(req, "Ollama Transcription Success");
+            return {
+                __type: "string",
+                payload: result
+            };
+        } catch (err: unknown) {
+            Logger.info(req, "Ollama Transcription Error");
+            HennosOllamaProvider._parallel = HennosOllamaProvider._parallel - 1;
+            return {
+                __type: "empty"
+            };
+        }
     }
 
     public async speech(user: HennosUser, input: string): Promise<HennosResponse> {

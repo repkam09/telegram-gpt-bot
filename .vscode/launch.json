@@ -21,6 +21,19 @@
             "type": "node",
             "runtimeArgs": ["--preserve-symlinks"],
             "request": "launch",
+            "name": "Launch Whisper",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "tsc",
+            "program": "${workspaceFolder}/build/scripts/whisper.js",
+            "sourceMaps": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "runtimeArgs": ["--preserve-symlinks"],
+            "request": "launch",
             "name": "Launch Documents",
             "skipFiles": [
                 "<node_internals>/**"
