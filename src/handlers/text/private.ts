@@ -102,6 +102,11 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
         },
         {
             role: "system",
+            content: `Here are some details about the underlying Large Language Model that is currently powering this conversation: ${user.getProvider().details()}`,
+            type: "text"
+        },
+        {
+            role: "system",
             content: `Current Date and Time: ${date}`,
             type: "text"
         }
@@ -171,6 +176,14 @@ export async function buildPrompt(user: HennosUser): Promise<HennosTextMessage[]
         {
             role: "system",
             content: `You can process different types of user input including text, audio, and image, as well as document uploads (${valid_file_types}), contact cards, and location/GPS pins.`,
+            type: "text"
+        },
+        {
+            role: "system",
+            content: [
+                `Here are some details about the underlying Large Language Model that is currently powering this conversation: ${user.getProvider().details()}.`,
+                "The user is able to change LLM providers in the Hennos settings. There might be references to other LLMs in the chat history if the user has switched providers."
+            ].join("\n"),
             type: "text"
         },
         {

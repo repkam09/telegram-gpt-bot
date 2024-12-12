@@ -30,6 +30,10 @@ class HennosGoogleProvider extends HennosBaseProvider {
         this.google = new GoogleGenerativeAI(Config.GOOGLE_API_KEY);
     }
 
+    public details(): string {
+        return `Google Gemini model ${Config.GOOGLE_LLM.MODEL}`;
+    }
+
     public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `Google Completion Start (${Config.GOOGLE_LLM.MODEL})`);
 

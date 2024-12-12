@@ -96,6 +96,10 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         this.speechModel = "tts-1";
     }
 
+    public details(): string {
+        return `OpenAI GPT model ${this.model.MODEL}`;
+    }
+
     public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `OpenAI Completion Start (${this.model.MODEL})`);
 

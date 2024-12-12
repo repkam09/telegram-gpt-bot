@@ -61,6 +61,10 @@ class HennosOllamaProvider extends HennosBaseProvider {
         });
     }
 
+    public details(): string {
+        return `Open Source model ${Config.OLLAMA_LLM.MODEL} running under Ollama.`;
+    }
+
     public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `Ollama Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 

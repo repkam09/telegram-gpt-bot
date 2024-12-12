@@ -9,8 +9,9 @@ import { Logger } from "./logger";
 export abstract class HennosBaseProvider {
     public abstract completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse>;
     public abstract moderation(req: HennosConsumer, input: string): Promise<boolean>;
-    public abstract transcription(req: HennosConsumer, path:  string | Buffer): Promise<HennosResponse>;
+    public abstract transcription(req: HennosConsumer, path: string | Buffer): Promise<HennosResponse>;
     public abstract speech(req: HennosConsumer, input: string): Promise<HennosResponse>;
+    public abstract details(): string;
 }
 
 export abstract class HennosConsumer {

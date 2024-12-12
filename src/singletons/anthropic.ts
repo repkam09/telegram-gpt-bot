@@ -150,6 +150,10 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         });
     }
 
+    public details(): string {
+        return `Anthropic Claude model ${Config.ANTHROPIC_LLM.MODEL}`;
+    }
+
     public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `Anthropic Completion Start (${Config.ANTHROPIC_LLM.MODEL})`);
 
