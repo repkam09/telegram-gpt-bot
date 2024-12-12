@@ -147,16 +147,17 @@ type ConvertHennosMessageResponse = {
 
 function convertHennosMessages(messages: HennosMessage[]): ConvertHennosMessageResponse {
     const filtered = messages.filter((val) => isHennosTextMessage(val));
-
     const result = filtered.reduce((acc, val, index) => {
-        // if this is the last message, set the next property
-        if (index === filtered.length - 1) {
-            acc.next = val.content;
-            return acc;
-        }
 
-        if (val.role === "user") {
-            if (val.content.trim() !== "") {
+        // Check that the content is valid
+        if (val.content.trim() !== "") {
+            // if this is the last message, set the next property
+            if (index === filtered.length - 1) {
+                acc.next = val.content;
+                return acc;
+            }
+
+            if (val.role === "user") {
                 acc.history.push({
                     role: "user",
                     parts: [{
@@ -164,21 +165,27 @@ function convertHennosMessages(messages: HennosMessage[]): ConvertHennosMessageR
                     }]
                 });
             }
-        }
 
-        if (val.role === "assistant") {
-            if (val.content.trim() !== "") {
+            if (val.role === "assistant") {
                 acc.history.push({
                     role: "model",
                     parts: [{
                         text: val.content
                     }]
                 });
+
             }
         }
 
         return acc;
     }, { history: [], next: null } as ConvertHennosMessageResponse);
+
+    // Try and make sure that the first message is always the user
+    let first = result.history[0];
+    while (first && first.role === "model") {
+        result.history.shift();
+        first = result.history[0];
+    }
     return result;
 }
 
