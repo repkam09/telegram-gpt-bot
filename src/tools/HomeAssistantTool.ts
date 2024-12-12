@@ -15,22 +15,22 @@ export class HomeAssistantStatesTool extends BaseTool {
 
     public static definition(): Tool {
         return {
-            "type": "function",
-            "function": {
-                "name": "home_assistant_states",
-                "description": [
+            type: "function",
+            function: {
+                name: "home_assistant_states",
+                description: [
                     "This tool uses the Home Assistant API to retrieve the states of requested entities within Home Assistant.",
                     "Each entity will return the following properties: entity_id, state, last_changed and attributes. The attributes field contains additional information about the entity.",
                 ].join(" "),
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "entity_id": {
-                            "type": "string",
-                            "description": "The comma seperated list of entity_ids of the to fetch information for. Eg. 'zone.home' or 'zone.home,person.mark_repka'.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        entity_id: {
+                            type: "string",
+                            description: "The comma seperated list of entity_ids of the to fetch information for. Eg. 'zone.home' or 'zone.home,person.mark_repka'.",
                         }
                     },
-                    "required": ["entity_id"]
+                    required: ["entity_id"]
                 }
             }
         };
@@ -83,16 +83,21 @@ export class HomeAssistantEntitiesTool extends BaseTool {
 
     public static definition(): Tool {
         return {
-            "type": "function",
-            "function": {
-                "name": "home_assistant_entities",
-                "description": [
+            type: "function",
+            function: {
+                name: "home_assistant_entities",
+                description: [
                     "This tool uses the Home Assistant API to retrieve the list of available entities within Home Assistant.",
                     "This is a useful tool to get a list of all entities and their respective entity_ids before fetching more detailed information."
                 ].join(" "),
                 "parameters": {
                     "type": "object",
-                    "properties": {},
+                    "properties": {
+                        "reason": {
+                            "type": "string",
+                            "description": "The reason for fetching the list of entities. This is optional and can be used to provide context for the request."
+                        }
+                    },
                     "required": []
                 }
             }

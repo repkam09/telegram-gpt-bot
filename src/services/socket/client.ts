@@ -26,7 +26,7 @@ export class WebSocketTestClient {
             let parsed;
             try {
                 parsed = JSON.parse(data);
-            } catch (e) {
+            } catch {
                 ws.send(JSON.stringify({ error: "Invalid JSON" }));
                 return;
             }

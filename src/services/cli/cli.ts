@@ -62,6 +62,12 @@ export class CommandLineInstance {
                 await user.setPreferredProvider("ollama");
                 query = null;
             }
+
+            if (query === "google") {
+                console.log("Switching to Google...");
+                await user.setPreferredProvider("google");
+                query = null;
+            }
         }
 
         rl.close();

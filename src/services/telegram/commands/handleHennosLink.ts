@@ -20,6 +20,6 @@ export async function handleCreateHennosLink(user: HennosUser) {
         }
     });
 
-    return TelegramBotInstance.sendMessageWrapper(user, "Token: `" + link) + "`";
+    return TelegramBotInstance.sendMessageWrapper(user, "Token: `" + link + "`");
 }
 

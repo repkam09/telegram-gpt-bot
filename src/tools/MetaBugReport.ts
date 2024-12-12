@@ -37,7 +37,7 @@ export class MetaBugReport extends BaseTool {
 
         try {
             await TelegramBotInstance.sendAdminMessage(`Bug Report Tool (${req.displayName}):\n\n${args.report}`);
-        } catch (err) {
+        } catch {
             Logger.error(req, "MetaBugReport unable to send admin message", { report: args.report });
         }
 

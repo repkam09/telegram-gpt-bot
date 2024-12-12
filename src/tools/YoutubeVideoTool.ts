@@ -74,7 +74,7 @@ export async function extractSubtitles(videoId: string): Promise<string> {
         await fs.access(`${output}.en.srt`);
         Logger.debug(undefined, "extractSubtitles, already exists", { output: `${output}.en.srt` });
         return `${output}.en.srt`;
-    } catch (err) {
+    } catch {
         // If the file does not exist, continue
     }
 

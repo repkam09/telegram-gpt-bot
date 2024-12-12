@@ -53,7 +53,7 @@ export class SearXNGSearch extends BaseTool {
             }));
 
             return [`searxng_web_search, query '${args.query}', returned the following results: ${JSON.stringify(cleaned)}`, metadata];
-        } catch (err) {
+        } catch {
             Logger.error(req, "SearXNGSearch callback error", { query: args.query });
             return [`searxng_web_search, query '${args.query}', encountered an error while fetching results`, metadata];
         }

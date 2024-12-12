@@ -23,7 +23,7 @@ async function handleWebSocketMessage(ws: WebSocket, data: any): Promise<void> {
     let parsed;
     try {
         parsed = JSON.parse(data);
-    } catch (e) {
+    } catch {
         Logger.debug(undefined, "WebSocket request invalid JSON, ignoring");
         return;
     }

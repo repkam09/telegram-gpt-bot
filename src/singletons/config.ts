@@ -121,6 +121,27 @@ export class Config {
         };
     }
 
+    static get GOOGLE_LLM(): HennosModelConfig {
+        if (!process.env.GOOGLE_LLM) {
+            return {
+                MODEL: "gemini-1.5-flash",
+                CTX: 65000
+            };
+        }
+
+        const parts = process.env.GOOGLE_LLM.split(",");
+        const ctx = parseInt(parts[1]);
+
+        if (Number.isNaN(ctx)) {
+            throw new Error("Invalid context length value for GOOGLE_LLM");
+        }
+
+        return {
+            MODEL: parts[0],
+            CTX: ctx
+        };
+    }
+
     static get WHISPER_MODEL(): string {
         if (!process.env.WHISPER_MODEL) {
             return "base.en";
@@ -208,6 +229,14 @@ export class Config {
         }
 
         return process.env.OPENAI_API_KEY;
+    }
+
+    static get GOOGLE_API_KEY(): string {
+        if (!process.env.GOOGLE_API_KEY) {
+            throw new Error("Missing GOOGLE_API_KEY");
+        }
+
+        return process.env.GOOGLE_API_KEY;
     }
 
     static get OPENAI_LLM(): HennosModelConfig {

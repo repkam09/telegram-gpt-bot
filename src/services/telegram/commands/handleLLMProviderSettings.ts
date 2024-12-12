@@ -12,12 +12,14 @@ export async function handleLLMProviderSettingsCallback(user: HennosUser, queryI
         bot.answerCallbackQuery(queryId, {
             text: "Future messages will be powered by " + provider + "."
         });
+        Logger.trace(user, `update_provider: ${provider}`);
         bot.sendMessage(user.chatId, "Future messages will be powered by " + provider + ".");
     }).catch((err: unknown) => {
         Logger.error(user, "Error while updating AI provider settings", err);
         bot.answerCallbackQuery(queryId, {
             text: "There was an error while updating your AI provider settings"
         });
+        Logger.trace(user, "update_provider_error");
         bot.sendMessage(user.chatId, "There was an error while updating your AI provider settings");
     });
 }
@@ -36,6 +38,10 @@ export async function sendLLMProviderSettingsPrompt(user: HennosUser) {
                     {
                         text: "OpenAI GPT-4",
                         callback_data: "llm-settings-openai",
+                    },
+                    {
+                        text: "Google Gemini",
+                        callback_data: "llm-settings-google",
                     },
                     {
                         text: "Ollama Models",
