@@ -32,6 +32,13 @@ model KeyValueMemory {
   @@unique([chatId, key])
 }
 
+model FutureTask {
+  id      Int      @id @default(autoincrement())
+  chatId  BigInt
+  trigger DateTime
+  message String
+}
+
 model Group {
   chatId      BigInt  @id
   name        String

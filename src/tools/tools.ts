@@ -16,6 +16,7 @@ import { TheMovieDBTool } from "./TheMovieDBTool";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { StoreKeyValueMemory } from "./UserFactsTool";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
+import { ScheduleMessageCallback } from "./MessageCallback";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -30,13 +31,14 @@ const WHITELIST_TOOLS = [
     LastFMTool,
     TheMovieDBTool,
     StoreKeyValueMemory,
+    ScheduleMessageCallback,
+    WolframAlpha,
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
     ReasoningModel,
     YoutubeVideoTool,
-    WolframAlpha,
-    AcknowledgeWithoutResponse,
+    AcknowledgeWithoutResponse
 ];
 
 const ADMIN_TOOLS = [
