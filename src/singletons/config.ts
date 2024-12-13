@@ -474,6 +474,15 @@ export class Config {
         return process.env.LAST_FM_API_KEY;
     }
 
+
+    static get GITHUB_API_KEY(): string | false {
+        if (!process.env.GITHUB_API_KEY) {
+            return false;
+        }
+
+        return process.env.GITHUB_API_KEY;
+    }
+
     static get THE_MOVIE_DB_API_KEY(): string | false {
         if (!process.env.THE_MOVIE_DB_API_KEY) {
             return false;
