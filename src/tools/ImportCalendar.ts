@@ -8,6 +8,10 @@ import { Config } from "../singletons/config";
 import ical from "node-ical";
 
 export class ImportCalendar extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+    
     public static definition(): Tool {
         return {
             type: "function",

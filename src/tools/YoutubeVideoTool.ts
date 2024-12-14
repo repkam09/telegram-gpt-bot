@@ -11,6 +11,10 @@ import { Config } from "../singletons/config";
 
 
 export class YoutubeVideoTool extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+
     public static definition(): Tool {
         return {
             type: "function",

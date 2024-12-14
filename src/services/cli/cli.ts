@@ -24,12 +24,26 @@ export class CommandLineInstance {
             if (query) {
                 const response = await handlePrivateMessage(user, query, {
                     role: "system",
-                    content: "The user is sending their messsage via the command line interface in Hennos Development Mode, not via Telegram. " +
+                    content: "The user is sending their messsage via the command line interface in Hennos Development Mode. " +
                         "Please call out anything that looks unusual or strange in the previous chat context, as it may be a bug.",
                     type: "text"
                 });
 
-                console.log("\n\n=====\n" + JSON.stringify(response) + "\n=====\n\n");
+                if (response.__type === "string") {
+                    console.log("\n\n=====\n" + response.payload + "\n=====\n\n");
+                }
+
+                if (response.__type === "error") {
+                    console.error("\n\n=====\n" + response.payload + "\n=====\n\n");
+                }
+
+                if (response.__type === "arraybuffer") {
+                    console.log("\n\n=====\n <arrayBuffer> \n=====\n\n");
+                }
+
+                if (response.__type === "empty") {
+                    console.log("\n\n=====\n <empty> \n=====\n\n");
+                }
             }
 
             query = await rl.question("Input: ");
@@ -66,6 +80,12 @@ export class CommandLineInstance {
             if (query === "google") {
                 console.log("Switching to Google...");
                 await user.setPreferredProvider("google");
+                query = null;
+            }
+
+            if (query === "mock") {
+                console.log("Switching to Mock...");
+                await user.setPreferredProvider("mock");
                 query = null;
             }
         }

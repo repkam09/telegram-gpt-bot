@@ -5,6 +5,10 @@ import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } fr
 import { ScheduleJob } from "../singletons/cron";
 
 export class ScheduleMessageCallback extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+    
     public static definition(): Tool {
         return {
             type: "function",

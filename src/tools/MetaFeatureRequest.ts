@@ -6,6 +6,14 @@ import axios from "axios";
 import { Config } from "../singletons/config";
 
 export class MetaFeatureRequest extends BaseTool {
+    public static isEnabled(): boolean {
+        if (Config.GITHUB_API_KEY) {
+            return true;
+        }
+
+        return false;
+    }
+
     public static definition(): Tool {
         return {
             type: "function",

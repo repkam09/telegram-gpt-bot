@@ -5,6 +5,10 @@ import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } fr
 import { Database } from "../singletons/sqlite";
 
 export class StoreKeyValueMemory extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+    
     public static definition(): Tool {
         return {
             type: "function",

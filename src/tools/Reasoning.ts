@@ -6,6 +6,10 @@ import { HennosOpenAIProvider, HennosOpenAISingleton } from "../singletons/opena
 import { Config } from "../singletons/config";
 
 export class ReasoningModel extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+    
     public static definition(): Tool {
         return {
             type: "function",

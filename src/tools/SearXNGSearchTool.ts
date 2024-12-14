@@ -4,6 +4,10 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
 export class SearXNGSearch extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+    
     public static definition(): Tool {
         return {
             type: "function",

@@ -7,6 +7,7 @@ import { HennosOpenAISingleton } from "./openai";
 import { HennosAnthropicSingleton } from "./anthropic";
 import { Logger } from "./logger";
 import { HennosGoogleSingleton } from "./google";
+import { HennosMockSingleton } from "./mock";
 
 export class HennosUser extends HennosConsumer {
     constructor(chatId: number) {
@@ -51,6 +52,9 @@ export class HennosUser extends HennosConsumer {
                 }
                 case "google": {
                     return HennosGoogleSingleton.instance();
+                }
+                case "mock": {
+                    return HennosMockSingleton.instance();
                 }
                 default: {
                     Logger.warn(this, `Unknown provider ${this.provider}, defaulting to OpenAI`);

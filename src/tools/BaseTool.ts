@@ -25,42 +25,17 @@ export abstract class BaseTool {
     }
 
     public static async fetchTextData(url: string): Promise<string> {
-        const result = await axios({
-            headers: {
-                "User-Agent": "HennosBot/1.0"
-            },
-            method: "get",
-            url: url,
-            responseType: "text"
-        });
-
+        const result = await BaseTool.fetchAxios<string>(url, "text");
         return result.data;
     }
 
     public static async fetchJSONData<T = any>(url: string, headers?: Record<string, string>): Promise<T> {
-        const result = await axios({
-            headers: {
-                ...headers,
-                "User-Agent": "HennosBot/1.0",
-            },
-            method: "get",
-            url: url,
-            responseType: "json"
-        });
-
+        const result = await BaseTool.fetchAxios<T>(url, "json", headers);
         return result.data as T;
     }
 
     public static async fetchBinaryData(url: string): Promise<Buffer> {
-        const result = await axios({
-            headers: {
-                "User-Agent": "HennosBot/1.0"
-            },
-            method: "get",
-            url: url,
-            responseType: "arraybuffer"
-        });
-
+        const result = await BaseTool.fetchAxios<any>(url, "arraybuffer");
         return Buffer.from(result.data);
     }
 
@@ -78,6 +53,18 @@ export abstract class BaseTool {
                 Logger.debug(undefined, "stdout", stdout);
                 return resolve(stdout);
             });
+        });
+    }
+
+    private static fetchAxios<T>(url: string, responseType: "text" | "json" | "arraybuffer", headers?: Record<string, string>): Promise<{ data: T }> {
+        return axios<T>({
+            headers: {
+                ...headers,
+                "User-Agent": "HennosBot/1.0"
+            },
+            method: "get",
+            url: url,
+            responseType: responseType
         });
     }
 }
