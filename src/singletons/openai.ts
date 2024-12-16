@@ -28,10 +28,7 @@ export class HennosOpenAISingleton {
 
     public static mini(): HennosBaseProvider {
         if (!HennosOpenAISingleton._mini) {
-            HennosOpenAISingleton._mini = new HennosOpenAIProvider({
-                MODEL: "gpt-4o-mini",
-                CTX: 16000
-            });
+            HennosOpenAISingleton._mini = new HennosOpenAIProvider(Config.OPENAI_MINI_LLM);
         }
         return HennosOpenAISingleton._mini;
     }

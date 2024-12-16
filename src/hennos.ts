@@ -11,9 +11,10 @@ import { WSServerInstance } from "./services/socket/socket";
 
 async function start() {
     // Check that all the right environment variables are set
-    console.log(`OLLAMA_LLM: ${Config.OLLAMA_LLM.MODEL}`);
-    console.log(`OPENAI_LLM: ${Config.OPENAI_LLM.MODEL}`);
-    console.log(`ANTHROPIC_LLM: ${Config.ANTHROPIC_LLM.MODEL}`);
+    console.log(`OLLAMA_LLM: ${Config.OLLAMA_LLM.MODEL}, ${Config.OLLAMA_LLM.CTX}`);
+    console.log(`OPENAI_LLM: ${Config.OPENAI_LLM.MODEL}, ${Config.OPENAI_LLM.CTX}`);
+    console.log(`ANTHROPIC_LLM: ${Config.ANTHROPIC_LLM.MODEL}, ${Config.ANTHROPIC_LLM.CTX}`);
+    console.log(`GOOGLE_LLM: ${Config.GOOGLE_LLM.MODEL}, ${Config.GOOGLE_LLM.CTX}`);
 
     console.log(`HENNOS_DEVELOPMENT_MODE is configured as ${Config.HENNOS_DEVELOPMENT_MODE}`);
     console.log(`HENNOS_VERBOSE_LOGGING is configured as ${Config.HENNOS_VERBOSE_LOGGING}`);
@@ -23,33 +24,33 @@ async function start() {
     await Database.init();
     await ScheduleJob.init();
 
-    const paralleleInit = [];
+    const init = [];
 
     if (Config.TELEGRAM_ENABLED) {
-        paralleleInit.push(TelegramBotInstance.init());
+        init.push(TelegramBotInstance.init());
     } else {
         console.warn("Telegram bot is disabled, set TELEGRAM_ENABLED=true to enable it");
     }
 
     if (Config.DISCORD_ENABLED) {
-        paralleleInit.push(DiscordBotInstance.init());
+        init.push(DiscordBotInstance.init());
     } else {
         console.warn("Discord bot is disabled, set DISCORD_ENABLED=true to enable it");
     }
 
     if (Config.TWITCH_ENABLED) {
-        paralleleInit.push(TwitchBotInstance.init());
+        init.push(TwitchBotInstance.init());
     } else {
         console.warn("Twitch bot is disabled, set TWITCH_ENABLED=true to enable it");
     }
 
     if (Config.WS_SERVER_ENABLED) {
-        paralleleInit.push(WSServerInstance.init());
+        init.push(WSServerInstance.init());
     } else {
         console.warn("Web Socket server is disabled, set WS_SERVER_ENABLED=true to enable it");
     }
 
-    await Promise.all(paralleleInit);
+    await Promise.all(init);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
     const enabled = [Config.TELEGRAM_ENABLED, Config.DISCORD_ENABLED, Config.TWITCH_ENABLED, Config.WS_SERVER_ENABLED];

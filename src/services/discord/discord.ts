@@ -182,7 +182,7 @@ export class DiscordBotInstance {
 
                                 if (!triggerPhrases.map((entry) => entry.toLowerCase()).some((phrase) => transcript.payload.toLowerCase().includes(phrase))) {
                                     Logger.trace(user, "discord_voice_context");
-                                    await group.updateChatContext("user", transcript.payload);
+                                    await group.updateUserChatContext(user, transcript.payload);
                                     return;
                                 }
 

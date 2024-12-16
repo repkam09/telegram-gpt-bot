@@ -52,6 +52,7 @@ model Messages {
   type     String   @default("text")
   datetime DateTime @default(now())
   role     String
+  from     BigInt   @default(-1)
 }
 
 model HennosLink {

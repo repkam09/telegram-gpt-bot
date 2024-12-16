@@ -148,9 +148,9 @@ export class TelegramBotInstance {
                     return;
                 }
 
-                // Check if this is a command sent in a group chat
-                if (hasGroupCommandPrefix(msg.text)) {
-                    Logger.trace(user, `text_command: ${msg.text}`);
+                const commands = (msg.entities ?? []).filter((entity) => entity.type === "bot_command" && entity.offset === 0);
+                if (commands.length) {
+                    msg.text = replaceTelegramBotName(msg.text, "", "i");
                     return handleTelegramCommandGroupMessage(user, group, msg as MessageWithText);
                 }
 
@@ -222,54 +222,8 @@ export class TelegramBotInstance {
     }
 }
 
-function hasGroupPrefix(text: string) {
-    if (text.startsWith(Config.TELEGRAM_GROUP_PREFIX)) {
-        Logger.debug(undefined, "hasGroupPrefix", { text, result: true });
-        return true;
-    }
-
-    if (text.startsWith(`@${Config.TELEGRAM_GROUP_PREFIX}`)) {
-        Logger.debug(undefined, "hasGroupPrefix", { text, result: true });
-        return true;
-    }
-
-    Logger.debug(undefined, "hasGroupPrefix", { text, result: false });
-    return false;
-}
-
-function hasGroupCommandPrefix(text: string) {
-    if (text.startsWith(`${Config.TELEGRAM_GROUP_PREFIX}/`)) {
-        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
-        return true;
-    }
-
-    if (text.startsWith(`@${Config.TELEGRAM_GROUP_PREFIX}/`)) {
-        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
-        return true;
-    }
-
-    if (text.startsWith(`${Config.TELEGRAM_GROUP_PREFIX} /`)) {
-        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
-        return true;
-    }
-
-    if (text.startsWith(`@${Config.TELEGRAM_GROUP_PREFIX} /`)) {
-        Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: true });
-        return true;
-    }
-
-    Logger.debug(undefined, "hasGroupCommandPrefix", { text, result: false });
-    return false;
-}
-
-function stripGroupPrefix(text: string) {
-    const result = text.replace(new RegExp(`^@?${Config.TELEGRAM_GROUP_PREFIX}`, "i"), "").trim();
-    Logger.debug(undefined, "stripGroupPrefix", { text, result });
-    return result;
-}
-
 async function handleTelegramCommandGroupMessage(user: HennosUser, group: HennosGroup, msg: MessageWithText) {
-    return handleCommandGroupMessage(user, group, stripGroupPrefix(msg.text));
+    return handleCommandGroupMessage(user, group, msg.text);
 }
 
 async function handleTelegramCommandMessage(user: HennosUser, msg: MessageWithText) {
@@ -284,12 +238,13 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     }
 
     // Check if the user @'d the bot in their message
-    if (!hasGroupPrefix(msg.text)) {
+    if (!hasGroupPrefix(msg.entities ?? [], msg.text)) {
         if (Config.TELEGRAM_GROUP_CONTEXT) {
-            Logger.trace(user, "text_group_context");
+            Logger.trace(group, `text_group_context: ${user.displayName}`);
 
+            const cleaned = replaceTelegramBotName(msg.text, "Hennos", "ig");
             // Update the chat context with the user's message without generating a response
-            return group.updateChatContext("user", `${user.displayName}: ${msg.text}`);
+            return group.updateUserChatContext(user, cleaned);
         }
         return;
     }
@@ -298,7 +253,8 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     // If the user did @ the bot, strip out that @ prefix before processing the message
     TelegramBotInstance.setTelegramIndicator(group, "typing");
 
-    const response = await handleGroupMessage(user, group, stripGroupPrefix(msg.text));
+    const cleaned = replaceTelegramBotName(msg.text, "Hennos", "ig");
+    const response = await handleGroupMessage(user, group, cleaned);
     return handleHennosResponse(group, response, { reply_to_message_id: msg.message_id });
 }
 
@@ -308,7 +264,8 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
 
     // Check if we have other messages in the map
     const current = PendingChatMap.get(user.chatId) || [];
-    current.push(msg.text);
+    const cleaned = replaceTelegramBotName(msg.text, "Hennos", "ig");
+    current.push(cleaned);
     PendingChatMap.set(user.chatId, current);
 
     // Set the timer to process the mssages if we dont get any more within 2 seconds
@@ -436,19 +393,19 @@ async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.M
     return TelegramBotInstance.sendMessageWrapper(user, "Contact information stored.");
 }
 
-async function handleTelegramCalendarMessage(req: HennosConsumer, file: string) {
+async function handleTelegramCalendarMessage(user: HennosUser, file: string) {
     try {
-        const result = await handleCalendarImport(req, file);
+        const result = await handleCalendarImport(user, file);
         if (result) {
-            await req.updateChatContext("user", "I just uploaded an ICS calendar file. Could you import those events into our chat context?");
-            await req.updateChatContext("assistant", `Calendar imported successfully. Here are the events I found: ${JSON.stringify(result)}`);
-            return TelegramBotInstance.sendMessageWrapper(req, "Calendar imported successfully.");
+            await user.updateUserChatContext(user, "I just uploaded an ICS calendar file. Could you import those events into our chat context?");
+            await user.updateAssistantChatContext(`Calendar imported successfully. Here are the events I found: ${JSON.stringify(result)}`);
+            return TelegramBotInstance.sendMessageWrapper(user, "Calendar imported successfully.");
         } else {
-            return TelegramBotInstance.sendMessageWrapper(req, "An error occured while processing your calendar.");
+            return TelegramBotInstance.sendMessageWrapper(user, "An error occured while processing your calendar.");
         }
     } catch (err) {
-        Logger.error(req, "Error while processing calendar import", err);
-        return TelegramBotInstance.sendMessageWrapper(req, "An error occured while processing your calendar.");
+        Logger.error(user, "Error while processing calendar import", err);
+        return TelegramBotInstance.sendMessageWrapper(user, "An error occured while processing your calendar.");
     }
 }
 
@@ -470,8 +427,8 @@ async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.
     }
 
     const response = await handleDocumentMessage(user, tempFilePath, ext, msg.document.file_unique_id);
-    await user.updateChatContext("user", "I just uploaded a document. Could you provide a summary of it?");
-    await user.updateChatContext("assistant", response);
+    await user.updateUserChatContext(user, "I just uploaded a document. Could you provide a summary of it?");
+    await user.updateAssistantChatContext(response);
 
     TelegramBotInstance.setTelegramMessageReact(user, msg);
     return TelegramBotInstance.sendMessageWrapper(user, response);
@@ -553,4 +510,25 @@ function chunkSubstr(str: string, size: number) {
     }
 
     return chunks;
+}
+
+function hasGroupPrefix(entities: TelegramBot.MessageEntity[], text: string) {
+    const mentions = entities.filter((entity) => entity.type === "mention");
+    for (const mention of mentions) {
+        // The substring here is the @mention, specifically with the @ sign.
+        const substring = text.substring(mention.offset, mention.offset + mention.length);
+        if (substring === `@${Config.TELEGRAM_GROUP_PREFIX}`) {
+            Logger.debug(undefined, "hasGroupPrefix", { result: true });
+            return true;
+        }
+    }
+
+    Logger.debug(undefined, "hasGroupPrefix", { result: false });
+    return false;
+}
+
+export function replaceTelegramBotName(text: string, replace: string, flags: string): string {
+    const result = text.replace(new RegExp(`@?${Config.TELEGRAM_GROUP_PREFIX}`, flags), replace).trim();
+    Logger.debug(undefined, "replaceTelegramBotName", { text, replace, result });
+    return result;
 }

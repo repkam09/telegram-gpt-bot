@@ -12,6 +12,11 @@ export type HennosModelConfig = {
     CTX: number
 }
 
+export type HennosEmbeddingModelConfig = {
+    MODEL: any
+    CTX: number
+}
+
 export class Config {
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
@@ -103,43 +108,21 @@ export class Config {
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
-                MODEL: "llama3.2:latest",
-                CTX: 16000
+                MODEL: "qwen2.5:14b",
+                CTX: 16000,
             };
         }
-
-        const parts = process.env.OLLAMA_LLM.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OLLAMA_LLM");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
+        return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
     }
 
     static get GOOGLE_LLM(): HennosModelConfig {
         if (!process.env.GOOGLE_LLM) {
             return {
                 MODEL: "gemini-1.5-flash",
-                CTX: 65000
+                CTX: 65000,
             };
         }
-
-        const parts = process.env.GOOGLE_LLM.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for GOOGLE_LLM");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
+        return parseHennosModelString(process.env.GOOGLE_LLM, "GOOGLE_LLM");
     }
 
     static get WHISPER_MODEL(): string {
@@ -164,27 +147,6 @@ export class Config {
         return max;
     }
 
-    static get OLLAMA_LLM_LARGE(): HennosModelConfig {
-        if (!process.env.OLLAMA_LLM_LARGE) {
-            return {
-                MODEL: "llama3.2:latest",
-                CTX: 16000
-            };
-        }
-
-        const parts = process.env.OLLAMA_LLM_LARGE.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OLLAMA_LLM_LARGE");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
-    }
-
     static get OPENAI_BASE_URL(): string | undefined {
         if (!process.env.OPENAI_BASE_URL) {
             return undefined;
@@ -193,12 +155,11 @@ export class Config {
         return process.env.OPENAI_BASE_URL;
     }
 
-
-    static get OLLAMA_LLM_EMBED(): HennosModelConfig {
+    static get OLLAMA_LLM_EMBED(): HennosEmbeddingModelConfig {
         if (!process.env.OLLAMA_LLM_EMBED) {
             return {
                 MODEL: "nomic-embed-text:latest",
-                CTX: 8192
+                CTX: 8192,
             };
         }
 
@@ -243,20 +204,17 @@ export class Config {
         if (!process.env.OPENAI_LLM) {
             return {
                 MODEL: "gpt-4o-mini",
-                CTX: 32000
+                CTX: 32000,
             };
         }
 
-        const parts = process.env.OPENAI_LLM.split(",");
-        const ctx = parseInt(parts[1]);
+        return parseHennosModelString(process.env.OPENAI_LLM, "OPENAI_LLM");
+    }
 
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OPENAI_LLM");
-        }
-
+    static get OPENAI_MINI_LLM(): HennosModelConfig {
         return {
-            MODEL: parts[0],
-            CTX: ctx
+            MODEL: "gpt-4o-mini",
+            CTX: 16000,
         };
     }
 
@@ -264,45 +222,13 @@ export class Config {
         if (!process.env.OPENAI_LLM_REASONING) {
             return {
                 MODEL: "o1-mini",
-                CTX: 32000
+                CTX: 32000,
             };
         }
-
-        const parts = process.env.OPENAI_LLM_REASONING.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OPENAI_LLM_REASONING");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
+        return parseHennosModelString(process.env.OPENAI_LLM_REASONING, "OPENAI_LLM_REASONING");
     }
 
-    static get OPENAI_LLM_LARGE(): HennosModelConfig {
-        if (!process.env.OPENAI_LLM_LARGE) {
-            return {
-                MODEL: "gpt-4o-mini",
-                CTX: 100000
-            };
-        }
-
-        const parts = process.env.OPENAI_LLM_LARGE.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OPENAI_LLM_LARGE");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
-    }
-
-    static get OPENAI_LLM_EMBED(): HennosModelConfig {
+    static get OPENAI_LLM_EMBED(): HennosEmbeddingModelConfig {
         if (!process.env.OPENAI_LLM_EMBED) {
             return {
                 MODEL: "text-embedding-3-small",
@@ -339,17 +265,7 @@ export class Config {
             };
         }
 
-        const parts = process.env.ANTHROPIC_LLM.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for ANTHROPIC_LLM");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
+        return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
     }
 
     static get WS_SERVER_PORT(): number {
@@ -532,7 +448,15 @@ export class Config {
             throw new Error("Missing TELEGRAM_GROUP_PREFIX");
         }
 
-        return process.env.TELEGRAM_GROUP_PREFIX + " ";
+        if (process.env.TELEGRAM_GROUP_PREFIX === "") {
+            throw new Error("Invalid TELEGRAM_GROUP_PREFIX");
+        }
+
+        if (process.env.TELEGRAM_GROUP_PREFIX.startsWith("@")) {
+            throw new Error("Invalid TELEGRAM_GROUP_PREFIX");
+        }
+
+        return process.env.TELEGRAM_GROUP_PREFIX;
     }
 
     static get TELEGRAM_GROUP_CONTEXT(): boolean {
@@ -540,11 +464,7 @@ export class Config {
             return false;
         }
 
-        if (process.env.TELEGRAM_GROUP_CONTEXT === "true") {
-            return true;
-        }
-
-        return false;
+        return process.env.TELEGRAM_GROUP_CONTEXT === "true";
     }
 
     static get TELEGRAM_BOT_ADMIN(): number {
@@ -594,4 +514,24 @@ export class Config {
         }
         return dir;
     }
+}
+
+
+function parseHennosModelString(value: string, env: string): HennosModelConfig {
+    const parts = value.split(",");
+
+    if (parts.length !== 2) {
+        throw new Error(`Invalid value for ${env}`);
+    }
+
+    const ctxInLength = parseInt(parts[1]);
+
+    if (Number.isNaN(ctxInLength)) {
+        throw new Error("Invalid context length value for " + env);
+    }
+
+    return {
+        MODEL: parts[0],
+        CTX: ctxInLength,
+    };
 }

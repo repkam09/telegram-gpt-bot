@@ -5,6 +5,14 @@ import { HennosImage, HennosMessage, HennosMessageRole, HennosResponse, HennosTe
 import { Qdrant } from "./qdrant";
 import { loadHennosImage } from "../handlers/photos";
 import { Logger } from "./logger";
+import { HennosUser } from "./user";
+import {
+    OpenAI,
+    OpenAIEmbedding,
+    ServiceContext,
+    SimpleNodeParser,
+    serviceContextFromDefaults,
+} from "llamaindex";
 
 export abstract class HennosBaseProvider {
     public abstract completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse>;
@@ -54,21 +62,24 @@ export abstract class HennosConsumer {
     public abstract getProvider(): HennosBaseProvider;
     public abstract isAdmin(): boolean
 
-    public async updateChatImageContext(role: "user" | "assistant" | "system", image: HennosImage): Promise<void> {
-        await this.db.messages.create({
-            data: {
-                chatId: this.chatId,
-                role,
-                type: "image",
-                content: JSON.stringify({
-                    local: image.local,
-                    mime: image.mime,
-                })
-            }
+    public getServiceContext(): ServiceContext {
+        return serviceContextFromDefaults({
+            llm: new OpenAI({
+                model: Config.OPENAI_MINI_LLM.MODEL,
+                apiKey: Config.OPENAI_API_KEY
+            }),
+            embedModel: new OpenAIEmbedding({
+                model: Config.OPENAI_LLM_EMBED.MODEL,
+                apiKey: Config.OPENAI_API_KEY,
+            }),
+            nodeParser: new SimpleNodeParser({
+                chunkSize: 2048,
+                chunkOverlap: 256
+            })
         });
     }
 
-    public async updateChatContext(role: "user" | "assistant" | "system", content: string | HennosResponse): Promise<void> {
+    public async updateAssistantChatContext(content: string | HennosResponse) {
         if (Config.QDRANT_ENABLED) {
             const collection = await Qdrant.instance().collectionExists(String(this.chatId));
             if (!collection.exists) {
@@ -80,8 +91,9 @@ export abstract class HennosConsumer {
             await this.db.messages.create({
                 data: {
                     chatId: this.chatId,
-                    role,
-                    content
+                    role: "assistant",
+                    content,
+                    from: -1
                 }
             });
         } else {
@@ -89,12 +101,48 @@ export abstract class HennosConsumer {
                 await this.db.messages.create({
                     data: {
                         chatId: this.chatId,
-                        role,
-                        content: content.payload
+                        role: "assistant",
+                        content: content.payload,
+                        from: -1
                     }
                 });
             }
         }
+    }
+
+    public async updateSystemChatContext(content: string) {
+        if (Config.QDRANT_ENABLED) {
+            const collection = await Qdrant.instance().collectionExists(String(this.chatId));
+            if (!collection.exists) {
+                await Qdrant.instance().createCollection(String(this.chatId), {});
+            }
+        }
+
+        await this.db.messages.create({
+            data: {
+                chatId: this.chatId,
+                role: "system",
+                content,
+                from: -1
+            }
+        });
+    }
+
+    public async updateUserChatContext(from: HennosUser, content: string): Promise<void> {
+        if (Config.QDRANT_ENABLED) {
+            const collection = await Qdrant.instance().collectionExists(String(this.chatId));
+            if (!collection.exists) {
+                await Qdrant.instance().createCollection(String(this.chatId), {});
+            }
+        }
+        await this.db.messages.create({
+            data: {
+                chatId: this.chatId,
+                role: "user",
+                content,
+                from: from.chatId
+            }
+        });
     }
 
     public async clearChatContext(): Promise<void> {
