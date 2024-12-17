@@ -47,6 +47,10 @@ const ADMIN_TOOLS = [
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
+    if (req.chatId === -1) {
+        return undefined;
+    }
+
     const tools: Tool[] = [];
 
     PUBLIC_TOOLS.forEach((Tool) => {

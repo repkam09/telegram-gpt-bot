@@ -1,16 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { Config, HennosModelConfig } from "./config";
 import OpenAI, { OpenAIError } from "openai";
 import { HennosUser } from "./user";
-import { Message, Tool, ToolCall } from "ollama";
+import { ToolCall } from "ollama";
 import { Logger } from "./logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
 import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
-import { HennosImage, HennosMessage, HennosResponse } from "../types";
+import { HennosMessage, HennosResponse } from "../types";
 import { HennosGroup } from "./group";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
@@ -61,7 +59,7 @@ function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMe
                     arguments: JSON.parse(tool.function.arguments)
                 }
             }, tool];
-        } catch (err) {
+        } catch {
             return [{
                 function: {
                     name: tool.function.name,
@@ -188,7 +186,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 const toolCalls = convertToolCallResponse(response.choices[0].message.tool_calls);
                 const additional = await processToolCalls(req, toolCalls);
 
-                const shouldEmptyResponse = additional.find(([_content, _metadata, type]) => type === "empty");
+                const shouldEmptyResponse = additional.find(([, , type]) => type === "empty");
                 if (shouldEmptyResponse) {
                     Logger.debug(req, "OpenAI Completion Requested Empty Response, Stopping Processing");
                     return {

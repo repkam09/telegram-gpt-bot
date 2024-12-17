@@ -8,6 +8,7 @@ import { CommandLineInstance } from "./services/cli/cli";
 import { TwitchBotInstance } from "./services/twitch/twitch";
 import { Logger } from "./singletons/logger";
 import { WSServerInstance } from "./services/socket/socket";
+import { MessageClassifier } from "./singletons/classifier";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -30,6 +31,10 @@ async function start() {
         init.push(TelegramBotInstance.init());
     } else {
         console.warn("Telegram bot is disabled, set TELEGRAM_ENABLED=true to enable it");
+    }
+
+    if (Config.CLASSIFIER_ENABLED) {
+        init.push(MessageClassifier.init());
     }
 
     if (Config.DISCORD_ENABLED) {

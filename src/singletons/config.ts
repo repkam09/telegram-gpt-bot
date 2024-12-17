@@ -54,6 +54,22 @@ export class Config {
         return process.env.TELEGRAM_ENABLED === "true";
     }
 
+    static get CLASSIFIER_ENABLED(): false | "bayes" | "openai" {
+        if (!process.env.CLASSIFIER_ENABLED) {
+            return false;
+        }
+
+        if (process.env.CLASSIFIER_ENABLED === "bayes") {
+            return "bayes";
+        }
+
+        if (process.env.CLASSIFIER_ENABLED === "openai") {
+            return "openai";
+        }
+
+        return false;
+    }
+
     static get DISCORD_ENABLED(): boolean {
         if (!process.env.DISCORD_ENABLED) {
             return false;

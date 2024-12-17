@@ -37,7 +37,7 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     });
 
     try {
-        const provider = user.getProvider();
+        const provider = await user.getSmartProvider(text);
         const response = await provider.completion(user, prompt, context);
         await user.updateUserChatContext(user, text);
         await user.updateAssistantChatContext(response);

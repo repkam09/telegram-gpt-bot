@@ -1,12 +1,13 @@
 import { Database } from "./sqlite";
 import { Config } from "./config";
-import { HennosConsumer } from "./base";
+import { HennosBaseProvider, HennosConsumer } from "./base";
 import { HennosImage, ValidLLMProvider, ValidTTSName } from "../types";
 import { HennosOllamaSingleton } from "./ollama";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosAnthropicSingleton } from "./anthropic";
 import { Logger } from "./logger";
 import { HennosGoogleSingleton } from "./google";
+import { MessageClassifier } from "./classifier";
 
 export class HennosUser extends HennosConsumer {
     constructor(chatId: number) {
@@ -37,7 +38,7 @@ export class HennosUser extends HennosConsumer {
         return false;
     }
 
-    public getProvider() {
+    public getProvider(): HennosBaseProvider {
         if (this.whitelisted) {
             switch (this.provider) {
                 case "openai": {
@@ -60,6 +61,20 @@ export class HennosUser extends HennosConsumer {
         }
         return HennosOpenAISingleton.mini();
     }
+
+    public async getSmartProvider(message: string): Promise<HennosBaseProvider> {
+        if (!this.whitelisted) {
+            return HennosOpenAISingleton.mini();
+        }
+
+        const classification = await MessageClassifier.classify(this, message);
+        if (classification === "complex") {
+            return this.getProvider();
+        }
+
+        return HennosOpenAISingleton.mini();
+    }
+
     public async updateUserChatImageContext(image: HennosImage): Promise<void> {
         await this.db.messages.create({
             data: {
