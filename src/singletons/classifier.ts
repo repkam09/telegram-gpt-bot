@@ -44,6 +44,7 @@ export class MessageClassifier {
 
     public static async classify(req: HennosConsumer, message: string): Promise<MessageClassifications> {
         if (Config.CLASSIFIER_ENABLED === false) {
+            Logger.debug(undefined, "Classifier disabled, defaulting to complex");
             return "complex";
         }
 
