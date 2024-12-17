@@ -249,7 +249,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
         return;
     }
 
-    Logger.trace(user, "text_group");
+    Logger.trace(group, `text_group: ${user.displayName}`);
     // If the user did @ the bot, strip out that @ prefix before processing the message
     TelegramBotInstance.setTelegramIndicator(group, "typing");
 
