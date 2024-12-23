@@ -14,24 +14,23 @@ import { PassThrough, Readable, Transform, TransformCallback, TransformOptions }
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosOllamaSingleton } from "../../singletons/ollama";
 
-type ChannelCommonType = TextChannel | VoiceChannel | null;
-
-const triggerPhrases = [
-    `${Config.DISCORD_DISPLAY_NAME}`,
-    "Henos",
-    "Hennos",
-    "Enos",
-    "Hennas",
-    "Hello,",
-    "Heados,"
-];
-
 export class DiscordBotInstance {
-    static _hasCompletedInit = false;
-    static _readyClient: Client;
+    private static _hasCompletedInit = false;
+    private static _readyClient: Client;
+    private static _triggerPhrases: string[] = [];
+    private static _triggerWithPhrases: boolean = false;
 
     static async init(): Promise<void> {
         return new Promise((resolve) => {
+            if (Config.DISCORD_VOICE_TRIGGER_STRINGS) {
+                Logger.debug(undefined, "Setting trigger phrases for Discord bot instance...");
+                DiscordBotInstance._triggerPhrases = Config.DISCORD_VOICE_TRIGGER_STRINGS;
+                DiscordBotInstance._triggerWithPhrases = true;
+            } else {
+                Logger.debug(undefined, "No trigger phrases set for Discord bot instance...");
+                DiscordBotInstance._triggerWithPhrases = false;
+            }
+
             // This init process is a bit weird, it doesnt always seem to work, so potentially try a few times...
             const interval = setInterval(() => {
                 if (!DiscordBotInstance._hasCompletedInit) {
@@ -74,7 +73,7 @@ export class DiscordBotInstance {
         });
     }
 
-    static async getCurrentChannel(channelId: string): Promise<ChannelCommonType> {
+    static async getCurrentChannel(channelId: string): Promise<TextChannel | VoiceChannel | null> {
         if (!channelId) {
             return null;
         }
@@ -180,10 +179,12 @@ export class DiscordBotInstance {
                                     return;
                                 }
 
-                                if (!triggerPhrases.map((entry) => entry.toLowerCase()).some((phrase) => transcript.payload.toLowerCase().includes(phrase))) {
-                                    Logger.trace(user, "discord_voice_context");
-                                    await group.updateUserChatContext(user, transcript.payload);
-                                    return;
+                                if (DiscordBotInstance._triggerWithPhrases) {
+                                    if (!DiscordBotInstance._triggerPhrases.map((entry) => entry.toLowerCase()).some((phrase) => transcript.payload.toLowerCase().includes(phrase))) {
+                                        Logger.trace(user, "discord_voice_context");
+                                        await group.updateUserChatContext(user, transcript.payload);
+                                        return;
+                                    }
                                 }
 
                                 Logger.trace(user, "discord_voice");

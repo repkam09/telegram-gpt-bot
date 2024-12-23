@@ -382,6 +382,16 @@ export class Config {
         return process.env.DISCORD_DISPLAY_NAME;
     }
 
+    static get DISCORD_VOICE_TRIGGER_STRINGS(): string[] | false {
+        if (!process.env.DISCORD_VOICE_TRIGGER_STRINGS) {
+            return false;
+        }
+
+        const value = process.env.DISCORD_VOICE_TRIGGER_STRINGS;
+        const array = value.split(",").map((trigger) => trigger.trim());
+        return array;
+    }
+
     static get OPEN_WEATHER_API(): string | false {
         if (!process.env.OPEN_WEATHER_API) {
             return false;
