@@ -17,6 +17,7 @@ import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { StoreKeyValueMemory } from "./UserFactsTool";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
 import { ScheduleMessageCallback } from "./MessageCallback";
+import { ImageGenerationTool } from "./ImageGenerationTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -38,7 +39,8 @@ const WHITELIST_TOOLS = [
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
     ReasoningModel,
     YoutubeVideoTool,
-    AcknowledgeWithoutResponse
+    AcknowledgeWithoutResponse,
+    ImageGenerationTool
 ];
 
 const ADMIN_TOOLS = [

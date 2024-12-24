@@ -49,12 +49,12 @@ async function handleLimitedGroupMessage(user: HennosUser, group: HennosGroup, c
         },
         {
             role: "system",
-            content: `Assisting user '${firstName}' in a group chat called '${groupInfo.name}'.`,
+            content: "This use is a non-whitelisted user and group who is getting basic, limited, access to Hennos services and tools. Message history will not be stored after this response.",
             type: "text"
         },
         {
             role: "system",
-            content: "This use is a non-whitelisted user and group who is getting basic, limited, access to Hennos services and tools. Message history will not be stored after this response.",
+            content: `Assisting user '${firstName}' in a group chat called '${groupInfo.name}'.`,
             type: "text"
         },
         {

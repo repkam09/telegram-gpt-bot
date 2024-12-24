@@ -92,17 +92,17 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
         },
         {
             role: "system",
-            content: `Assisting user '${firstName}' in a one-on-one private chat.`,
-            type: "text"
-        },
-        {
-            role: "system",
             content: "This use is a non-whitelisted user who is getting basic, limited, access to Hennos services and tools. Their message history will not be stored after this response.",
             type: "text"
         },
         {
             role: "system",
             content: `Here are some details about the underlying Large Language Model that is currently powering this conversation: ${user.getProvider().details()}`,
+            type: "text"
+        },
+        {
+            role: "system",
+            content: `Assisting user '${firstName}' in a one-on-one private chat.`,
             type: "text"
         },
         {

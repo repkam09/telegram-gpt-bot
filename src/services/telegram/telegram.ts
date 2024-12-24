@@ -59,6 +59,15 @@ export class TelegramBotInstance {
         }
     }
 
+    static async sendImageWrapper(req: HennosConsumer, path: string, options: TelegramBot.SendPhotoOptions = {}): Promise<void> {
+        if (!path) {
+            throw new Error("Message content is undefined");
+        }
+
+        const bot = TelegramBotInstance.instance();
+        await bot.sendPhoto(req.chatId, fs.createReadStream(path), options);
+    }
+
     static async sendVoiceMemoWrapper(req: HennosConsumer, content: Buffer, options: TelegramBot.SendVoiceOptions = {}): Promise<void> {
         if (!content) {
             throw new Error("Message content is undefined");

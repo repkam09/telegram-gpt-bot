@@ -50,13 +50,13 @@ function convertHennosMessages(messages: HennosMessage[]): Message[] {
 }
 
 class HennosOllamaProvider extends HennosBaseProvider {
-    private ollama: Ollama;
+    public client: Ollama;
     private static _parallel = 0;
 
     constructor() {
         super();
 
-        this.ollama = new Ollama({
+        this.client = new Ollama({
             host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
         });
     }
@@ -81,7 +81,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
         }
 
         try {
-            const response = await this.ollama.chat({
+            const response = await this.client.chat({
                 stream: false,
                 model: Config.OLLAMA_LLM.MODEL,
                 messages: prompt,
@@ -103,7 +103,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
 
                 const results = await processToolCalls(req, tool_calls);
 
-                const shouldEmptyResponse = results.find(([_content, _metadata, type]) => type === "empty");
+                const shouldEmptyResponse = results.find(([, , response]) => response?.__type === "empty");
                 if (shouldEmptyResponse) {
                     return {
                         __type: "empty"
