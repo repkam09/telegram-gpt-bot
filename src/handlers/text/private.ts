@@ -37,10 +37,10 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     });
 
     try {
-        const provider = user.getProvider();
+        const provider = await user.getSmartProvider(text);
         const response = await provider.completion(user, prompt, context);
-        await user.updateChatContext("user", text);
-        await user.updateChatContext("assistant", response);
+        await user.updateUserChatContext(user, text);
+        await user.updateAssistantChatContext(response);
         return response;
     } catch (err: unknown) {
         const error = err as Error;
@@ -92,17 +92,17 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
         },
         {
             role: "system",
-            content: `Assisting user '${firstName}' in a one-on-one private chat.`,
-            type: "text"
-        },
-        {
-            role: "system",
             content: "This use is a non-whitelisted user who is getting basic, limited, access to Hennos services and tools. Their message history will not be stored after this response.",
             type: "text"
         },
         {
             role: "system",
             content: `Here are some details about the underlying Large Language Model that is currently powering this conversation: ${user.getProvider().details()}`,
+            type: "text"
+        },
+        {
+            role: "system",
+            content: `Assisting user '${firstName}' in a one-on-one private chat.`,
             type: "text"
         },
         {
@@ -116,8 +116,8 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
     const flagged = await provider.moderation(user, text);
     if (flagged) {
         if (context) {
-            await user.updateChatContext("user", text);
-            await user.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
+            await user.updateUserChatContext(user, text);
+            await user.updateAssistantChatContext("Sorry, I can't help with that. You message appears to violate the moderation rules.");
         } else {
             Logger.debug(user, "Limited User Chat Moderation Failed, Not storing context.");
         }
@@ -142,8 +142,8 @@ async function handleLimitedUserPrivateMessage(user: HennosUser, text: string, c
     ]);
 
     if (context) {
-        await user.updateChatContext("user", text);
-        await user.updateChatContext("assistant", response);
+        await user.updateUserChatContext(user, text);
+        await user.updateAssistantChatContext(response);
     } else {
         Logger.debug(user, "Limited User Chat Completion Success, Not storing context.");
     }

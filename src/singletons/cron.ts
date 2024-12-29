@@ -69,14 +69,14 @@ export class ScheduleJob {
             const user = await HennosUser.exists(task.chatId);
             if (user) {
                 Logger.info(user, "Sending scheduled message");
-                await user.updateChatContext("assistant", task.message);
+                await user.updateAssistantChatContext(task.message);
                 await TelegramBotInstance.sendMessageWrapper(user, task.message);
             }
 
             const group = await HennosGroup.exists(task.chatId);
             if (group) {
                 Logger.info(group, "Sending scheduled message");
-                await group.updateChatContext("assistant", task.message);
+                await group.updateAssistantChatContext(task.message);
                 await TelegramBotInstance.sendMessageWrapper(group, task.message);
             }
 

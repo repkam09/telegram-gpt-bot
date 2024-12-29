@@ -17,6 +17,7 @@ import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { StoreKeyValueMemory } from "./UserFactsTool";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
 import { ScheduleMessageCallback } from "./MessageCallback";
+import { ImageGenerationTool } from "./ImageGenerationTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -38,7 +39,8 @@ const WHITELIST_TOOLS = [
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
     ReasoningModel,
     YoutubeVideoTool,
-    AcknowledgeWithoutResponse
+    AcknowledgeWithoutResponse,
+    ImageGenerationTool
 ];
 
 const ADMIN_TOOLS = [
@@ -47,6 +49,10 @@ const ADMIN_TOOLS = [
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
+    if (req.chatId === -1) {
+        return undefined;
+    }
+
     const tools: Tool[] = [];
 
     PUBLIC_TOOLS.forEach((Tool) => {

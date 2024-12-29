@@ -140,12 +140,12 @@ export function convertMessages(messages: HennosMessage[]): Anthropic.Messages.M
 
 
 class HennosAnthropicProvider extends HennosBaseProvider {
-    private anthropic: Anthropic;
+    public client: Anthropic;
 
     constructor() {
         super();
 
-        this.anthropic = new Anthropic({
+        this.client = new Anthropic({
             apiKey: Config.ANTHROPIC_API_KEY
         });
     }
@@ -185,7 +185,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                 options.tools = tools;
             }
 
-            const response = await this.anthropic.messages.create(options);
+            const response = await this.client.messages.create(options);
 
             Logger.info(req, `Anthropic Completion Success, Usage: ${calculateUsage(req, response.usage)}`);
             const tool_blocks = response.content.filter((content) => content.type === "tool_use") as Anthropic.Messages.ToolUseBlock[];
@@ -194,7 +194,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                 const toolCalls = convertToolCallResponse(tool_blocks);
                 const additional = await processToolCalls(req, toolCalls);
 
-                const shouldEmptyResponse = additional.find(([_content, _metadata, type]) => type === "empty");
+                const shouldEmptyResponse = additional.find(([, , response]) => response?.__type === "empty");
                 if (shouldEmptyResponse) {
                     return {
                         __type: "empty"

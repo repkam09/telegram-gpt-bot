@@ -47,13 +47,13 @@ export class DailyReport extends Job {
         Logger.debug(user, `Finished Daily Report for ${user.displayName}: \n ${result}`);
 
         if (!Config.HENNOS_DEVELOPMENT_MODE) {
-            await user.updateChatContext("system", "The Hennos Daily Report is a scheduled task that runs every day and is triggered by this automated message. " +
+            await user.updateSystemChatContext("The Hennos Daily Report is a scheduled task that runs every day and is triggered by this automated message. " +
                 "Please answer the following request to the best of your ability, making use of the information available to you via your own knowledge and available Tool calls.");
 
-            await user.updateChatContext("user", "Could you please provide me with a few paragraphs of a daily brief that includes the weather, if my location is available, and the top news headlines for today?" +
+            await user.updateUserChatContext(user, "Could you please provide me with a few paragraphs of a daily brief that includes the weather, if my location is available, and the top news headlines for today?" +
                 "If there is any other potentially relevant information from our chat history, please remind me of that as well.");
 
-            await user.updateChatContext("assistant", result);
+            await user.updateAssistantChatContext(result);
             return handleHennosResponse(user, result, {});
         }
     }

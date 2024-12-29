@@ -37,6 +37,7 @@
     "koa-bodyparser": "^4.4.1",
     "llamaindex": "^0.4.6",
     "mime-types": "^2.1.35",
+    "natural": "^8.0.1",
     "node-cron": "^3.0.3",
     "node-ical": "^0.18.0",
     "node-telegram-bot-api": "^0.66.0",

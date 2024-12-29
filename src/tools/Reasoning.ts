@@ -18,7 +18,7 @@ export class ReasoningModel extends BaseTool {
                 description: [
                     "This tool performs deep reasoning and research on complex queries, making it ideal for topics like math, science, logic, programming, and related areas.",
                     "Powered by advanced large language models trained with reinforcement learning, it provides in-depth responses by simulating a thoughtful reasoning process.",
-                    "These models generate comprehensive answers by following a detailed internal chain of thought before formulating a response for the user."
+                    "You should use this tool when the user asks for an explanation, reasoning, or detailed information on a complex topic.",
                 ].join(" "),
                 parameters: {
                     type: "object",
@@ -57,7 +57,7 @@ export class ReasoningModel extends BaseTool {
                 query = `<context>\n${args.context}\n<context>\n\n${query}`;
             }
 
-            const response = await instance.openai.chat.completions.create({
+            const response = await instance.client.chat.completions.create({
                 model: Config.OPENAI_LLM_REASONING.MODEL,
                 messages: [
                     {

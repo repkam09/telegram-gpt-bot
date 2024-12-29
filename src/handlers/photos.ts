@@ -6,7 +6,7 @@ import { Logger } from "../singletons/logger";
 
 export async function handleImageMessage(req: HennosUser, image: HennosImage, caption?: string): Promise<HennosResponse> {
     Logger.debug(req, `Processing image input: ${image.local} with ${caption ? "caption: " + caption : "no caption"}`);
-    await req.updateChatImageContext("user", image);
+    await req.updateUserChatImageContext(image);
     if (caption) {
         return handlePrivateMessage(req, caption);
     }
@@ -15,7 +15,6 @@ export async function handleImageMessage(req: HennosUser, image: HennosImage, ca
         __type: "empty"
     };
 }
-
 
 export async function loadHennosImage(image: HennosImage): Promise<string> {
     Logger.debug(undefined, `Loading image from ${image.local} Start`);

@@ -49,12 +49,12 @@ async function handleLimitedGroupMessage(user: HennosUser, group: HennosGroup, c
         },
         {
             role: "system",
-            content: `Assisting user '${firstName}' in a group chat called '${groupInfo.name}'.`,
+            content: "This use is a non-whitelisted user and group who is getting basic, limited, access to Hennos services and tools. Message history will not be stored after this response.",
             type: "text"
         },
         {
             role: "system",
-            content: "This use is a non-whitelisted user and group who is getting basic, limited, access to Hennos services and tools. Message history will not be stored after this response.",
+            content: `Assisting user '${firstName}' in a group chat called '${groupInfo.name}'.`,
             type: "text"
         },
         {
@@ -64,12 +64,12 @@ async function handleLimitedGroupMessage(user: HennosUser, group: HennosGroup, c
         }
     ];
 
-    const provider = user.getProvider();
+    const provider = group.getProvider();
     const flagged = await provider.moderation(user, text);
     if (flagged) {
         if (context) {
-            await group.updateChatContext("user", text);
-            await group.updateChatContext("assistant", "Sorry, I can't help with that. You message appears to violate the moderation rules.");
+            await group.updateUserChatContext(user, text);
+            await group.updateAssistantChatContext("Sorry, I can't help with that. You message appears to violate the moderation rules.");
         }
 
         return {
@@ -91,8 +91,8 @@ async function handleLimitedGroupMessage(user: HennosUser, group: HennosGroup, c
         }]);
 
         if (context) {
-            await group.updateChatContext("user", text);
-            await group.updateChatContext("assistant", response);
+            await group.updateUserChatContext(user, text);
+            await group.updateAssistantChatContext(response);
         }
 
         Logger.info(user, `Limited Group Chat Completion Success, Response: ${JSON.stringify(response)}`);
@@ -177,10 +177,10 @@ async function handleWhitelistedGroupMessage(user: HennosUser, group: HennosGrou
     });
 
     try {
-        const provider = user.getProvider();
+        const provider = group.getProvider();
         const response = await provider.completion(group, prompt, context);
-        await group.updateChatContext("user", text);
-        await group.updateChatContext("assistant", response);
+        await group.updateUserChatContext(user, text);
+        await group.updateAssistantChatContext(response);
 
         return response;
     } catch (err) {

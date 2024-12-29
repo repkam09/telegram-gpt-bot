@@ -22,12 +22,12 @@ export class HennosGoogleSingleton {
 }
 
 class HennosGoogleProvider extends HennosBaseProvider {
-    private google: GoogleGenerativeAI;
+    public client: GoogleGenerativeAI;
 
     constructor() {
         super();
 
-        this.google = new GoogleGenerativeAI(Config.GOOGLE_API_KEY);
+        this.client = new GoogleGenerativeAI(Config.GOOGLE_API_KEY);
     }
 
     public details(): string {
@@ -59,7 +59,7 @@ class HennosGoogleProvider extends HennosBaseProvider {
         const tools = availableTools(req);
         const convertedTools = convertToolCalls(tools);
         try {
-            const model = this.google.getGenerativeModel({
+            const model = this.client.getGenerativeModel({
                 model: Config.GOOGLE_LLM.MODEL,
                 tools: convertedTools
             });
@@ -90,7 +90,7 @@ class HennosGoogleProvider extends HennosBaseProvider {
 
                 const results = await processToolCalls(req, tool_calls);
 
-                const shouldEmptyResponse = results.find(([, , type]) => type === "empty");
+                const shouldEmptyResponse = results.find(([, , response]) => response?.__type === "empty");
                 if (shouldEmptyResponse) {
                     return {
                         __type: "empty"

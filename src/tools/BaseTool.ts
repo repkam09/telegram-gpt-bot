@@ -6,10 +6,11 @@ import { Tool, ToolCall } from "ollama";
 import { HennosConsumer } from "../singletons/base";
 import { exec } from "child_process";
 import { Logger } from "../singletons/logger";
+import { HennosResponse } from "../types";
 
 export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;
-export type ToolCallResponse = [string, ToolCallMetadata, string?];
+export type ToolCallResponse = [string, ToolCallMetadata, HennosResponse?];
 
 export abstract class BaseTool {
     public static isEnabled(): boolean {

@@ -1,16 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { Config, HennosModelConfig } from "./config";
 import OpenAI, { OpenAIError } from "openai";
 import { HennosUser } from "./user";
-import { Message, Tool, ToolCall } from "ollama";
+import { ToolCall } from "ollama";
 import { Logger } from "./logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
 import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
-import { HennosImage, HennosMessage, HennosResponse } from "../types";
+import { HennosMessage, HennosResponse } from "../types";
 import { HennosGroup } from "./group";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
@@ -28,10 +26,7 @@ export class HennosOpenAISingleton {
 
     public static mini(): HennosBaseProvider {
         if (!HennosOpenAISingleton._mini) {
-            HennosOpenAISingleton._mini = new HennosOpenAIProvider({
-                MODEL: "gpt-4o-mini",
-                CTX: 16000
-            });
+            HennosOpenAISingleton._mini = new HennosOpenAIProvider(Config.OPENAI_MINI_LLM);
         }
         return HennosOpenAISingleton._mini;
     }
@@ -64,7 +59,7 @@ function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMe
                     arguments: JSON.parse(tool.function.arguments)
                 }
             }, tool];
-        } catch (err) {
+        } catch {
             return [{
                 function: {
                     name: tool.function.name,
@@ -76,7 +71,7 @@ function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMe
 }
 
 export class HennosOpenAIProvider extends HennosBaseProvider {
-    public openai: OpenAI;
+    public client: OpenAI;
     private model: HennosModelConfig;
     private moderationModel: string;
     private transcriptionModel: string;
@@ -85,7 +80,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
     constructor(model: HennosModelConfig) {
         super();
 
-        this.openai = new OpenAI({
+        this.client = new OpenAI({
             baseURL: Config.OPENAI_BASE_URL,
             apiKey: Config.OPENAI_API_KEY,
         });
@@ -146,7 +141,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
 
         const [tool_choice, tools] = getAvailableTools(req);
         try {
-            const response = await this.openai.chat.completions.create({
+            const response = await this.client.chat.completions.create({
                 model: this.model.MODEL,
                 messages: prompt,
                 tool_choice,
@@ -191,7 +186,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 const toolCalls = convertToolCallResponse(response.choices[0].message.tool_calls);
                 const additional = await processToolCalls(req, toolCalls);
 
-                const shouldEmptyResponse = additional.find(([_content, _metadata, type]) => type === "empty");
+                const shouldEmptyResponse = additional.find(([, , response]) => response?.__type === "empty");
                 if (shouldEmptyResponse) {
                     Logger.debug(req, "OpenAI Completion Requested Empty Response, Stopping Processing");
                     return {
@@ -225,7 +220,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
     public async moderation(req: HennosConsumer, input: string): Promise<boolean> {
         Logger.info(req, "OpenAI Moderation Start");
         try {
-            const response = await this.openai.moderations.create({
+            const response = await this.client.moderations.create({
                 model: this.moderationModel,
                 input
             });
@@ -250,7 +245,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
     public async transcription(req: HennosConsumer, path: string | Buffer): Promise<HennosResponse> {
         Logger.info(req, "OpenAI Transcription Start");
         try {
-            const transcription = await this.openai.audio.transcriptions.create({
+            const transcription = await this.client.audio.transcriptions.create({
                 model: this.transcriptionModel,
                 file: (typeof path === "string") ? createReadStream(path) : new File([path], "audio", { type: "audio/wav" })
             });
@@ -276,7 +271,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         const user = req as HennosUser;
         try {
             const preferences = await user.getPreferences();
-            const result = await this.openai.audio.speech.create({
+            const result = await this.client.audio.speech.create({
                 model: this.speechModel,
                 voice: preferences.voice,
                 input: input,

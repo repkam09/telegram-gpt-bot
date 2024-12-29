@@ -1,21 +1,12 @@
 import {
-    Anthropic,
     BaseReader,
     FILE_EXT_TO_READER,
-    Ollama,
-    OllamaEmbedding,
-    OpenAI,
-    OpenAIEmbedding,
     ResponseSynthesizer,
-    ServiceContext,
-    SimpleNodeParser,
     SummaryIndex,
     SummaryRetrieverMode,
-    serviceContextFromDefaults,
 } from "llamaindex";
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/user";
-import { Config } from "../singletons/config";
 import { HennosConsumer } from "../singletons/base";
 import { HennosGroup } from "../singletons/group";
 
@@ -38,74 +29,11 @@ export async function handleDocumentMessage(req: HennosConsumer, path: string, f
     }
 }
 
-async function buildServiceContext(req: HennosConsumer): Promise<ServiceContext> {
-    if (req.provider === "ollama") {
-        Logger.info(req, "Creating an Ollama service context for document processing based on user preferences");
-        const serviceContext = serviceContextFromDefaults({
-            llm: new Ollama({
-                config: {
-                    host: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
-                    contextWindow: Config.OLLAMA_LLM_LARGE.CTX
-                },
-                model: Config.OLLAMA_LLM_LARGE.MODEL,
-            }),
-            embedModel: new OllamaEmbedding({
-                config: {
-                    host: `http://${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`,
-                    contextWindow: Config.OLLAMA_LLM_EMBED.CTX
-                },
-                model: Config.OLLAMA_LLM_EMBED.MODEL,
-            }),
-            nodeParser: new SimpleNodeParser({
-                chunkSize: 2048,
-                chunkOverlap: 256
-            })
-        });
-        return serviceContext;
-    }
-
-    if (req.provider === "anthropic") {
-        Logger.info(req, "Creating an Anthropic service context for document processing based on user preferences");
-        const serviceContext = serviceContextFromDefaults({
-            llm: new Anthropic({
-                model: Config.ANTHROPIC_LLM.MODEL,
-                apiKey: Config.ANTHROPIC_API_KEY,
-            }),
-            embedModel: new OpenAIEmbedding({
-                model: Config.OPENAI_LLM_EMBED.MODEL,
-                apiKey: Config.OPENAI_API_KEY,
-            }),
-            nodeParser: new SimpleNodeParser({
-                chunkSize: 2048,
-                chunkOverlap: 256
-            })
-        });
-        return serviceContext;
-    }
-
-    Logger.info(req, "Creating an OpenAI service context");
-    const serviceContext = serviceContextFromDefaults({
-        llm: new OpenAI({
-            model: Config.OPENAI_LLM_LARGE.MODEL,
-            apiKey: Config.OPENAI_API_KEY
-        }),
-        embedModel: new OpenAIEmbedding({
-            model: Config.OPENAI_LLM_EMBED.MODEL,
-            apiKey: Config.OPENAI_API_KEY,
-        }),
-        nodeParser: new SimpleNodeParser({
-            chunkSize: 2048,
-            chunkOverlap: 256
-        })
-    });
-    return serviceContext;
-}
-
 export async function handleDocument(req: HennosConsumer, path: string, uuid: string, reader: BaseReader, prompt?: string): Promise<string> {
     Logger.info(req, `Processing document at path: ${path} with UUID: ${uuid}.`);
 
     const documents = await reader.loadData(path);
-    const serviceContext = await buildServiceContext(req);
+    const serviceContext = req.getServiceContext();
 
     Logger.debug(req, `Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
     const index = await SummaryIndex.fromDocuments(documents, {
