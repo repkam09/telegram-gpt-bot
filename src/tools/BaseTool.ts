@@ -35,6 +35,22 @@ export abstract class BaseTool {
         return result.data as T;
     }
 
+    public static async postJSONData<T = any>(url: string, body: unknown, headers?: Record<string, string>): Promise<T> {
+        Logger.debug(undefined, "postJSONData", { url, body, headers });
+        const result = await axios({
+            data: body,
+            headers: {
+                ...headers,
+                "User-Agent": "HennosBot/1.0",
+            },
+            method: "post",
+            url: url,
+            responseType: "json"
+        });
+
+        return result.data as T;
+    }
+
     public static async fetchBinaryData(url: string): Promise<Buffer> {
         const result = await BaseTool.fetchAxios<any>(url, "arraybuffer");
         return Buffer.from(result.data);
@@ -58,6 +74,7 @@ export abstract class BaseTool {
     }
 
     private static fetchAxios<T>(url: string, responseType: "text" | "json" | "arraybuffer", headers?: Record<string, string>): Promise<{ data: T }> {
+        Logger.debug(undefined, "fetchAxios", { url, responseType, headers });
         return axios<T>({
             headers: {
                 ...headers,

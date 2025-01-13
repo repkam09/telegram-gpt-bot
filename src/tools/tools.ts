@@ -12,12 +12,13 @@ import { YoutubeVideoTool } from "./YoutubeVideoTool";
 import { ReasoningModel } from "./Reasoning";
 import { WolframAlpha } from "./WolframAlpha";
 import { LastFMTool } from "./LastFMTool";
-import { TheMovieDBTool } from "./TheMovieDBTool";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { StoreKeyValueMemory } from "./UserFactsTool";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
 import { ScheduleMessageCallback } from "./MessageCallback";
 import { ImageGenerationTool } from "./ImageGenerationTool";
+import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
+import { RSSFeedReaderList } from "./RSSFeedReader";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -30,10 +31,9 @@ const WHITELIST_TOOLS = [
     OpenWeatherMapLookupTool,
     TheNewsAPITool,
     LastFMTool,
-    TheMovieDBTool,
     StoreKeyValueMemory,
     ScheduleMessageCallback,
-    WolframAlpha,
+    WolframAlpha
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
@@ -45,7 +45,10 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
-    HomeAssistantStatesTool
+    HomeAssistantStatesTool,
+    JellyseerMediaRequest,
+    JellyseerMediaSearch,
+    RSSFeedReaderList
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {

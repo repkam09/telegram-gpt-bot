@@ -433,6 +433,22 @@ export class Config {
         return process.env.THE_MOVIE_DB_API_KEY;
     }
 
+    static get JELLYSEER_API_KEY(): string | false {
+        if (!process.env.JELLYSEER_API_KEY) {
+            return false;
+        }
+
+        return process.env.JELLYSEER_API_KEY;
+    }
+
+    static get JELLYSEER_BASE_URL(): string {
+        if (!process.env.JELLYSEER_BASE_URL) {
+            return "localhost:5055";
+        }
+
+        return process.env.JELLYSEER_BASE_URL;
+    }
+
     static get HOME_ASSISTANT_BASE_URL(): string | false {
         if (!process.env.HOME_ASSISTANT_BASE_URL) {
             return false;
