@@ -57,20 +57,25 @@ async function handleTwitchMessage(channel: string, context: tmi.ChatUserstate, 
     }
 
     // Remove the bot's username from the beginning of the message if it's there (with or without an @)
-    const cleaned = message.replace(new RegExp(`^@?${Config.TWITCH_BOT_USERNAME}`, "i"), "").trim();
+    const cleaned = message.replace(new RegExp(`^@?${Config.TWITCH_BOT_USERNAME}`, "i"), Config.HENNOS_BOT_NAME).trim();
 
     const user = await HennosUser.async(-1, context.username, context.username);
     const group = await HennosGroup.async(-1, `${channel}`);
 
     const response = await handleOneOffGroupMessage(user, group, cleaned, {
-        content: `This user is sending their message from Twitch.tv chat on channel ${channel}. Keep your response especially short and to the point.`,
+        content: `This user is sending their message from Twitch.tv chat on channel '${channel}'. Keep your response very short. Only a couple sentences at most.`,
         role: "system",
         type: "text"
     });
 
     if (response.__type === "string") {
         const bot = TwitchBotInstance.instance();
-        await bot.say(channel, response.payload);
+
+        // Twitch only allows 500 characters per message
+        const chunks = response.payload.match(/.{1,500}(\s|$)|\S+?(\s|$)/g) || [];
+        for (const chunk of chunks) {
+            await bot.say(channel, chunk);
+        }
     }
     return;
 }

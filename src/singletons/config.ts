@@ -376,10 +376,18 @@ export class Config {
 
     static get DISCORD_DISPLAY_NAME(): string {
         if (!process.env.DISCORD_DISPLAY_NAME) {
-            return "Hennos";
+            return Config.HENNOS_BOT_NAME;
         }
 
         return process.env.DISCORD_DISPLAY_NAME;
+    }
+
+    static get HENNOS_BOT_NAME(): string {
+        if (!process.env.HENNOS_BOT_NAME) {
+            return "Hennos";
+        }
+
+        return process.env.HENNOS_BOT_NAME;
     }
 
     static get DISCORD_VOICE_TRIGGER_STRINGS(): string[] | false {
