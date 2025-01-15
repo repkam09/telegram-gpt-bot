@@ -179,6 +179,37 @@ export class TelegramBotInstance {
                     InputCallbackFunctionMap.delete(user.chatId);
                     return callback(msg);
                 }
+
+                if (msg.forward_date) {
+                    if (msg.forward_from) {
+                        const forward = await HennosUser.async(msg.forward_from.id, msg.forward_from.first_name, msg.forward_from.last_name, msg.forward_from.username);
+                        Logger.trace(user, `text_forwarded: ${forward.toString()}`);
+                        return user.updateUserChatContext(user, `Forwarded message from '${msg.forward_from.first_name}': ${msg.text}}`);
+                    }
+
+                    if (msg.forward_sender_name) {
+                        Logger.trace(user, `text_forwarded: ${msg.forward_sender_name}`);
+                        return user.updateUserChatContext(user, `Forwarded message from '${msg.forward_sender_name}': ${msg.text}}`);
+                    }
+
+                    // @ts-expect-error - The Types are wrong for the bot instance, it does support forward_origin
+                    if (msg.forward_origin && msg.forward_origin.chat) {
+                        // @ts-expect-error - See Above
+                        Logger.trace(user, `text_forwarded: ${msg.forward_origin.chat.title}`);
+                        // @ts-expect-error - See Above
+                        return user.updateUserChatContext(user, `Forwarded message from '${msg.forward_origin.chat.title}': ${msg.text}}`);
+                    }
+
+                    Logger.trace(user, "text_forwarded");
+                    return user.updateUserChatContext(user, `Forwarded message: ${msg.text}}`);
+                }
+
+                if (msg.reply_to_message && msg.reply_to_message.from) {
+                    const reply = await HennosUser.async(msg.reply_to_message.from.id, msg.reply_to_message.from.first_name, msg.reply_to_message.from.last_name, msg.reply_to_message.from.username);
+                    Logger.trace(user, `text_reply: ${reply.toString()}`);
+                    await user.updateUserChatContext(user, `Reply to message from '${msg.reply_to_message.from.first_name}': \n===\n ${msg.reply_to_message.text}\n===\n`);
+                }
+
                 return handleTelegramPrivateMessage(user, msg as MessageWithText);
             }
         });
@@ -246,10 +277,40 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
         group.experimental = true;
     }
 
+    if (msg.forward_date) {
+        if (msg.forward_from) {
+            const forward = await HennosUser.async(msg.forward_from.id, msg.forward_from.first_name, msg.forward_from.last_name, msg.forward_from.username);
+            Logger.trace(group, `text_group_forwarded: ${forward.toString()}`);
+            return group.updateUserChatContext(user, `Forwarded message from '${msg.forward_from.first_name}': ${msg.text}}`);
+        }
+
+        if (msg.forward_sender_name) {
+            Logger.trace(group, `text_group_forwarded: ${msg.forward_sender_name}`);
+            return group.updateUserChatContext(user, `Forwarded message from '${msg.forward_sender_name}': ${msg.text}}`);
+        }
+
+        // @ts-expect-error - The Types are wrong for the bot instance, it does support forward_origin
+        if (msg.forward_origin && msg.forward_origin.chat) {
+            // @ts-expect-error - See Above
+            Logger.trace(group, `text_group_forwarded: ${msg.forward_origin.chat.title}`);
+            // @ts-expect-error - See Above
+            return group.updateUserChatContext(user, `Forwarded message from '${msg.forward_origin.chat.title}': ${msg.text}}`);
+        }
+
+        Logger.trace(group, "text_group_forwarded");
+        return group.updateUserChatContext(user, `Forwarded message: ${msg.text}}`);
+    }
+
+    if (msg.reply_to_message && msg.reply_to_message.from) {
+        const reply = await HennosUser.async(msg.reply_to_message.from.id, msg.reply_to_message.from.first_name, msg.reply_to_message.from.last_name, msg.reply_to_message.from.username);
+        Logger.trace(group, `text_group_reply: ${reply.toString()}`);
+        await group.updateUserChatContext(user, `Reply to message from '${msg.reply_to_message.from.first_name}': \n===\n ${msg.reply_to_message.text}\n===\n`);
+    }
+
     // Check if the user @'d the bot in their message
     if (!hasGroupPrefix(msg.entities ?? [], msg.text)) {
         if (Config.TELEGRAM_GROUP_CONTEXT) {
-            Logger.trace(group, `text_group_context: ${user.displayName}`);
+            Logger.trace(group, `text_group_context: ${user.toString()}`);
 
             const cleaned = replaceTelegramBotName(msg.text, "Hennos", "ig");
             // Update the chat context with the user's message without generating a response
