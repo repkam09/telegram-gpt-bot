@@ -1,5 +1,5 @@
-import { TelegramBotInstance } from "../services/telegram/telegram";
-import { HennosGroup } from "./group";
+import { handlePrivateMessage } from "../handlers/text/private";
+import { handleHennosResponse } from "../services/telegram/telegram";
 import { Logger } from "./logger";
 import { Database } from "./sqlite";
 import { HennosUser } from "./user";
@@ -30,11 +30,11 @@ export class ScheduleJob {
         setInterval(ScheduleJob.processQueue, 60 * 1000);
     }
 
-    public static async schedule(trigger: Date, chatId: number, message: string): Promise<number> {
-        Logger.debug(undefined, `Scheduling message to ${chatId} at ${trigger}: ${message}`);
+    public static async schedule(trigger: Date, user: HennosUser, message: string): Promise<number> {
+        Logger.debug(undefined, `Scheduling message to ${user.chatId} at ${trigger}: ${message}`);
         const task = await Database.instance().futureTask.create({
             data: {
-                chatId,
+                chatId: user.chatId,
                 message,
                 trigger,
             },
@@ -43,7 +43,7 @@ export class ScheduleJob {
             }
         });
 
-        ScheduleJob._queue.push({ taskId: task.id, trigger, chatId, message });
+        ScheduleJob._queue.push({ taskId: task.id, trigger, chatId: user.chatId, message });
         return task.id;
     }
 
@@ -64,28 +64,30 @@ export class ScheduleJob {
         }
 
         for (const task of readyTasks) {
-            Logger.debug(undefined, `Sending message to ${task.chatId}: ${task.message}`);
-
             const user = await HennosUser.exists(task.chatId);
             if (user) {
-                Logger.info(user, "Sending scheduled message");
-                await user.updateAssistantChatContext(task.message);
-                await TelegramBotInstance.sendMessageWrapper(user, task.message);
+                Logger.trace(user, "scheduled_task");
+                const result = await handlePrivateMessage(user, task.message, {
+                    type: "text",
+                    content: "The latest message is being sent, on behalf of the user, as part of a scheduled message callback.",
+                    role: "system"
+                });
+
+                await remove(task);
+                return handleHennosResponse(user, result, {});
             }
 
-            const group = await HennosGroup.exists(task.chatId);
-            if (group) {
-                Logger.info(group, "Sending scheduled message");
-                await group.updateAssistantChatContext(task.message);
-                await TelegramBotInstance.sendMessageWrapper(group, task.message);
-            }
-
-            Logger.debug(undefined, `Deleting task ${task.taskId}`);
-            await Database.instance().futureTask.delete({
-                where: {
-                    id: task.taskId
-                }
-            });
+            Logger.error(undefined, `Scheduled message failed to send to ${task.chatId}. User not found.`);
+            await remove(task);
         }
     }
+}
+
+async function remove(task: FutureTask) {
+    Logger.debug(undefined, `Deleting task ${task.taskId}`);
+    await Database.instance().futureTask.delete({
+        where: {
+            id: task.taskId
+        }
+    });
 }

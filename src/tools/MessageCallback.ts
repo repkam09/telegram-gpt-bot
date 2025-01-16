@@ -3,12 +3,14 @@ import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { ScheduleJob } from "../singletons/cron";
+import { HennosGroup } from "../singletons/group";
+import { HennosUser } from "../singletons/user";
 
 export class ScheduleMessageCallback extends BaseTool {
     public static isEnabled(): boolean {
         return true;
     }
-    
+
     public static definition(): Tool {
         return {
             type: "function",
@@ -26,7 +28,7 @@ export class ScheduleMessageCallback extends BaseTool {
                         },
                         message: {
                             type: "string",
-                            description: "The message to send to the user when the callback is triggered."
+                            description: "This prompt will be sent to you, the assistant, when the callback is triggered. You should use this prompt to specify what you want the assistant to do when the callback is triggered."
                         }
                     },
                     required: ["futureMinutes", "message"]
@@ -45,8 +47,13 @@ export class ScheduleMessageCallback extends BaseTool {
             return ["schedule_message_callback failed, message must be a non-empty string", metadata];
         }
 
+        if (req instanceof HennosGroup) {
+            return ["schedule_message_callback failed, this tool is not available in group chats", metadata];
+        }
+
         const futureDate = new Date(Date.now() + args.futureMinutes * 60 * 1000);
-        await ScheduleJob.schedule(futureDate, req.chatId, args.message);
+        const user = req as HennosUser;
+        await ScheduleJob.schedule(futureDate, user, args.message);
 
         return [`schedule_message_callback created, scheduled for ${futureDate}.`, metadata];
     }
