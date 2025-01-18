@@ -180,6 +180,11 @@ export async function buildPrompt(user: HennosUser): Promise<HennosTextMessage[]
         },
         {
             role: "system",
+            content: "The 'Hennos' system was created and is maintained by Mark Repka (@repkam09) and is Open Source on GitHub here: https://github.com/repkam09/telegram-gpt-bot",
+            type: "text",
+        },
+        {
+            role: "system",
             content: [
                 `Here are some details about the underlying Large Language Model that is currently powering this conversation: ${user.getProvider().details()}.`,
                 "The user is able to change LLM providers in the Hennos settings. There might be references to other LLMs in the chat history if the user has switched providers."

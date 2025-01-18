@@ -20,6 +20,7 @@ export class JellyseerMediaRequest extends BaseTool {
                 name: "jellyseer_media_request",
                 description: [
                     "This tool will create a request within the Jellyfin/Jellyseer system noting that the user has asked for this tv show or movie to be added to Jellyfin.",
+                    "Users might also refer to this media service as 'RepCast', this is the same system."
                 ].join(" "),
                 parameters: {
                     type: "object",
@@ -95,10 +96,11 @@ export class JellyseerMediaSearch extends BaseTool {
             function: {
                 name: "jellyseer_media_search",
                 description: [
-                    "This tool will search the Jellyseer database for a specific tv show or movie, by name.",
+                    "This tool will search the Jellyfin/Jellyseer database for a specific tv show or movie, by name.",
                     "This tool will returna list of available results for the media including the mediaId, mediaType, overview, title, releaseDate, seasons, as well as a path to the poster image.",
                     "If the user asks to add, download, add to watchlist, or otherwise request a show, movie, or other media, this tool should be used to fetch more information about the media, including the mediaId.",
-                    "The mediaId can then be used with the `jellyseer_media_request` tool to create a request for the media to be added to the Jellyseer/Jellyfin database."
+                    "The mediaId can then be used with the `jellyseer_media_request` tool to create a request for the media to be added to the Jellyseer/Jellyfin database.",
+                    "Users might also refer to this media service as 'RepCast', this is the same system."
                 ].join(" "),
                 parameters: {
                     type: "object",
