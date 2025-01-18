@@ -40,14 +40,14 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
     ReasoningModel,
     YoutubeVideoTool,
     AcknowledgeWithoutResponse,
-    ImageGenerationTool
+    ImageGenerationTool,
+    JellyseerMediaRequest,
+    JellyseerMediaSearch,
 ];
 
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
     HomeAssistantStatesTool,
-    JellyseerMediaRequest,
-    JellyseerMediaSearch,
     RSSFeedReaderList
 ];
 
