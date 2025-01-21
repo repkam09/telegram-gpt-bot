@@ -83,7 +83,13 @@ export class TelegramBotInstance {
 
     static async sendAdminMessage(content: string) {
         if (Config.TELEGRAM_BOT_ADMIN !== -1 && !Config.HENNOS_DEVELOPMENT_MODE) {
-            await TelegramBotInstance.instance().sendMessage(Config.TELEGRAM_BOT_ADMIN, content, {});
+            try {
+                await TelegramBotInstance.instance().sendMessage(Config.TELEGRAM_BOT_ADMIN, content, {
+                    disable_notification: true
+                });
+            } catch {
+                Logger.error(undefined, "Failed to send admin message");
+            }
         }
     }
 
