@@ -1,4 +1,4 @@
-import fs, { } from "node:fs";
+import fs from "node:fs";
 import TelegramBot from "node-telegram-bot-api";
 import mimetype from "mime-types";
 import { Config } from "../../singletons/config";
@@ -24,6 +24,8 @@ import { StoreKeyValueMemory } from "../../tools/UserFactsTool";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
+
+type TelegramReactionEmotes = "👍" | "👎" | "❤" | "🔥" | "🥰" | "👏" | "😁" | "🤔" | "🤯" | "😱" | "🤬" | "😢" | "🎉" | "🤩" | "🤮" | "💩" | "🙏" | "👌" | "🕊" | "🤡" | "🥱" | "🥴" | "😍" | "🐳" | "❤‍🔥" | "🌚" | "🌭" | "💯" | "🤣" | "⚡" | "🍌" | "🏆" | "💔" | "🤨" | "😐" | "🍓" | "🍾" | "💋" | "🖕" | "😈" | "😴" | "😭" | "🤓" | "👻" | "👨‍💻" | "👀" | "🎃" | "🙈" | "😇" | "😨" | "🤝" | "✍" | "🤗" | "🫡" | "🎅" | "🎄" | "☃" | "💅" | "🤪" | "🗿" | "🆒" | "💘" | "🙉" | "🦄" | "😘" | "💊" | "🙊" | "😎" | "👾" | "🤷‍♂" | "🤷" | "🤷‍♀" | "😡"
 
 const InputCallbackFunctionMap = new Map<number, InputCallbackFunction>();
 const PendingChatMap = new Map<number, string[]>();
@@ -114,7 +116,7 @@ export class TelegramBotInstance {
         });
     }
 
-    static setTelegramMessageReact(req: HennosConsumer, msg: TelegramBot.Message, emote?: string): void {
+    static setTelegramMessageReact(req: HennosConsumer, msg: TelegramBot.Message, emote?: TelegramReactionEmotes): void {
         const options = {
             reaction: emote ? [{
                 type: "emoji",
@@ -126,7 +128,8 @@ export class TelegramBotInstance {
         TelegramBotInstance.instance().setMessageReaction(req.chatId, msg.message_id, options).then(() => {
             Logger.debug(req, `Set reaction on Telegram message ${msg.message_id}`);
         }).catch((err: unknown) => {
-            Logger.error(req, `Error while setting reaction on Telegram message ${msg.message_id}: `, err);
+            const error = err as Error;
+            Logger.error(req, `Error while setting reaction on Telegram message ${msg.message_id}: `, error.message);
         });
     }
 
@@ -372,9 +375,12 @@ async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithTe
 
 async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Message & { voice: TelegramBot.Voice }) {
     TelegramBotInstance.setTelegramIndicator(user, "typing");
-    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
-    const response1 = await handleVoiceMessage(user, tempFilePath);
+    const tempFilePath = await downloadTelegramFile(msg.voice.file_id, Config.LOCAL_STORAGE(user));
+    if (!tempFilePath) {
+        return TelegramBotInstance.sendMessageWrapper(user, "There was an error while processing your file.");
+    }
 
+    const response1 = await handleVoiceMessage(user, tempFilePath);
     if (response1.__type === "string") {
         TelegramBotInstance.setTelegramIndicator(user, "record_voice");
         try {
@@ -390,15 +396,25 @@ async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Mes
 }
 
 async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Message & { photo: TelegramBot.PhotoSize[] }) {
+    TelegramBotInstance.setTelegramMessageReact(user, msg, "👀");
+
     const largestImage = msg.photo.reduce((max, obj) => {
         return (obj.width * obj.height > max.width * max.height) ? obj : max;
     });
 
-    TelegramBotInstance.setTelegramIndicator(user, "upload_photo");
-    const tempFilePath = await TelegramBotInstance.instance().downloadFile(largestImage.file_id, Config.LOCAL_STORAGE(user));
+    const tempFilePath = await downloadTelegramFile(largestImage.file_id, Config.LOCAL_STORAGE(user));
+    if (!tempFilePath) {
+        return TelegramBotInstance.sendMessageWrapper(user, "There was an error while processing your file.");
+    }
+
+    TelegramBotInstance.setTelegramMessageReact(user, msg);
+
     const mime_type = mimetype.contentType(path.extname(tempFilePath));
 
-    TelegramBotInstance.setTelegramIndicator(user, "typing");
+    if (msg.caption) {
+        TelegramBotInstance.setTelegramIndicator(user, "typing");
+    }
+
     const response = await handleImageMessage(user, { local: tempFilePath, mime: mime_type || "application/octet-stream" }, msg.caption);
     return handleHennosResponse(user, response, {});
 }
@@ -434,11 +450,32 @@ async function handleTelegramLocationMessage(user: HennosUser, msg: TelegramBot.
     return TelegramBotInstance.sendMessageWrapper(user, "Location information updated.");
 }
 
+async function downloadTelegramFile(fileId: string, path: string): Promise<string | null> {
+    const bot = TelegramBotInstance.instance();
+    try {
+        const telegramFileInfo = await bot.getFile(fileId);
+        if (telegramFileInfo.file_path) {
+            Logger.debug(undefined, "Downloading file from Telegram: ", telegramFileInfo.file_id, telegramFileInfo.file_path, telegramFileInfo.file_size);
+        }
+
+        const file = await bot.downloadFile(fileId, path);
+
+        return file;
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.error(undefined, "Error downloading file from Telegram: ", error.message, error.stack);
+    }
+    return null;
+}
+
 async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Message & { audio: TelegramBot.Audio }) {
     TelegramBotInstance.setTelegramIndicator(user, "typing");
-    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.audio.file_id, Config.LOCAL_STORAGE(user));
-    const response1 = await handleAudioMessage(user, tempFilePath);
+    const tempFilePath = await downloadTelegramFile(msg.audio.file_id, Config.LOCAL_STORAGE(user));
+    if (!tempFilePath) {
+        return TelegramBotInstance.sendMessageWrapper(user, "There was an error while processing your file.");
+    }
 
+    const response1 = await handleAudioMessage(user, tempFilePath);
     if (response1.__type === "string") {
         TelegramBotInstance.setTelegramIndicator(user, "record_voice");
         try {
@@ -487,18 +524,31 @@ async function handleTelegramCalendarMessage(user: HennosUser, file: string) {
 
 async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
     TelegramBotInstance.setTelegramMessageReact(user, msg, "👀");
-    const tempFilePath = await TelegramBotInstance.instance().downloadFile(msg.document.file_id, Config.LOCAL_STORAGE(user));
+    const tempFilePath = await downloadTelegramFile(msg.document.file_id, Config.LOCAL_STORAGE(user));
+    if (!tempFilePath) {
+        return TelegramBotInstance.sendMessageWrapper(user, "There was an error while processing your file.");
+    }
+
     const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : ".bin";
 
-
     if (ext === "ics") {
+        TelegramBotInstance.setTelegramMessageReact(user, msg);
         return handleTelegramCalendarMessage(user, tempFilePath);
     }
 
     if (ext === "mp3" || ext === "ogg" || ext === "wav" || ext === "flac" || ext === "oga" || ext === "m4a") {
+        TelegramBotInstance.setTelegramMessageReact(user, msg);
         return handleTelegramAudioMessage(user, {
             ...msg,
             audio: { file_id: msg.document.file_id, duration: -1, file_unique_id: msg.document.file_unique_id }
+        });
+    }
+
+    if (ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "gif" || ext === "webp" || ext === "bmp" || ext === "tiff") {
+        TelegramBotInstance.setTelegramMessageReact(user, msg);
+        return handleTelegramPhotoMessage(user, {
+            ...msg,
+            photo: [{ file_id: msg.document.file_id, file_unique_id: msg.document.file_unique_id, width: -1, height: -1 }]
         });
     }
 
@@ -527,7 +577,11 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
     try {
         // This is a silly feature that fixes an issue in Telegram where some images are incorrectly sent as stickers
         // This will download the sticker, and re-upload it as a photo
-        const stickerPath = await TelegramBotInstance.instance().downloadFile(msg.sticker.file_id, Config.LOCAL_STORAGE(user));
+        const stickerPath = await downloadTelegramFile(msg.sticker.file_id, Config.LOCAL_STORAGE(user));
+        if (!stickerPath) {
+            return;
+        }
+
         await TelegramBotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
     } catch (err) {
         const user = await HennosUser.async(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
