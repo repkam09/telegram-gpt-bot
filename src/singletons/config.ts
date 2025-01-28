@@ -358,6 +358,36 @@ export class Config {
         return port;
     }
 
+    static get TERRARIUM_ENABLED(): boolean {
+        if (!process.env.TERRARIUM_ENABLED) {
+            return false;
+        }
+
+        return process.env.TERRARIUM_ENABLED === "true";
+    }
+
+    static get TERRARIUM_HOST(): string {
+        if (!process.env.TERRARIUM_HOST) {
+            return "localhost";
+        }
+
+        return process.env.TERRARIUM_HOST;
+    }
+
+    static get TERRARIUM_PORT(): number {
+        if (!process.env.TERRARIUM_PORT) {
+            return 8080;
+        }
+
+        const port = parseInt(process.env.TERRARIUM_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid TERRARIUM_PORT value");
+        }
+
+        return port;
+    }
+
     static get TELEGRAM_BOT_KEY(): string {
         if (!process.env.TELEGRAM_BOT_KEY) {
             throw new Error("Missing TELEGRAM_BOT_KEY");

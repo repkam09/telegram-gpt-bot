@@ -313,7 +313,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     if (msg.reply_to_message && msg.reply_to_message.from) {
         const reply = await HennosUser.async(msg.reply_to_message.from.id, msg.reply_to_message.from.first_name, msg.reply_to_message.from.last_name, msg.reply_to_message.from.username);
         Logger.trace(group, `text_group_reply: ${reply.toString()}`);
-        await group.updateUserChatContext(user, `Reply to message from '${msg.reply_to_message.from.first_name}': \n===\n ${msg.reply_to_message.text}\n===\n`);
+        await group.updateUserChatContext(user, `Reply to message from '${msg.reply_to_message.from.first_name}': \n===\n${user.displayName}: ${msg.reply_to_message.text}\n===\n`);
     }
 
     // Check if the user @'d the bot in their message
@@ -323,7 +323,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
 
             const cleaned = replaceTelegramBotName(msg.text, "Hennos", "ig");
             // Update the chat context with the user's message without generating a response
-            return group.updateUserChatContext(user, cleaned);
+            return group.updateUserChatContext(user, `${user.displayName}: ${cleaned}`);
         }
         return;
     }
@@ -333,7 +333,7 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
     TelegramBotInstance.setTelegramIndicator(group, "typing");
 
     const cleaned = replaceTelegramBotName(msg.text, "Hennos", "ig");
-    const response = await handleGroupMessage(user, group, cleaned);
+    const response = await handleGroupMessage(user, group, `${user.displayName}: ${cleaned}`);
     return handleHennosResponse(group, response, { reply_to_message_id: msg.message_id });
 }
 

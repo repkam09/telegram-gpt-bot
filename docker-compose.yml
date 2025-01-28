@@ -16,3 +16,8 @@ services:
       - "6334:6334"
     volumes:
       - ./data/qdrant/:/qdrant/storage:z
+  terrarium:
+    container_name: terrarium
+    image: ghcr.io/khoj-ai/terrarium:latest
+    ports:
+      - "16007:8080"

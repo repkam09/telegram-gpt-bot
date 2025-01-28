@@ -45,7 +45,6 @@ export class HomeAssistantStatesTool extends BaseTool {
 
         Logger.info(req, "home_assistant_states", { entity_ids });
         try {
-
             const entities = await BaseTool.fetchJSONData<HomeAssistantEntityResult[]>(`${Config.HOME_ASSISTANT_BASE_URL}/api/states`, {
                 "Authorization": `Bearer ${Config.HOME_ASSISTANT_API_KEY}`
             });

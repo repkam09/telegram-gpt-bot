@@ -3,9 +3,9 @@ import { Logger } from "../singletons/logger";
 import { HennosOpenAISingleton } from "../singletons/openai";
 import { HennosUser } from "../singletons/user";
 import { Job } from "./job";
-import { buildPrompt } from "../handlers/text/private";
 import { handleHennosResponse } from "../services/telegram/telegram";
 import { Config } from "../singletons/config";
+import { hennosBasePrompt } from "../prompt";
 
 /**
  * This job will run every day at 8:00 AM EST and will send a daily report to the user with the following information:
@@ -24,7 +24,7 @@ export class DailyReport extends Job {
     static async run(user: HennosUser) {
         Logger.info(user, `Starting Daily Report for ${user.displayName}`);
 
-        const prompt = await buildPrompt(user);
+        const prompt = await hennosBasePrompt(user);
         const context = await user.getChatContext();
 
         context.push(

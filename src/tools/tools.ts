@@ -20,6 +20,8 @@ import { ImageGenerationTool } from "./ImageGenerationTool";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
 import { RSSFeedReaderList } from "./RSSFeedReader";
 import { TelegramBotInstance } from "../services/telegram/telegram";
+import { PythonSandbox } from "./PythonSandbox";
+import { Base64Decode } from "./Base64Decode";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -34,7 +36,9 @@ const WHITELIST_TOOLS = [
     LastFMTool,
     StoreKeyValueMemory,
     ScheduleMessageCallback,
-    WolframAlpha
+    WolframAlpha,
+    PythonSandbox,
+    Base64Decode
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
