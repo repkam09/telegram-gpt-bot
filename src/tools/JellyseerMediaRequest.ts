@@ -59,6 +59,22 @@ export class JellyseerMediaRequest extends BaseTool {
             return ["jellyseer_media_request failed, mediaId must be provided", metadata];
         }
 
+        try {
+            const data = await BaseTool.fetchJSONData<JellyseerMedia>(`${Config.JELLYSEER_BASE_URL}/api/v1/${args.mediaType}/${args.mediaId}`, {
+                "X-Api-Key": Config.JELLYSEER_API_KEY as string
+            });
+
+            if (data.mediaInfo) {
+                if (Config.JELLYFIN_BASE_URL) {
+                    return [`jellyseer_media_request failed, the media is already available for streaming. Stream URL: ${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}`, metadata];
+                }
+                return ["jellyseer_media_request failed, the media is already available for streaming.", metadata];
+            }
+        } catch (err: unknown) {
+            Logger.error(req, `jellyseer_media_request error: ${err}`);
+            return ["jellyseer_media_request failed, unable to fetch media info", metadata];
+        }
+
 
         Logger.debug(req, "jellyseer_media_request", { mediaType: args.mediaType, mediaId: args.mediaId });
         try {
@@ -97,7 +113,8 @@ export class JellyseerMediaSearch extends BaseTool {
                 name: "jellyseer_media_search",
                 description: [
                     "This tool will search the Jellyfin/Jellyseer database for a specific tv show or movie, by name.",
-                    "This tool will returna list of available results for the media including the mediaId, mediaType, overview, title, releaseDate, seasons, as well as a path to the poster image.",
+                    "This tool will return list of available results for the media including the mediaId, mediaType, overview, title, releaseDate, seasons, as well as a path to the poster image.",
+                    "This tool will also return an 'available' flag, which will be true if the media is already available for streaming.",
                     "If the user asks to add, download, add to watchlist, or otherwise request a show, movie, or other media, this tool should be used to fetch more information about the media, including the mediaId.",
                     "The mediaId can then be used with the `jellyseer_media_request` tool to create a request for the media to be added to the Jellyseer/Jellyfin database.",
                     "Users might also refer to this media service as 'RepCast', this is the same system."
@@ -143,15 +160,12 @@ export class JellyseerMediaSearch extends BaseTool {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             });
 
-            const mediaInfoPromises = results.results.filter((result) => result.mediaType === args.mediaType).map((result) => BaseTool.fetchJSONData(`${Config.JELLYSEER_BASE_URL}/api/v1/${result.mediaType}/${result.id}`, {
+            const mediaInfoPromises = results.results.filter((result) => result.mediaType === args.mediaType).map((result) => BaseTool.fetchJSONData<JellyseerMedia>(`${Config.JELLYSEER_BASE_URL}/api/v1/${result.mediaType}/${result.id}`, {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             }));
 
             const mediaInfo = await Promise.all(mediaInfoPromises);
-
-            Logger.debug(req, "jellyseer_media_search", mediaInfo);
-
-            const data: MediaResult[] = mediaInfo.map((result) => ({
+            const data: MediaResult[] = mediaInfo.map((result: JellyseerMedia) => ({
                 mediaType: args.mediaType,
                 mediaId: result.id,
                 overview: result.overview,
@@ -159,6 +173,7 @@ export class JellyseerMediaSearch extends BaseTool {
                 releaseDate: result.firstAirDate,
                 title: result.title ? result.title : result.name!,
                 seasons: [],
+                available: result.mediaInfo ? true : false
             })).filter((result) => result.mediaType === args.mediaType);
 
             Logger.debug(req, "jellyseer_media_search", data);
@@ -186,6 +201,9 @@ type JellyseerMedia = {
     title?: string,
     overview: string,
     posterPath: string,
+    mediaInfo?: {
+        jellyfinMediaId: string
+    }
 }
 
 type MediaResult = {
@@ -195,4 +213,5 @@ type MediaResult = {
     title: string,
     releaseDate: string,
     posterPath: string,
+    available: boolean,
 }

@@ -487,6 +487,14 @@ export class Config {
         return process.env.JELLYSEER_BASE_URL;
     }
 
+    static get JELLYFIN_BASE_URL(): string | false {
+        if (!process.env.JELLYFIN_BASE_URL) {
+            return false;
+        }
+
+        return process.env.JELLYFIN_BASE_URL;
+    }
+
     static get HOME_ASSISTANT_BASE_URL(): string | false {
         if (!process.env.HOME_ASSISTANT_BASE_URL) {
             return false;
