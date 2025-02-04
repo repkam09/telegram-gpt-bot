@@ -47,7 +47,7 @@ export class JellyseerMediaRequest extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "jellyseer_media_request");
+        Logger.info(req, "jellyseer_media_request", { args });
         if (!args.mediaType) {
             return ["jellyseer_media_request failed, mediaType must be provided", metadata];
         }
@@ -140,7 +140,7 @@ export class JellyseerMediaSearch extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "jellyseer_media_search");
+        Logger.info(req, "jellyseer_media_search", { args });
         if (!args.mediaType) {
             return ["jellyseer_media_search failed, mediaType must be provided", metadata];
         }
