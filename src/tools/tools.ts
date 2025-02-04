@@ -19,7 +19,6 @@ import { ScheduleMessageCallback } from "./MessageCallback";
 import { ImageGenerationTool } from "./ImageGenerationTool";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
 import { RSSFeedReaderList } from "./RSSFeedReader";
-import { TelegramBotInstance } from "../services/telegram/telegram";
 import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
 
@@ -107,9 +106,6 @@ export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCal
                 return [`Unknown tool call: ${tool_call.function.name}`, metadata] as [string, ToolCallMetadata];
             }
 
-            if (req.isAdmin()) {
-                TelegramBotInstance.sendAdminMessage(`Calling '${tool_call.function.name}' for ${req.toString()} with args: ${JSON.stringify(tool_call.function.arguments)}`);
-            }
             return ToolMatch.callback(req, tool_call.function.arguments, metadata);
         }));
 

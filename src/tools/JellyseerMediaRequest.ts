@@ -20,6 +20,7 @@ export class JellyseerMediaRequest extends BaseTool {
                 name: "jellyseer_media_request",
                 description: [
                     "This tool will create a request within the Jellyfin/Jellyseer system noting that the user has asked for this tv show or movie to be added to Jellyfin.",
+                    "The request will be handled manually by the Jellyfin/Jellyseer media manager and might take some time to be fulfilled. But usually requests are handled within a few days.",
                     "Users might also refer to this media service as 'RepCast', this is the same system."
                 ].join(" "),
                 parameters: {
