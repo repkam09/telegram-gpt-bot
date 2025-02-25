@@ -44,6 +44,10 @@ export async function sendLLMProviderSettingsPrompt(user: HennosUser) {
                         callback_data: "llm-settings-google",
                     },
                     {
+                        text: "Mistral AI",
+                        callback_data: "llm-settings-mistral",
+                    },
+                    {
                         text: "Ollama Models",
                         callback_data: "llm-settings-ollama",
                     },

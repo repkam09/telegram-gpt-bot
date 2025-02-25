@@ -83,6 +83,12 @@ export class CommandLineInstance {
                 query = null;
             }
 
+            if (query === "mistral") {
+                console.log("Switching to Mistral...");
+                await user.setPreferredProvider("mistral");
+                query = null;
+            }
+
             if (query === "mock") {
                 console.log("Switching to Mock...");
                 await user.setPreferredProvider("mock");

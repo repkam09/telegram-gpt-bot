@@ -76,7 +76,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: Message[], depth: number): Promise<HennosResponse> {
-        if (depth > 4) {
+        if (depth > Config.HENNOS_TOOL_DEPTH) {
             throw new Error("Tool Call Recursion Depth Exceeded");
         }
 
@@ -88,7 +88,7 @@ class HennosOllamaProvider extends HennosBaseProvider {
                 tools: availableTools(req)
             });
 
-            Logger.info(req, `Ollama Completion Success, Resulted in ${response.eval_count} output tokens`);
+            Logger.info(req, `Ollama Completion Success, Resulted in ${response.eval_count} output tokens.  (depth=${depth})`);
             if (response.message.tool_calls && response.message.tool_calls.length > 0) {
                 Logger.info(req, `Ollama Completion Success, Resulted in ${response.message.tool_calls.length} Tool Calls`);
                 const tool_calls = response.message.tool_calls.map((tool_call) => {

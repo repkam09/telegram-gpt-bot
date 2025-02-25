@@ -1,17 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import fs from "node:fs/promises";
 import { Config } from "./config";
 import { Anthropic } from "@anthropic-ai/sdk";
-import { HennosUser } from "./user";
-import { Message, ToolCall } from "ollama";
-import { ImageBlockParam, MessageParam, TextBlock, TextBlockParam, Tool } from "@anthropic-ai/sdk/resources";
+import { ToolCall } from "ollama";
+import { ImageBlockParam, TextBlock, TextBlockParam, Tool } from "@anthropic-ai/sdk/resources";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosBaseProvider, HennosConsumer } from "./base";
-import { ALL_AVAILABLE_ANTHROPIC_MODELS } from "llamaindex";
 import { availableTools, processToolCalls } from "../tools/tools";
-import { HennosImage, HennosMessage, HennosResponse, HennosTextMessage } from "../types";
+import { HennosMessage, HennosResponse, HennosTextMessage } from "../types";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -166,7 +162,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number, allow_tools: boolean): Promise<HennosResponse> {
-        if (depth > 4) {
+        if (depth > Config.HENNOS_TOOL_DEPTH) {
             throw new Error("Tool Call Recursion Depth Exceeded");
         }
 
@@ -187,7 +183,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
             const response = await this.client.messages.create(options);
 
-            Logger.info(req, `Anthropic Completion Success, Usage: ${calculateUsage(req, response.usage)}`);
+            Logger.info(req, `Anthropic Completion Success, Usage: ${calculateUsage(req, response.usage)}. (depth=${depth})`);
             const tool_blocks = response.content.filter((content) => content.type === "tool_use") as Anthropic.Messages.ToolUseBlock[];
             if (tool_blocks.length > 0) {
                 Logger.info(req, `Anthropic Completion Success, Resulted in ${tool_blocks.length} Tool Calls`);
@@ -305,7 +301,7 @@ function convertToolCallResponse(tools: Anthropic.Messages.ToolUseBlock[]): [Too
                     arguments: tool.input as Record<string, unknown>
                 }
             }, tool];
-        } catch (err) {
+        } catch {
             return [{
                 function: {
                     name: tool.name,

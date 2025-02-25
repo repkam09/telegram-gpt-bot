@@ -9,6 +9,7 @@ import { Logger } from "./logger";
 import { HennosGoogleSingleton } from "./google";
 import { HennosMockSingleton } from "./mock";
 import { MessageClassifier } from "./classifier";
+import { HennosMistralSingleton } from "./mistral";
 
 export class HennosUser extends HennosConsumer {
     constructor(chatId: number) {
@@ -53,6 +54,9 @@ export class HennosUser extends HennosConsumer {
                 }
                 case "google": {
                     return HennosGoogleSingleton.instance();
+                }
+                case "mistral": {
+                    return HennosMistralSingleton.instance();
                 }
                 case "mock": {
                     return HennosMockSingleton.instance();

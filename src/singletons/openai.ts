@@ -135,7 +135,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
-        if (depth > 4) {
+        if (depth > Config.HENNOS_TOOL_DEPTH) {
             throw new Error("Tool Call Recursion Depth Exceeded");
         }
 

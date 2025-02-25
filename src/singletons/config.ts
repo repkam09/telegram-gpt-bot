@@ -131,6 +131,16 @@ export class Config {
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
     }
 
+    static get MISTRAL_LLM(): HennosModelConfig {
+        if (!process.env.MISTRAL_LLM) {
+            return {
+                MODEL: "mistral-small-latest",
+                CTX: 10000,
+            };
+        }
+        return parseHennosModelString(process.env.MISTRAL_LLM, "MISTRAL_LLM");
+    }
+
     static get GOOGLE_LLM(): HennosModelConfig {
         if (!process.env.GOOGLE_LLM) {
             return {
@@ -206,6 +216,14 @@ export class Config {
         }
 
         return process.env.OPENAI_API_KEY;
+    }
+
+    static get MISTRAL_API_KEY(): string {
+        if (!process.env.MISTRAL_API_KEY) {
+            throw new Error("Missing MISTRAL_API_KEY");
+        }
+
+        return process.env.MISTRAL_API_KEY;
     }
 
     static get GOOGLE_API_KEY(): string {
@@ -418,6 +436,20 @@ export class Config {
         }
 
         return process.env.HENNOS_BOT_NAME;
+    }
+
+    static get HENNOS_TOOL_DEPTH(): number {
+        if (!process.env.HENNOS_TOOL_DEPTH) {
+            return 8;
+        }
+
+        const depth = parseInt(process.env.HENNOS_TOOL_DEPTH);
+
+        if (Number.isNaN(depth)) {
+            throw new Error("Invalid HENNOS_TOOL_DEPTH value");
+        }
+
+        return depth;
     }
 
     static get DISCORD_VOICE_TRIGGER_STRINGS(): string[] | false {
