@@ -27,7 +27,7 @@ export class JellyseerMediaRequest extends BaseTool {
                     type: "object",
                     properties: {
                         mediaType: {
-                            type: "number",
+                            type: "string",
                             description: "The type of media being requested. This can be tv or movie.",
                             enum: ["tv", "movie"]
                         },
