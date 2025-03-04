@@ -7,7 +7,7 @@ import { HennosBaseProvider, HennosConsumer } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
 import { availableTools } from "../tools/tools";
-import { HennosMessage, HennosResponse } from "../types";
+import { HennosMessage, HennosResponse, HennosTextMessage } from "../types";
 
 type MistralMessage =
     | (SystemMessage & { role: "system" })
@@ -62,14 +62,19 @@ class HennosMistralProvider extends HennosBaseProvider {
         return `Mistral.ai model ${Config.MISTRAL_LLM.MODEL} running under Ollama.`;
     }
 
-    public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
+    public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `Mistral Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OLLAMA_LLM.CTX);
-        const prompt = system.concat(chat);
+        const converted = convertHennosMessages([...system, ...chat]);
 
-        const converted = convertHennosMessages(prompt);
-        return this.completionWithRecursiveToolCalls(req, converted, 0);
+        try {
+            return this.completionWithRecursiveToolCalls(req, converted, 0);
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.info(req, `Mistral Completion Error: ${error.message}. Attempting OpenAI Fallback.`);
+            return HennosOpenAISingleton.instance().completion(req, system, complete);
+        }
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: MistralMessage[], depth: number): Promise<HennosResponse> {

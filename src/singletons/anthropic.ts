@@ -1,5 +1,5 @@
 import { Config } from "./config";
-import { Anthropic } from "@anthropic-ai/sdk";
+import { Anthropic, AnthropicError } from "@anthropic-ai/sdk";
 import { ToolCall } from "ollama";
 import { ImageBlockParam, TextBlock, TextBlockParam, Tool } from "@anthropic-ai/sdk/resources";
 import { Logger } from "./logger";
@@ -157,8 +157,16 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
         const messages = convertMessages(chat);
         const combinedSystemPrompt = system.map((message) => message.content).join("\n");
-        return this.completionWithRecursiveToolCalls(req, combinedSystemPrompt, messages, 0, true);
 
+        try {
+            return this.completionWithRecursiveToolCalls(req, combinedSystemPrompt, messages, 0, true);
+        } catch (err: unknown) {
+            if (err instanceof AnthropicError) {
+                Logger.info(req, `Anthropic Completion Error: ${err.message}. Attempting OpenAI Fallback.`);
+                return HennosOpenAISingleton.instance().completion(req, system, complete);
+            }
+            throw err;
+        }
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number, allow_tools: boolean): Promise<HennosResponse> {
