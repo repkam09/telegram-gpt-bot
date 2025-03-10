@@ -88,7 +88,11 @@ You should respond using only plain text with no markdown or code blocks.
             const citations = resultCitations.map((citation, index) => `[${index + 1}]  ${citation}`).join("\n");
 
             const content = result.choices[0].message.content;
-            return [`${content}\n\nSources:\n${citations}`, metadata];
+
+            const response = `${content}\n\nSources:\n${citations}`;
+            Logger.info(req, "PerplexitySearch response", { response });
+
+            return [response, metadata];
         } catch {
             Logger.error(req, "Perplexity callback error", { query: args.query });
             return ["An Unhandled Error occured while attempting to use Perplexity.", metadata];
