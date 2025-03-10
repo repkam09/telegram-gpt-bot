@@ -32,11 +32,7 @@ export class HennosUser extends HennosConsumer {
         if (Config.TELEGRAM_BOT_ADMIN === this.chatId) {
             return true;
         }
-
-        if (Config.DISCORD_BOT_ADMIN === this.chatId) {
-            return true;
-        }
-
+        
         return false;
     }
 

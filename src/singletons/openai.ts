@@ -145,7 +145,8 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 model: this.model.MODEL,
                 messages: prompt,
                 tool_choice,
-                tools: tools
+                tools: tools,
+                parallel_tool_calls: true
             });
 
             Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(req, response.usage)} (depth=${depth})`);

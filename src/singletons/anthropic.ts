@@ -73,7 +73,7 @@ export function convertMessages(messages: HennosMessage[]): Anthropic.Messages.M
                             source: {
                                 type: "base64",
                                 data: message.encoded,
-                                media_type: message.image.mime as ImageBlockParam.Source["media_type"]
+                                media_type: message.image.mime as "image/png" | "image/jpeg" | "image/gif" | "image/webp"
                             }
                         }
                     ]

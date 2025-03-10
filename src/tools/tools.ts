@@ -3,7 +3,6 @@ import { Logger } from "../singletons/logger";
 import { OpenWeatherMapLookupTool } from "./OpenWeatherMapLookupTool";
 import { QueryWebpageContent } from "./QueryWebpageContent";
 import { HennosConsumer } from "../singletons/base";
-import { TheNewsAPITool } from "./TheNewsAPITool";
 import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
 import { MetaBugReport } from "./MetaBugReport";
@@ -11,7 +10,6 @@ import { MetaFeatureRequest } from "./MetaFeatureRequest";
 import { YoutubeVideoTool } from "./YoutubeVideoTool";
 import { ReasoningModel } from "./Reasoning";
 import { WolframAlpha } from "./WolframAlpha";
-import { LastFMTool } from "./LastFMTool";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { StoreKeyValueMemory } from "./UserFactsTool";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
@@ -21,18 +19,18 @@ import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaReq
 import { RSSFeedReaderList } from "./RSSFeedReader";
 import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
+import { PerplexitySearch } from "./PerplexitySearch";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
-    QueryWebpageContent
+    QueryWebpageContent,
 ];
 
 const WHITELIST_TOOLS = [
+    PerplexitySearch,
     MetaFeatureRequest,
     MetaBugReport,
     OpenWeatherMapLookupTool,
-    TheNewsAPITool,
-    LastFMTool,
     StoreKeyValueMemory,
     ScheduleMessageCallback,
     WolframAlpha,

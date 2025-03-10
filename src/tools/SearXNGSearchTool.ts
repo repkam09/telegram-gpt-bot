@@ -7,7 +7,7 @@ export class SearXNGSearch extends BaseTool {
     public static isEnabled(): boolean {
         return true;
     }
-    
+
     public static definition(): Tool {
         return {
             type: "function",
@@ -17,8 +17,7 @@ export class SearXNGSearch extends BaseTool {
                     "This core tool performs web searches through SearXNG, a privacy-respecting search engine that aggregates results from multiple sources.",
                     "It provides search results in a JSON format, including the result title, URL, brief content, and originating search engine.",
                     "This tool should be your go-to method for obtaining up-to-date and comprehensive external information, to enhance the accuracy and relevance of your responses.",
-                    "It is particularly useful for initial queries to gather broad insights that supplement your existing knowledge base.",
-                    "For deeper exploration, pair this tool with the 'query_webpage_content' tool to extract specific content from the URLs provided in the search results."
+                    "It is particularly useful for initial queries to gather broad insights that supplement your existing knowledge base."
                 ].join(" "),
                 parameters: {
                     type: "object",

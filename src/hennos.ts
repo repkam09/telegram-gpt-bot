@@ -2,7 +2,6 @@ import { Config } from "./singletons/config";
 import { ScheduleJob } from "./singletons/cron";
 import { Database } from "./singletons/sqlite";
 
-import { DiscordBotInstance } from "./services/discord/discord";
 import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
 import { TwitchBotInstance } from "./services/twitch/twitch";
@@ -37,12 +36,6 @@ async function start() {
         init.push(MessageClassifier.init());
     }
 
-    if (Config.DISCORD_ENABLED) {
-        init.push(DiscordBotInstance.init());
-    } else {
-        console.warn("Discord bot is disabled, set DISCORD_ENABLED=true to enable it");
-    }
-
     if (Config.TWITCH_ENABLED) {
         init.push(TwitchBotInstance.init());
     } else {
@@ -58,7 +51,7 @@ async function start() {
     await Promise.all(init);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
-    const enabled = [Config.TELEGRAM_ENABLED, Config.DISCORD_ENABLED, Config.TWITCH_ENABLED, Config.WS_SERVER_ENABLED];
+    const enabled = [Config.TELEGRAM_ENABLED, Config.TWITCH_ENABLED, Config.WS_SERVER_ENABLED];
     if (Config.HENNOS_DEVELOPMENT_MODE && !enabled.includes(true)) {
         Logger.debug(undefined, "Running command line interface in development mode");
         await CommandLineInstance.run();

@@ -2,6 +2,8 @@ import { HennosConsumer } from "./singletons/base";
 import { Config } from "./singletons/config";
 import { HennosGroup } from "./singletons/group";
 import { HennosUser } from "./singletons/user";
+import { PerplexitySearch } from "./tools/PerplexitySearch";
+import { SearXNGSearch } from "./tools/SearXNGSearchTool";
 import { HennosTextMessage } from "./types";
 
 export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextMessage[]> {
@@ -52,17 +54,26 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
         },
         {
             role: "system",
-            content: "In order to provide the best possible assistance you should utalize tool calls to verify information, provide accurate and up-to-date information, and to provide additional context.",
+            content: "In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.",
             type: "text"
         },
         {
             role: "system",
-            content: "You should make heavy use of the search (`searxng_web_search`) and web lookup (`query_webpage_content`) tools that are available to you. ",
+            content: `You should search the Internet using the SearXNG Search (${SearXNGSearch.definition().function.name}) when you need quick results about a subject or topic.`,
             type: "text"
         },
     ];
 
     if (req instanceof HennosUser) {
+
+        if (req.whitelisted) {
+            prompt.push({
+                role: "system",
+                content: `If the discussion with the user seems to require additional research, you should use the Perplexity Search (${PerplexitySearch.definition().function.name}) tool to provide additional context.`,
+                type: "text"
+            });
+        }
+
         const info = await req.getBasicInfo();
         prompt.push({
             role: "system",

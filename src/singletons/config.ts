@@ -31,10 +31,6 @@ export class Config {
             throw new Error("Missing TELEGRAM_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
         }
 
-        if (Config.DISCORD_BOT_ADMIN === -1) {
-            throw new Error("Missing DISCORD_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
-        }
-
         return true;
     }
 
@@ -68,14 +64,6 @@ export class Config {
         }
 
         return false;
-    }
-
-    static get DISCORD_ENABLED(): boolean {
-        if (!process.env.DISCORD_ENABLED) {
-            return false;
-        }
-
-        return process.env.DISCORD_ENABLED === "true";
     }
 
     static get TWITCH_ENABLED(): boolean {
@@ -414,22 +402,6 @@ export class Config {
         return process.env.TELEGRAM_BOT_KEY;
     }
 
-    static get DISCORD_BOT_TOKEN(): string {
-        if (!process.env.DISCORD_BOT_TOKEN) {
-            throw new Error("Missing DISCORD_BOT_TOKEN");
-        }
-
-        return process.env.DISCORD_BOT_TOKEN;
-    }
-
-    static get DISCORD_DISPLAY_NAME(): string {
-        if (!process.env.DISCORD_DISPLAY_NAME) {
-            return Config.HENNOS_BOT_NAME;
-        }
-
-        return process.env.DISCORD_DISPLAY_NAME;
-    }
-
     static get HENNOS_BOT_NAME(): string {
         if (!process.env.HENNOS_BOT_NAME) {
             return "Hennos";
@@ -450,16 +422,6 @@ export class Config {
         }
 
         return depth;
-    }
-
-    static get DISCORD_VOICE_TRIGGER_STRINGS(): string[] | false {
-        if (!process.env.DISCORD_VOICE_TRIGGER_STRINGS) {
-            return false;
-        }
-
-        const value = process.env.DISCORD_VOICE_TRIGGER_STRINGS;
-        const array = value.split(",").map((trigger) => trigger.trim());
-        return array;
     }
 
     static get OPEN_WEATHER_API(): string | false {
@@ -600,19 +562,6 @@ export class Config {
         return adminId;
     }
 
-    static get DISCORD_BOT_ADMIN(): number {
-        if (!process.env.DISCORD_BOT_ADMIN) {
-            return -1;
-        }
-
-        const adminId = parseInt(process.env.DISCORD_BOT_ADMIN);
-        if (Number.isNaN(adminId)) {
-            throw new Error("Invalid DISCORD_BOT_ADMIN");
-        }
-
-        return adminId;
-    }
-
     static LOCAL_STORAGE(req?: HennosConsumer): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();
@@ -633,6 +582,22 @@ export class Config {
             fs.mkdirSync(dir);
         }
         return dir;
+    }
+
+    static get PERPLEXITY_API_KEY(): string | false {
+        if (!process.env.PERPLEXITY_API_KEY) {
+            return false;
+        }
+
+        return process.env.PERPLEXITY_API_KEY;
+    }
+
+    static get PERPLEXITY_MODEL(): string {
+        if (!process.env.PERPLEXITY_MODEL) {
+            return "sonar";
+        }
+
+        return process.env.PERPLEXITY_MODEL;
     }
 }
 
