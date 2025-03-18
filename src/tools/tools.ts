@@ -20,6 +20,7 @@ import { RSSFeedReaderList } from "./RSSFeedReader";
 import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
 import { PerplexitySearch } from "./PerplexitySearch";
+import { UserFeedback } from "./UserFeedback";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -30,6 +31,7 @@ const WHITELIST_TOOLS = [
     PerplexitySearch,
     MetaFeatureRequest,
     MetaBugReport,
+    UserFeedback,
     OpenWeatherMapLookupTool,
     StoreKeyValueMemory,
     ScheduleMessageCallback,
