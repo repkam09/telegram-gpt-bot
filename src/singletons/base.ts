@@ -154,7 +154,7 @@ export abstract class HennosConsumer {
         });
     }
 
-    public async getChatContext(): Promise<HennosMessage[]> {
+    public async getChatContext(limit: number = 100): Promise<HennosMessage[]> {
         const result = await this.db.messages.findMany({
             where: {
                 chatId: this.chatId,
@@ -167,7 +167,7 @@ export abstract class HennosConsumer {
             orderBy: {
                 id: "desc"
             },
-            take: 100
+            take: limit
         });
 
         const messages: HennosMessage[] = [];

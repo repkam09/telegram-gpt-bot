@@ -94,6 +94,27 @@ export class HennosUser extends HennosConsumer {
         });
     }
 
+    public async lastActive(): Promise<{ message: Date | null }> {
+        const result = await this.db.messages.findFirst({
+            select: {
+                datetime: true
+            },
+            where: {
+                chatId: this.chatId,
+                role: "user",
+            },
+            orderBy: {
+                datetime: "desc"
+            }
+        });
+
+        if (result) {
+            return { message: result.datetime };
+        }
+
+        return { message: null };
+    }
+
     public async getBasicInfo() {
         const result = await this.db.user.findUniqueOrThrow({
             select: {

@@ -100,40 +100,10 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
 
         const chat = await getSizedChatContext(req, system, complete, this.model.CTX);
         const prompt = system.concat(chat);
-        const messages = this.convertHennosMessages(prompt);
+        const messages = convertHennosMessages(prompt);
         return this.completionWithRecursiveToolCalls(req, messages, 0);
     }
-
-    private convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-        return messages.reduce((acc, val) => {
-            if (val.type === "text") {
-                acc.push({
-                    role: val.role as MessageRoles,
-                    content: val.content
-                });
-            }
-
-            if (val.type === "image") {
-                acc.push({
-                    role: val.role as "user",
-                    content: [
-                        {
-                            type: "text",
-                            text: `Image: ${val.image.local}`
-                        },
-                        {
-                            type: "image_url",
-                            image_url: {
-                                detail: "auto",
-                                url: `data:${val.image.mime};base64,${val.encoded}`
-                            }
-                        }]
-                });
-            }
-            return acc;
-        }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
-    }
-
+    
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
         if (depth > Config.HENNOS_TOOL_DEPTH) {
             throw new Error("Tool Call Recursion Depth Exceeded");
@@ -298,4 +268,34 @@ function calculateUsage(req: HennosConsumer, usage: OpenAI.Completions.Completio
     }
 
     return `Input: ${usage.prompt_tokens} tokens, Output: ${usage.completion_tokens}`;
+}
+
+export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    return messages.reduce((acc, val) => {
+        if (val.type === "text") {
+            acc.push({
+                role: val.role as MessageRoles,
+                content: val.content
+            });
+        }
+
+        if (val.type === "image") {
+            acc.push({
+                role: val.role as "user",
+                content: [
+                    {
+                        type: "text",
+                        text: `Image: ${val.image.local}`
+                    },
+                    {
+                        type: "image_url",
+                        image_url: {
+                            detail: "auto",
+                            url: `data:${val.image.mime};base64,${val.encoded}`
+                        }
+                    }]
+            });
+        }
+        return acc;
+    }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
 }

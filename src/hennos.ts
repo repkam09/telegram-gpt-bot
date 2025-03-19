@@ -8,6 +8,7 @@ import { TwitchBotInstance } from "./services/twitch/twitch";
 import { Logger } from "./singletons/logger";
 import { WSServerInstance } from "./services/socket/socket";
 import { MessageClassifier } from "./singletons/classifier";
+import { createFollowUpJobs } from "./jobs/FollowUp";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -25,6 +26,9 @@ async function start() {
     await ScheduleJob.init();
 
     const init = [];
+
+    // Initialize Jobs
+    init.push(createFollowUpJobs());
 
     if (Config.TELEGRAM_ENABLED) {
         init.push(TelegramBotInstance.init());

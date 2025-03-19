@@ -17,11 +17,16 @@ export class DailyReport extends Job {
         return ["0 8 * * *", "EST"];
     }
 
-    static scheduled(user: HennosUser): void {
-        Logger.info(user, "Scheduled Daily Report Job", DailyReport.schedule());
+    static scheduled(): void {
+        Logger.debug(undefined, "Scheduled Daily Report Job", DailyReport.schedule());
     }
 
-    static async run(user: HennosUser) {
+    static async run() {
+        const user = await HennosUser.exists(Config.TELEGRAM_BOT_ADMIN);
+        if (!user) {
+            Logger.error(undefined, "Admin user not found");
+            return;
+        }
         Logger.info(user, `Starting Daily Report for ${user.displayName}`);
 
         const prompt = await hennosBasePrompt(user);
