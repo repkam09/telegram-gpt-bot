@@ -97,8 +97,6 @@ export class FollowUp extends Job {
 
         const messages = convertHennosMessages([...prompt, ...context]);
 
-        console.log(messages);
-
         const result = await client.chat.completions.create({
             model: "gpt-4o-mini",
             messages: messages,
