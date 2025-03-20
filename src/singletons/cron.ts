@@ -32,7 +32,7 @@ export class ScheduleJob {
     }
 
     public static async schedule(trigger: Date, user: HennosUser, message: string): Promise<number> {
-        Logger.debug(undefined, `Scheduling message to ${user.chatId} at ${trigger}: ${message}`);
+        Logger.debug(user, `Scheduling message to ${user.displayName} at ${trigger}: ${message}`);
         const task = await Database.instance().futureTask.create({
             data: {
                 chatId: user.chatId,
@@ -50,7 +50,7 @@ export class ScheduleJob {
 
     public static async cron(name: string, schedule: [string, string], run: (userId: number) => Promise<void>, userId: number) {
         const [cronTime, timezone] = schedule;
-        Logger.debug(undefined, `Scheduling job ${name} at ${cronTime} ${timezone} for user ${userId}`);
+        Logger.info(undefined, `Scheduling job ${name} at ${cronTime} ${timezone} for user ${userId}`);
         NodeCron.schedule(cronTime, async () => {
             Logger.debug(undefined, `Running scheduled job ${name} for user ${userId}`);
             await run(userId);
