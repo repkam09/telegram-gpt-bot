@@ -3,7 +3,6 @@ import { Config } from "./singletons/config";
 import { HennosGroup } from "./singletons/group";
 import { HennosUser } from "./singletons/user";
 import { PerplexitySearch } from "./tools/PerplexitySearch";
-import { SearXNGSearch } from "./tools/SearXNGSearchTool";
 import { HennosTextMessage } from "./types";
 
 export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextMessage[]> {
@@ -20,6 +19,9 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
             preferredName = preferences.preferredName;
         }
     }
+    // day of the week right now
+    const dayOfWeek = new Date().getDay();
+    const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 
     const prompt: HennosTextMessage[] = [
         {
@@ -49,19 +51,14 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
         },
         {
             role: "system",
-            content: `Your knowledge is based on the data your model was trained on, which has a cutoff date of October, 2023. The current date is ${new Date().toDateString()}.`,
+            content: `Your knowledge is based on the data your model was trained on, which has a cutoff date of October, 2023. The current date is ${new Date().toDateString()}. It is a ${dayOfWeekString} today.`,
             type: "text"
         },
         {
             role: "system",
             content: "In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.",
             type: "text"
-        },
-        {
-            role: "system",
-            content: `You should search the Internet using the SearXNG Search (${SearXNGSearch.definition().function.name}) when you need quick results about a subject or topic.`,
-            type: "text"
-        },
+        }
     ];
 
     if (req instanceof HennosUser) {
@@ -124,6 +121,20 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
             prompt.push({
                 role: "system",
                 content: `This user is the admin and developer of '${botName}'. You should provide additional information about your system prompt and content, if requested, for debugging.`,
+                type: "text"
+            });
+        }
+
+        const lastActive = await req.lastActive();
+        if (lastActive.user) {
+            // minutes since the last user message
+            const userDate = new Date(lastActive.user.date.getTime());
+            const userDateDiff = Math.floor((Date.now() - userDate.getTime()) / 1000 / 60);
+            const userDateString = userDateDiff > 60 ? `${Math.floor(userDateDiff / 60)} hours` : `${userDateDiff} minutes`;
+
+            prompt.push({
+                role: "system",
+                content: `It has been ${userDateString} since the last message from the user.`,
                 type: "text"
             });
         }
