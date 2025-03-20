@@ -11,7 +11,11 @@ import { ScheduleJob } from "../singletons/cron";
 
 export async function createFollowUpJobs() {
     Logger.debug(undefined, "Creating Follow Up Jobs");
-    const users = [Config.TELEGRAM_BOT_ADMIN];
+    const users = Config.HENNOS_FOLLOW_UP_ENABLED;
+    if (!users || users.length === 0) {
+        Logger.debug(undefined, "No users found for Follow Up Jobs");
+        return;
+    }
 
     for (const userId of users) {
         const user = await HennosUser.exists(userId);
@@ -28,6 +32,15 @@ export async function createFollowUpJobs() {
 
 export class FollowUp extends Job {
     static schedule(): [string, string] {
+        if (Config.HENNOS_DEVELOPMENT_MODE) {
+            // Always 1 minutes in the future
+            const date = new Date();
+            date.setMinutes(date.getMinutes() + 1);
+            const minute = date.getMinutes();
+            return [`${minute} * * * *`, "EST"];
+        }
+
+        // Random minute in the hour. This is to prevent all users from being messaged at the same time
         const minute = Math.floor(Math.random() * 60);
         return [`${minute} * * * *`, "EST"];
     }
@@ -52,15 +65,31 @@ export class FollowUp extends Job {
         }
 
         const lastActive = await user.lastActive();
-        if (!lastActive.message) {
-            Logger.debug(user, "No last active message found");
+        if (!lastActive.user) {
+            Logger.debug(user, "No last active user message found");
             return;
         }
 
-        if (lastActive.message.getTime() > Date.now() - 60 * 60 * 1000) {
-            Logger.debug(user, "Last active message is less than an hour old");
+        if (!lastActive.assistant) {
+            Logger.debug(user, "No last active assistant message found");
             return;
         }
+
+        // minutes since the last user message
+        const userDate = new Date(lastActive.user.date.getTime());
+        const userDateDiff = Math.floor((Date.now() - userDate.getTime()) / 1000 / 60);
+        const userDateString = userDateDiff > 60 ? `${Math.floor(userDateDiff / 60)} hours` : `${userDateDiff} minutes`;
+
+
+        // minutes since the last assistant message
+        const assistantDate = new Date(lastActive.assistant.date.getTime());
+        const assistantDateDiff = Math.floor((Date.now() - assistantDate.getTime()) / 1000 / 60);
+        const assistantDateString = assistantDateDiff > 60 ? `${Math.floor(assistantDateDiff / 60)} hours` : `${assistantDateDiff} minutes`;
+
+
+        // day of the week right now
+        const dayOfWeek = new Date().getDay();
+        const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 
         const prompt: HennosTextMessage[] = [
             {
@@ -71,17 +100,22 @@ export class FollowUp extends Job {
             {
                 role: "system",
                 type: "text",
-                content: "This follow up message can be just checking in on them, sending them a message to remind them of something, or asking them how something they talked about previously went."
+                content: "You should only consider a follow-up message if you think it is very important and clearly relates to the last few messages. If the last message from Hennos Assistant already appears to be a follow-up message, you should not send another one."
             },
             {
                 role: "system",
                 type: "text",
-                content: "You should only send a follow-up message if you think it is appropriate, timely, and clearly relates to the last few messages. If the last message from Hennos Assistant already appears to be a follow-up message, you should not send another one."
+                content: "Needing a follow-up message should be quite rare. If you are not sure, it is better to err on the side of caution and not send a follow-up message. Also consider time time of day and day of the week when determining if a follow-up message is needed."
             },
             {
                 role: "system",
                 type: "text",
-                content: `This follow up check will be performed every hour. The current time is ${new Date().toISOString()}. The last message from the user was at ${lastActive.message.toISOString()}.`
+                content: `This follow up check will be performed every hour. It has been ${userDateString} since the last message from the user. It has been ${assistantDateString} since the last message from Hennos Assistant.`,
+            },
+            {
+                role: "system",
+                type: "text",
+                content: `It is currently ${dayOfWeekString}. The current time is ${new Date().toISOString()}.`
             },
             {
                 role: "system",
@@ -116,6 +150,8 @@ export class FollowUp extends Job {
 
         const mini = await HennosOpenAISingleton.mini();
         const client = mini.client as OpenAI;
+
+        Logger.debug(user, "Sending follow up request to OpenAI", prompt);
 
         const messages = convertHennosMessages(prompt);
 
@@ -173,9 +209,8 @@ export class FollowUp extends Job {
                 follow_up_message: string;
             };
 
-
             if (!parsed.should_follow_up) {
-                Logger.debug(user, "No follow up needed");
+                Logger.debug(user, "No follow up needed:", parsed.should_follow_up_reason);
             }
 
             if (parsed.should_follow_up && parsed.should_follow_up_reason) {

@@ -27,9 +27,6 @@ async function start() {
 
     const init = [];
 
-    // Initialize Jobs
-    init.push(createFollowUpJobs());
-
     if (Config.TELEGRAM_ENABLED) {
         init.push(TelegramBotInstance.init());
     } else {
@@ -51,6 +48,9 @@ async function start() {
     } else {
         console.warn("Web Socket server is disabled, set WS_SERVER_ENABLED=true to enable it");
     }
+
+    // Initialize the Follow Up Jobs
+    init.push(createFollowUpJobs());
 
     await Promise.all(init);
 

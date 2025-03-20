@@ -11,6 +11,8 @@ import { HennosMockSingleton } from "./mock";
 import { MessageClassifier } from "./classifier";
 import { HennosMistralSingleton } from "./mistral";
 
+type LastActiveResult = { user: { date: Date, content: string } | null, assistant: { date: Date, content: string } | null }
+
 export class HennosUser extends HennosConsumer {
     constructor(chatId: number) {
         super(chatId, "HennosUser");
@@ -32,7 +34,7 @@ export class HennosUser extends HennosConsumer {
         if (Config.TELEGRAM_BOT_ADMIN === this.chatId) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -94,10 +96,12 @@ export class HennosUser extends HennosConsumer {
         });
     }
 
-    public async lastActive(): Promise<{ message: Date | null }> {
-        const result = await this.db.messages.findFirst({
+    public async lastActive(): Promise<LastActiveResult> {
+        const response: LastActiveResult = { user: null, assistant: null };
+        const userResult = await this.db.messages.findFirst({
             select: {
-                datetime: true
+                datetime: true,
+                content: true
             },
             where: {
                 chatId: this.chatId,
@@ -108,11 +112,35 @@ export class HennosUser extends HennosConsumer {
             }
         });
 
-        if (result) {
-            return { message: result.datetime };
+        if (userResult) {
+            response.user = {
+                date: userResult.datetime,
+                content: userResult.content
+            };
         }
 
-        return { message: null };
+        const assistantResult = await this.db.messages.findFirst({
+            select: {
+                datetime: true,
+                content: true
+            },
+            where: {
+                chatId: this.chatId,
+                role: "assistant",
+            },
+            orderBy: {
+                datetime: "desc"
+            }
+        });
+
+        if (assistantResult) {
+            response.assistant = {
+                date: assistantResult.datetime,
+                content: assistantResult.content
+            };
+        }
+
+        return response;
     }
 
     public async getBasicInfo() {

@@ -50,6 +50,21 @@ export class Config {
         return process.env.TELEGRAM_ENABLED === "true";
     }
 
+    static get HENNOS_FOLLOW_UP_ENABLED(): number[] | false {
+        if (!process.env.HENNOS_FOLLOW_UP_ENABLED) {
+            return false;
+        }
+
+        const ids = process.env.HENNOS_FOLLOW_UP_ENABLED.split(",").map((id) => parseInt(id.trim()));
+        if (ids.some((id) => Number.isNaN(id))) {
+            console.error("Invalid HENNOS_FOLLOW_UP_ENABLED value. Expected a comma-separated list of numbers. Disabling follow-up.");
+            return false;
+        }
+
+        return ids;
+    }
+
+
     static get CLASSIFIER_ENABLED(): false | "bayes" | "openai" {
         if (!process.env.CLASSIFIER_ENABLED) {
             return false;
