@@ -48,12 +48,11 @@ export class ScheduleJob {
         return task.id;
     }
 
-    public static async cron(name: string, schedule: [string, string], run: (userId: number) => Promise<void>, userId: number) {
+    public static async cron(user: HennosUser, schedule: [string, string], run: (user: HennosUser) => Promise<void>, name: string) {
         const [cronTime, timezone] = schedule;
-        Logger.info(undefined, `Scheduling job ${name} at ${cronTime} ${timezone} for user ${userId}`);
+        Logger.info(user, `Scheduling job ${name} at ${cronTime} ${timezone}`);
         NodeCron.schedule(cronTime, async () => {
-            Logger.debug(undefined, `Running scheduled job ${name} for user ${userId}`);
-            await run(userId);
+            await run(user);
         }, {
             scheduled: true,
             timezone

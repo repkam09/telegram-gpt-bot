@@ -1,8 +1,9 @@
 import { Logger } from "../singletons/logger";
+import { HennosUser } from "../singletons/user";
 
 export abstract class Job {
-    static async run(userId: number): Promise<void> {
-        Logger.debug(undefined, "Running Sample Job for user", userId);
+    static async run(user: HennosUser): Promise<void> {
+        Logger.debug(user, "Running Sample Job for user", user);
     }
 
     static schedule(): [string, string] {

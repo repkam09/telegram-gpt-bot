@@ -24,8 +24,7 @@ export async function createFollowUpJobs() {
             continue;
         }
 
-        const schedule = FollowUp.schedule();
-        ScheduleJob.cron("FollowUp", schedule, FollowUp.run, user.chatId);
+        ScheduleJob.cron(user, FollowUp.schedule(), FollowUp.run, FollowUp.name);
     }
 }
 
@@ -49,14 +48,8 @@ export class FollowUp extends Job {
         Logger.debug(undefined, "Scheduled Follow Up Job", FollowUp.schedule());
     }
 
-    static async run(userId: number) {
-        const user = await HennosUser.exists(userId);
-        if (!user) {
-            Logger.debug(undefined, "User not found");
-            return;
-        }
-
-        Logger.debug(user, `Starting Follow Up for ${user.displayName}`);
+    static async run(user: HennosUser) {
+        Logger.debug(user, "Starting Follow Up Job");
 
         const context = await user.getChatContext(8);
         if (context.length === 0) {
