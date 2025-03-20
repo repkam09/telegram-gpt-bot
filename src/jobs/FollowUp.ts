@@ -39,28 +39,26 @@ export class FollowUp extends Job {
     static async run(userId: number) {
         const user = await HennosUser.exists(userId);
         if (!user) {
-            Logger.error(undefined, "Admin user not found");
+            Logger.debug(undefined, "User not found");
             return;
         }
 
-        Logger.info(user, `Starting Follow Up for ${user.displayName}`);
+        Logger.debug(user, `Starting Follow Up for ${user.displayName}`);
 
-
-        const context = await user.getChatContext(5);
-
-        // If the last two messages are from the assistant, we should not send a follow up
-        if (context.length > 1) {
-            const previous1 = context[context.length - 1];
-            const previous2 = context[context.length - 2];
-            if (previous1.role === "assistant" && previous2.role === "assistant") {
-                Logger.info(user, "No follow up needed, last two messages are from assistant");
-                return;
-            }
+        const context = await user.getChatContext(8);
+        if (context.length === 0) {
+            Logger.debug(user, "No chat context found");
+            return;
         }
 
         const lastActive = await user.lastActive();
         if (!lastActive.message) {
-            Logger.error(user, "No last active message found");
+            Logger.debug(user, "No last active message found");
+            return;
+        }
+
+        if (lastActive.message.getTime() > Date.now() - 60 * 60 * 1000) {
+            Logger.debug(user, "Last active message is less than an hour old");
             return;
         }
 
@@ -78,7 +76,7 @@ export class FollowUp extends Job {
             {
                 role: "system",
                 type: "text",
-                content: "You should only send a follow-up message if you think it is appropriate, timely, and clearly relates to the last few messages."
+                content: "You should only send a follow-up message if you think it is appropriate, timely, and clearly relates to the last few messages. If the last message from Hennos Assistant already appears to be a follow-up message, you should not send another one."
             },
             {
                 role: "system",
@@ -88,14 +86,38 @@ export class FollowUp extends Job {
             {
                 role: "system",
                 type: "text",
-                content: "Here is the last few messages between the User and the Hennos Assistant:"
+                content: `Here are the last few messages between the User, named ${user.displayName}, and the Hennos Assistant:`
+            },
+            {
+                role: "system",
+                type: "text",
+                content: context.reduce((acc, message) => {
+                    if (message.role === "user") {
+                        if (message.type === "text") {
+                            acc.push(`${user.displayName}: ${message.content}`);
+                        } else {
+                            acc.push(`${user.displayName} sent a ${message.type} message that has been omitted.`);
+                        }
+                    }
+
+                    if (message.role === "assistant" && message.type === "text") {
+                        acc.push(`Hennos Assistant: ${message.content}`);
+                    }
+
+                    return acc;
+                }, [] as string[]).join("\n")
+            },
+            {
+                role: "user",
+                type: "text",
+                content: "Should Hennos send a follow up message to the user? If so, what should it say?"
             }
         ];
 
         const mini = await HennosOpenAISingleton.mini();
         const client = mini.client as OpenAI;
 
-        const messages = convertHennosMessages([...prompt, ...context]);
+        const messages = convertHennosMessages(prompt);
 
         const result = await client.chat.completions.create({
             model: "gpt-4o-mini",
@@ -114,7 +136,7 @@ export class FollowUp extends Job {
                             },
                             should_follow_up_reason: {
                                 type: "string",
-                                description: "The reason weather or not to send a follow up message."
+                                description: "The reason whether or not to send a follow up message."
                             },
                             follow_up_message: {
                                 type: "string",
@@ -153,15 +175,13 @@ export class FollowUp extends Job {
 
 
             if (!parsed.should_follow_up) {
-                Logger.info(user, "No follow up needed");
+                Logger.debug(user, "No follow up needed");
             }
 
             if (parsed.should_follow_up && parsed.should_follow_up_reason) {
-                Logger.info(user, `Follow up needed: ${parsed.should_follow_up_reason}`);
+                Logger.info(user, `Follow Up: ${JSON.stringify(parsed)}`);
                 if (parsed.follow_up_message) {
                     user.updateAssistantChatContext(parsed.follow_up_message);
-
-                    Logger.info(user, `Follow up message: ${parsed.follow_up_message}`);
                     await TelegramBotInstance.sendMessageWrapper(user, parsed.follow_up_message);
                 }
             }
