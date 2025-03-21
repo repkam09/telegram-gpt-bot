@@ -1,11 +1,10 @@
 
 import { Logger } from "../singletons/logger";
-import { convertHennosMessages, HennosOpenAISingleton } from "../singletons/openai";
+import { convertHennosMessages, utilityRequest } from "../singletons/openai";
 import { HennosUser } from "../singletons/user";
 import { Job } from "./job";
 import { Config } from "../singletons/config";
 import { HennosTextMessage } from "../types";
-import OpenAI from "openai";
 import { TelegramBotInstance } from "../services/telegram/telegram";
 import { ScheduleJob } from "../singletons/cron";
 
@@ -141,16 +140,11 @@ export class FollowUp extends Job {
             }
         ];
 
-        const mini = await HennosOpenAISingleton.mini();
-        const client = mini.client as OpenAI;
-
         Logger.debug(user, "Sending follow up request to OpenAI", prompt);
 
-        const messages = convertHennosMessages(prompt);
-
-        const result = await client.chat.completions.create({
+        const result = await utilityRequest(user, {
             model: "gpt-4o-mini",
-            messages: messages,
+            messages: convertHennosMessages(prompt),
             response_format: {
                 type: "json_schema",
                 json_schema: {
@@ -177,16 +171,6 @@ export class FollowUp extends Job {
                 }
             }
         });
-
-        if (!result.choices || result.choices.length === 0) {
-            Logger.error(user, "No choices returned from OpenAI");
-            return;
-        }
-
-        if (!result.choices[0].message) {
-            Logger.error(user, "No message returned from OpenAI");
-            return;
-        }
 
         const message = result.choices[0].message.content;
         if (!message) {

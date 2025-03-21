@@ -103,7 +103,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         const messages = convertHennosMessages(prompt);
         return this.completionWithRecursiveToolCalls(req, messages, 0);
     }
-    
+
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
         if (depth > Config.HENNOS_TOOL_DEPTH) {
             throw new Error("Tool Call Recursion Depth Exceeded");
@@ -119,7 +119,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 parallel_tool_calls: true
             });
 
-            Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(req, response.usage)} (depth=${depth})`);
+            Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(response.usage)} (depth=${depth})`);
             if (!response.choices && !response.choices[0]) {
                 throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
             }
@@ -262,7 +262,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
     }
 }
 
-function calculateUsage(req: HennosConsumer, usage: OpenAI.Completions.CompletionUsage | undefined): string {
+function calculateUsage(usage: OpenAI.Completions.CompletionUsage | undefined): string {
     if (!usage) {
         return "Unknown";
     }
@@ -298,4 +298,23 @@ export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Co
         }
         return acc;
     }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
+}
+
+export async function utilityRequest(req: HennosConsumer, body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    const client = new OpenAI({
+        baseURL: Config.OPENAI_BASE_URL,
+        apiKey: Config.OPENAI_API_KEY,
+    });
+
+    const response = await client.chat.completions.create(body);
+    Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(response.usage)}`);
+    if (!response.choices && !response.choices[0]) {
+        throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
+    }
+
+    if (!response.choices[0].message.tool_calls && !response.choices[0].message.content) {
+        throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Properties");
+    }
+
+    return response;
 }
