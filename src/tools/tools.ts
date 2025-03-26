@@ -5,8 +5,7 @@ import { QueryWebpageContent } from "./QueryWebpageContent";
 import { HennosConsumer } from "../singletons/base";
 import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
-import { MetaBugReport } from "./MetaBugReport";
-import { MetaFeatureRequest } from "./MetaFeatureRequest";
+import { MetaBugReport, MetaDevelopmentThrowError, MetaFeatureRequest } from "./HennosMetaTools";
 import { YoutubeVideoTool } from "./YoutubeVideoTool";
 import { ReasoningModel } from "./Reasoning";
 import { WolframAlpha } from "./WolframAlpha";
@@ -50,7 +49,8 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
-    HomeAssistantStatesTool
+    HomeAssistantStatesTool,
+    MetaDevelopmentThrowError
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
