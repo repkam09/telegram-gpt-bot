@@ -28,8 +28,7 @@ export class JellyseerMediaRequest extends BaseTool {
                     properties: {
                         mediaType: {
                             type: "string",
-                            description: "The type of media being requested. This can be tv or movie.",
-                            enum: ["tv", "movie"]
+                            description: "The type of media being requested. This can be 'tv' or 'movie'.",
                         },
                         mediaId: {
                             type: "string",
@@ -125,8 +124,7 @@ export class JellyseerMediaSearch extends BaseTool {
                     properties: {
                         mediaType: {
                             type: "number",
-                            description: "The type of media being searched. This can be tv or movie.",
-                            enum: ["tv", "movie"]
+                            description: "The type of media being searched. This can be 'tv' or 'movie'.",
                         },
                         title: {
                             type: "string",

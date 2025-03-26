@@ -1,11 +1,11 @@
-import { Content, FunctionDeclaration, FunctionDeclarationsTool, FunctionResponsePart, GoogleGenerativeAI, Part } from "@google/generative-ai";
+import { Content, FunctionDeclaration, FunctionDeclarationsTool, FunctionResponsePart, GoogleGenerativeAI, GoogleGenerativeAIError, Part, UsageMetadata } from "@google/generative-ai";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosUser } from "./user";
-import { HennosMessage, HennosResponse } from "../types";
+import { HennosMessage, HennosResponse, HennosTextMessage } from "../types";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { Tool, ToolCall } from "ollama";
 import { ToolCallMetadata } from "../tools/BaseTool";
@@ -34,7 +34,7 @@ class HennosGoogleProvider extends HennosBaseProvider {
         return `Google Gemini model ${Config.GOOGLE_LLM.MODEL}`;
     }
 
-    public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
+    public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `Google Completion Start (${Config.GOOGLE_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.GOOGLE_LLM.CTX);
@@ -74,6 +74,9 @@ class HennosGoogleProvider extends HennosBaseProvider {
 
 
             let result = await chat.sendMessage(converted.next);
+
+            Logger.info(req, `Google Completion Success, Usage: ${calculateUsage(result.response.usageMetadata)}`);
+
             let calls = result.response.functionCalls();
 
             let maxIterations = 4;
@@ -107,6 +110,7 @@ class HennosGoogleProvider extends HennosBaseProvider {
                 });
 
                 result = await chat.sendMessage(responses);
+                Logger.info(req, `Google Completion Success, Usage: ${calculateUsage(result.response.usageMetadata)} (left=${maxIterations})`);
                 calls = result.response.functionCalls();
                 maxIterations--;
             }
@@ -116,11 +120,12 @@ class HennosGoogleProvider extends HennosBaseProvider {
                 payload: result.response.text()
             };
         } catch (err: unknown) {
-            Logger.info(req, "Google Completion Error: ", err, convertedTools, tools);
-            return {
-                __type: "error",
-                payload: "Error generating text"
-            };
+            if (err instanceof GoogleGenerativeAIError) {
+                Logger.info(req, `Google Completion Error: ${err.message}. Attempting OpenAI Fallback.`);
+                return HennosOpenAISingleton.instance().completion(req, system, complete);
+            }
+
+            throw err;
         }
     }
 
@@ -205,4 +210,12 @@ function convertToolCalls(tools: Tool[] | undefined): FunctionDeclarationsTool[]
 type HennosTextNonSystemMessage = { type: "text", role: "user" | "assistant", content: string };
 function isHennosTextMessage(val: HennosMessage): val is HennosTextNonSystemMessage {
     return val.type === "text" && val.role !== "system";
+}
+
+function calculateUsage(usage: UsageMetadata | undefined): string {
+    if (!usage) {
+        return "Unknown";
+    }
+
+    return `Input: ${usage.promptTokenCount} tokens, Output: ${usage.totalTokenCount - usage.promptTokenCount} tokens, Total: ${usage.totalTokenCount} tokens`;
 }

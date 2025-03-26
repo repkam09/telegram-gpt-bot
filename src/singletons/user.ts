@@ -60,8 +60,8 @@ export class HennosUser extends HennosConsumer {
                     return HennosMockSingleton.instance();
                 }
                 default: {
-                    Logger.warn(this, `Unknown provider ${this.provider}, defaulting to OpenAI`);
-                    return HennosOpenAISingleton.instance();
+                    Logger.warn(this, `Unknown provider ${this.provider}, defaulting to Google`);
+                    return HennosGoogleSingleton.instance();
                 }
             }
         }

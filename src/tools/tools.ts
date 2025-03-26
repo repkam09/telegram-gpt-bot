@@ -16,7 +16,6 @@ import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssist
 import { ScheduleMessageCallback } from "./MessageCallback";
 import { ImageGenerationTool } from "./ImageGenerationTool";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
-import { RSSFeedReaderList } from "./RSSFeedReader";
 import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
 import { PerplexitySearch } from "./PerplexitySearch";
@@ -51,8 +50,7 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
-    HomeAssistantStatesTool,
-    RSSFeedReaderList
+    HomeAssistantStatesTool
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
