@@ -19,6 +19,7 @@ import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
 import { PerplexitySearch } from "./PerplexitySearch";
 import { UserFeedback } from "./UserFeedback";
+import { VideoGenerationTool } from "./VideoGenerationTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -50,7 +51,8 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
     HomeAssistantStatesTool,
-    MetaDevelopmentThrowError
+    MetaDevelopmentThrowError,
+    VideoGenerationTool
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
