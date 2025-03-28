@@ -6,7 +6,7 @@ import { HennosOpenAISingleton } from "../singletons/openai";
 import OpenAI from "openai";
 import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { TelegramBotInstance } from "../services/telegram/telegram";
@@ -113,7 +113,7 @@ export class ImageGenerationTool extends BaseTool {
                 await client.connect();
 
                 // Create the workflow prompt
-                const prompt = workflow(args.prompt, 1024, 1024);
+                const prompt = workflow(args.prompt, 512, 512);
 
                 // Generate images
                 const images = await client.getImages(prompt);
@@ -133,7 +133,7 @@ export class ImageGenerationTool extends BaseTool {
                 await client.disconnect();
 
                 if (req instanceof HennosUser) {
-                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${args.prompt} \nCaption: ${args.caption} \nSize: 1024x1024 \nSource: ComfyUI`);
+                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${args.prompt} \nCaption: ${args.caption} \nSize: 512x512 \nSource: ComfyUI`);
                     await req.updateUserChatImageContext({
                         local: storage,
                         mime: "image/png",
@@ -185,56 +185,11 @@ export class ImageGenerationTool extends BaseTool {
 
 function workflow(prompt: string, width: number, height: number): Prompt {
     return {
-        "3": {
-            "inputs": {
-                "seed": randomInt(0, 281474976710655),
-                "steps": 30,
-                "cfg": 5,
-                "sampler_name": "dpmpp_2m_sde",
-                "scheduler": "normal",
-                "denoise": 1,
-                "model": [
-                    "11",
-                    0
-                ],
-                "positive": [
-                    "6",
-                    0
-                ],
-                "negative": [
-                    "7",
-                    0
-                ],
-                "latent_image": [
-                    "5",
-                    0
-                ]
-            },
-            "class_type": "KSampler",
-        },
-        "5": {
-            "inputs": {
-                "width": width,
-                "height": height,
-                "batch_size": 1
-            },
-            "class_type": "EmptyLatentImage",
-        },
         "6": {
             "inputs": {
                 "text": prompt,
                 "clip": [
-                    "11",
-                    1
-                ]
-            },
-            "class_type": "CLIPTextEncode",
-        },
-        "7": {
-            "inputs": {
-                "text": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
-                "clip": [
-                    "11",
+                    "30",
                     1
                 ]
             },
@@ -243,11 +198,11 @@ function workflow(prompt: string, width: number, height: number): Prompt {
         "8": {
             "inputs": {
                 "samples": [
-                    "3",
+                    "31",
                     0
                 ],
                 "vae": [
-                    "11",
+                    "30",
                     2
                 ]
             },
@@ -263,17 +218,56 @@ function workflow(prompt: string, width: number, height: number): Prompt {
             },
             "class_type": "SaveImage",
         },
-        "11": {
+        "27": {
             "inputs": {
-                "ckpt_name": "cyberrealistic_v80.safetensors"
+                "width": width,
+                "height": height,
+                "batch_size": 1
+            },
+            "class_type": "EmptySD3LatentImage",
+        },
+        "30": {
+            "inputs": {
+                "ckpt_name": "flux1-schnell-fp8.safetensors"
             },
             "class_type": "CheckpointLoaderSimple",
         },
-        "12": {
+        "31": {
             "inputs": {
-                "ckpt_name": "cyberrealistic_v80.safetensors"
+                "seed": 528118499253373,
+                "steps": 4,
+                "cfg": 1,
+                "sampler_name": "euler",
+                "scheduler": "simple",
+                "denoise": 1,
+                "model": [
+                    "30",
+                    0
+                ],
+                "positive": [
+                    "6",
+                    0
+                ],
+                "negative": [
+                    "33",
+                    0
+                ],
+                "latent_image": [
+                    "27",
+                    0
+                ]
             },
-            "class_type": "CheckpointLoaderSimple",
+            "class_type": "KSampler",
+        },
+        "33": {
+            "inputs": {
+                "text": "",
+                "clip": [
+                    "30",
+                    1
+                ]
+            },
+            "class_type": "CLIPTextEncode",
         }
     };
 }
