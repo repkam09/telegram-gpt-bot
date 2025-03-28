@@ -30,14 +30,6 @@ export async function createFollowUpJobs() {
 
 export class FollowUp extends Job {
     static schedule(): [string, string] {
-        if (Config.HENNOS_DEVELOPMENT_MODE) {
-            // Always 1 minutes in the future
-            const date = new Date();
-            date.setMinutes(date.getMinutes() + 1);
-            const minute = date.getMinutes();
-            return [`${minute} * * * *`, "EST"];
-        }
-
         // Random minute in the hour. This is to prevent all users from being messaged at the same time
         const minute = Math.floor(Math.random() * 60);
         return [`${minute} * * * *`, "EST"];

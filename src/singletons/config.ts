@@ -614,6 +614,24 @@ export class Config {
 
         return process.env.PERPLEXITY_MODEL;
     }
+
+
+    static get COMFY_UI_ADDRESS(): string | false {
+        if (!process.env.COMFY_UI_ADDRESS) {
+            return false;
+        }
+
+        // If this has a leading http:// or https://, remove it
+        if (process.env.COMFY_UI_ADDRESS.startsWith("http://")) {
+            return process.env.COMFY_UI_ADDRESS.replace("http://", "");
+        }
+
+        if (process.env.COMFY_UI_ADDRESS.startsWith("https://")) {
+            return process.env.COMFY_UI_ADDRESS.replace("https://", "");
+        }
+
+        return process.env.COMFY_UI_ADDRESS;
+    }
 }
 
 

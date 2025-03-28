@@ -9,6 +9,7 @@ import { Logger } from "./singletons/logger";
 import { WSServerInstance } from "./services/socket/socket";
 import { MessageClassifier } from "./singletons/classifier";
 import { createFollowUpJobs } from "./jobs/FollowUp";
+import { ComfyHealthCheck } from "./tools/ImageGenerationTool";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -51,6 +52,9 @@ async function start() {
 
     // Initialize the Follow Up Jobs
     init.push(createFollowUpJobs());
+
+    // Initialize the ComfyUI health check
+    init.push(ComfyHealthCheck.init());
 
     await Promise.all(init);
 
