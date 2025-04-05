@@ -4,6 +4,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import axios from "axios";
 import { Config } from "../singletons/config";
+import { TelegramBotInstance } from "../services/telegram/telegram";
 
 export class MetaBugReport extends BaseTool {
     public static isEnabled(): boolean {
@@ -197,5 +198,57 @@ export class MetaDevelopmentThrowError extends BaseTool {
         }
 
         throw new Error(`MetaDevelopmentThrowError: ${args.message}`);
+    }
+}
+
+
+export class MetaFeedbackTool extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+
+    public static definition(): Tool {
+        return {
+            type: "function",
+            function: {
+                name: "hennos_feedback",
+                description: [
+                    "Use this tool to send feedback, suggestions, or questions directly to the administrator of Hennos.",
+                    "This is great for general comments, compliments, usage questions, or improvement ideas.",
+                    "The message will be delivered directly to the Hennos admin with information about who sent it.",
+                    "Make sure to get confirmation from the user before sending their feedback.",
+                ].join(" "),
+                parameters: {
+                    type: "object",
+                    properties: {
+                        message: {
+                            type: "string",
+                            description: "The feedback message that will be sent to the administrator."
+                        }
+                    },
+                    required: ["message"]
+                }
+            }
+        };
+    }
+
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(req, "MetaFeedbackTool callback", { message: args.message });
+
+        if (!args.message) {
+            return ["hennos_feedback: message not provided", metadata];
+        }
+
+        try {
+            // Format the feedback message with user information
+            const formattedMessage = `📬 Feedback from ${req.displayName} (ID: ${req.chatId}):\n\n${args.message}`;
+            await TelegramBotInstance.sendAdminMessage(formattedMessage);
+
+            return ["Your feedback has been sent to the creator. Thank you for your input!", metadata];
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, "MetaFeedbackTool unable to send feedback", { message: args.message, error: error.message });
+            return ["Unable to send your feedback. Please try again later.", metadata];
+        }
     }
 }

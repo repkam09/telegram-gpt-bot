@@ -5,12 +5,10 @@ import { QueryWebpageContent } from "./QueryWebpageContent";
 import { HennosConsumer } from "../singletons/base";
 import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
-import { MetaBugReport, MetaDevelopmentThrowError, MetaFeatureRequest } from "./HennosMetaTools";
+import { MetaBugReport, MetaDevelopmentThrowError, MetaFeatureRequest, MetaFeedbackTool } from "./HennosMetaTools";
 import { YoutubeVideoTool } from "./YoutubeVideoTool";
-import { ReasoningModel } from "./Reasoning";
 import { WolframAlpha } from "./WolframAlpha";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
-import { StoreKeyValueMemory } from "./UserFactsTool";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
 import { ScheduleMessageCallback } from "./MessageCallback";
 import { ImageGenerationTool } from "./ImageGenerationTool";
@@ -18,21 +16,19 @@ import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaReq
 import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
 import { PerplexitySearch } from "./PerplexitySearch";
-import { UserFeedback } from "./UserFeedback";
 import { VideoGenerationTool } from "./VideoGenerationTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
-    QueryWebpageContent,
+    MetaFeedbackTool,
+    MetaFeatureRequest,
+    MetaBugReport
 ];
 
 const WHITELIST_TOOLS = [
+    QueryWebpageContent,
     PerplexitySearch,
-    MetaFeatureRequest,
-    MetaBugReport,
-    UserFeedback,
     OpenWeatherMapLookupTool,
-    StoreKeyValueMemory,
     ScheduleMessageCallback,
     WolframAlpha,
     PythonSandbox,
@@ -40,7 +36,6 @@ const WHITELIST_TOOLS = [
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
-    ReasoningModel,
     YoutubeVideoTool,
     AcknowledgeWithoutResponse,
     ImageGenerationTool,
