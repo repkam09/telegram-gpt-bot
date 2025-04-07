@@ -30,7 +30,7 @@ function getChatContextTokenCount(context: HennosMessage[]): number {
         }
 
         if (val.type === "image") {
-            const tokens = 512; // This is a horrible hack
+            const tokens = 1028; // @TODO: This is a horrible hack
             return acc + tokens;
         }
         return acc;

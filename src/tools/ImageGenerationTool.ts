@@ -29,13 +29,9 @@ export class ImageGenerationTool extends BaseTool {
                     type: "object",
                     properties: {
                         prompt: {
-                            type: "number",
-                            description: "The prompt to generate the image from. The more detailed the prompt, the more accurate the generated image will be."
-                        },
-                        caption: {
                             type: "string",
-                            description: "The caption to add to the generated image. This will be returned to the user when the image is generated."
-                        },
+                            description: "The text prompt to generate the image from. The more detailed the prompt, the more accurate the generated image will be."
+                        }
                     },
                     required: ["prompt"]
                 }
@@ -44,7 +40,7 @@ export class ImageGenerationTool extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "ImageGenerationTool callback", { prompt: args.prompt, caption: args.caption });
+        Logger.info(req, "ImageGenerationTool callback", { prompt: args.prompt });
         if (!args.prompt) {
             return ["generate_image failed, prompt must be provided", metadata];
         }
@@ -60,7 +56,7 @@ export class ImageGenerationTool extends BaseTool {
                 await fs.writeFile(storage, image, "binary");
 
                 if (req instanceof HennosUser) {
-                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${args.prompt} \nCaption: ${args.caption} \nSize: 1024x768 \nSource: Stable Diffusion`);
+                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${args.prompt} \nSize: 1024x768 \nSource: Stable Diffusion`);
                     await req.updateUserChatImageContext({
                         local: storage,
                         mime: "image/png",
@@ -68,7 +64,7 @@ export class ImageGenerationTool extends BaseTool {
                 }
 
                 // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: args.caption ? args.caption : undefined });
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with Stable Diffusion." });
                 return [`generate_image success. The requested image was generated using Stable Diffusion with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
                 Logger.error(req, "StableDiffusionProvider error", err);
@@ -93,7 +89,7 @@ export class ImageGenerationTool extends BaseTool {
             await fs.writeFile(storage, bin, "binary");
 
             if (req instanceof HennosUser) {
-                await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${prompt} \nCaption: ${args.caption} \nSize: 1024x1024 \nSource: OpenAI DALL-E-3`);
+                await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${prompt} \nSize: 1024x1024 \nSource: OpenAI DALL-E-3`);
                 await req.updateUserChatImageContext({
                     local: storage,
                     mime: "image/png",
@@ -101,7 +97,7 @@ export class ImageGenerationTool extends BaseTool {
             }
 
             // @TODO: Make this multi-platform
-            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: args.caption ? args.caption : undefined });
+            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with OpenAI DALL-E-3." });
             return [`generate_image success. The requested image was generated using OpenAI DALL-E-3 with the prompt '${prompt}'. The image has been sent to the user directly.`, metadata];
         } catch (err: unknown) {
             Logger.error(req, "ImageGenerationTool callback error", err);
