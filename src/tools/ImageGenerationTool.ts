@@ -19,6 +19,7 @@ export class ComfyHealthCheck {
     static async update(): Promise<void> {
         if (!Config.COMFY_UI_ADDRESS) {
             Logger.debug(undefined, "ComfyUI address not set, skipping health check");
+            ComfyHealthCheck.status = false;
             return;
         }
 
