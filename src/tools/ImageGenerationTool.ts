@@ -10,80 +10,8 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { TelegramBotInstance } from "../services/telegram/telegram";
-import { ComfyUIClient, type Prompt } from "comfy-ui-client";
+import { StableDiffusionProvider } from "../singletons/stablediffusion";
 
-
-export class ComfyHealthCheck {
-    public static status: boolean = false;
-
-    static async update(): Promise<void> {
-        if (!Config.COMFY_UI_ADDRESS) {
-            Logger.debug(undefined, "ComfyUI address not set, skipping health check");
-            ComfyHealthCheck.status = false;
-            return;
-        }
-
-        const client = new ComfyUIClient(Config.COMFY_UI_ADDRESS, randomUUID());
-        ComfyHealthCheck.status = false;
-
-        await new Promise<void>((resolve) => {
-            try {
-                // The websocket connection can hang indefinitely, so we need to set a timeout
-                const timeout = setTimeout(() => {
-                    return resolve();
-                }, 5000);
-
-                client.connect().then(() => {
-                    client.getSystemStats().then(() => {
-                        // Clear the timeout if the request was successful
-                        clearTimeout(timeout);
-
-                        Logger.debug(undefined, "ComfyUI getSystemStats success");
-                        ComfyHealthCheck.status = true;
-                        return resolve();
-                    }).catch(() => {
-                        Logger.debug(undefined, "ComfyUI getSystemStats failed");
-                        return resolve();
-                    });
-                }).catch(() => {
-                    Logger.debug(undefined, "ComfyUI connection failed");
-                    return resolve();
-                });
-            } catch (err: unknown) {
-                Logger.debug(undefined, "ComfyUI health check failed", err);
-                return resolve();
-            }
-        });
-
-        await client.disconnect();
-    }
-
-    static async init(): Promise<void> {
-        if (Config.HENNOS_DEVELOPMENT_MODE) {
-            await ComfyHealthCheck.update();
-            Logger.debug(undefined, `ComfyUI status: ${ComfyHealthCheck.status}`);
-            setInterval(() => {
-                Logger.debug(undefined, `ComfyUI status: ${ComfyHealthCheck.status}`);
-            }, 30 * 1000);
-        }
-    }
-
-    static shouldHealthCheck(req: HennosConsumer): boolean {
-        if (Config.COMFY_UI_ADDRESS && req.isAdmin()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    static shouldUseComfy(req: HennosConsumer): boolean {
-        if (Config.COMFY_UI_ADDRESS && req.isAdmin() && ComfyHealthCheck.status) {
-            return true;
-        }
-
-        return false;
-    }
-}
 
 
 export class ImageGenerationTool extends BaseTool {
@@ -121,43 +49,18 @@ export class ImageGenerationTool extends BaseTool {
             return ["generate_image failed, prompt must be provided", metadata];
         }
 
-        // Only bother to check the health of ComfyUI if we might use it
-        if (ComfyHealthCheck.shouldHealthCheck(req)) {
-            await ComfyHealthCheck.update();
-        }
+        await StableDiffusionProvider.health();
 
         // write the image to a file
         const storage = path.join(Config.LOCAL_STORAGE(req), `generated_${randomUUID()}.png`);
 
-        if (ComfyHealthCheck.shouldUseComfy(req)) {
+        if (StableDiffusionProvider.shouldUseStableDiffusion(req)) {
             try {
-                const client = new ComfyUIClient(Config.COMFY_UI_ADDRESS as string, randomUUID());
-
-                // Connect to server
-                await client.connect();
-
-                // Create the workflow prompt
-                const prompt = workflow(args.prompt, 512, 512);
-
-                // Generate images
-                const images = await client.getImages(prompt);
-
-                const keys = Object.keys(images);
-                if (keys.length === 0) {
-                    Logger.error(req, "ImageGenerationTool callback error", "No images generated");
-                    return ["generate_image failed", metadata];
-                }
-
-                const imageContainerArray = images[keys[0]];
-
-                const ab = await imageContainerArray[0].blob.arrayBuffer();
-                await fs.writeFile(storage, Buffer.from(ab), "binary");
-
-                // Disconnect
-                await client.disconnect();
+                const image = await StableDiffusionProvider.generateImage(req, args.prompt);
+                await fs.writeFile(storage, image, "binary");
 
                 if (req instanceof HennosUser) {
-                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${args.prompt} \nCaption: ${args.caption} \nSize: 512x512 \nSource: ComfyUI`);
+                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${args.prompt} \nCaption: ${args.caption} \nSize: 1024x768 \nSource: Stable Diffusion`);
                     await req.updateUserChatImageContext({
                         local: storage,
                         mime: "image/png",
@@ -165,10 +68,10 @@ export class ImageGenerationTool extends BaseTool {
                 }
 
                 // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: args.caption });
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: args.caption ? args.caption : undefined });
                 return ["generate_image success. The image was sent to the user directly.", metadata];
             } catch (err: unknown) {
-                Logger.error(req, "ImageGenerationTool callback error", err);
+                Logger.error(req, "StableDiffusionProvider error", err);
             }
         }
 
@@ -206,94 +109,4 @@ export class ImageGenerationTool extends BaseTool {
             return ["generate_image failed", metadata];
         }
     }
-}
-
-
-function workflow(prompt: string, width: number, height: number): Prompt {
-    return {
-        "6": {
-            "inputs": {
-                "text": prompt,
-                "clip": [
-                    "30",
-                    1
-                ]
-            },
-            "class_type": "CLIPTextEncode",
-        },
-        "8": {
-            "inputs": {
-                "samples": [
-                    "31",
-                    0
-                ],
-                "vae": [
-                    "30",
-                    2
-                ]
-            },
-            "class_type": "VAEDecode",
-        },
-        "9": {
-            "inputs": {
-                "filename_prefix": "ComfyUI",
-                "images": [
-                    "8",
-                    0
-                ]
-            },
-            "class_type": "SaveImage",
-        },
-        "27": {
-            "inputs": {
-                "width": width,
-                "height": height,
-                "batch_size": 1
-            },
-            "class_type": "EmptySD3LatentImage",
-        },
-        "30": {
-            "inputs": {
-                "ckpt_name": "flux1-schnell-fp8.safetensors"
-            },
-            "class_type": "CheckpointLoaderSimple",
-        },
-        "31": {
-            "inputs": {
-                "seed": 528118499253373,
-                "steps": 4,
-                "cfg": 1,
-                "sampler_name": "euler",
-                "scheduler": "simple",
-                "denoise": 1,
-                "model": [
-                    "30",
-                    0
-                ],
-                "positive": [
-                    "6",
-                    0
-                ],
-                "negative": [
-                    "33",
-                    0
-                ],
-                "latent_image": [
-                    "27",
-                    0
-                ]
-            },
-            "class_type": "KSampler",
-        },
-        "33": {
-            "inputs": {
-                "text": "",
-                "clip": [
-                    "30",
-                    1
-                ]
-            },
-            "class_type": "CLIPTextEncode",
-        }
-    };
 }

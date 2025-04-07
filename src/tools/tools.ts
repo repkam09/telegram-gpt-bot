@@ -16,7 +16,6 @@ import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaReq
 import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
 import { PerplexitySearch } from "./PerplexitySearch";
-import { VideoGenerationTool } from "./VideoGenerationTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -47,7 +46,6 @@ const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
     HomeAssistantStatesTool,
     MetaDevelopmentThrowError,
-    VideoGenerationTool
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {

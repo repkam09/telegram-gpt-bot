@@ -616,21 +616,12 @@ export class Config {
     }
 
 
-    static get COMFY_UI_ADDRESS(): string | false {
-        if (!process.env.COMFY_UI_ADDRESS) {
+    static get SD_API_ADDRESS(): string | false {
+        if (!process.env.SD_API_ADDRESS) {
             return false;
         }
 
-        // If this has a leading http:// or https://, remove it
-        if (process.env.COMFY_UI_ADDRESS.startsWith("http://")) {
-            return process.env.COMFY_UI_ADDRESS.replace("http://", "");
-        }
-
-        if (process.env.COMFY_UI_ADDRESS.startsWith("https://")) {
-            return process.env.COMFY_UI_ADDRESS.replace("https://", "");
-        }
-
-        return process.env.COMFY_UI_ADDRESS;
+        return process.env.SD_API_ADDRESS;
     }
 }
 
