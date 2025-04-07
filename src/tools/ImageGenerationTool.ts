@@ -4,7 +4,6 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { HennosOpenAISingleton } from "../singletons/openai";
 import OpenAI from "openai";
-import { HennosUser } from "../singletons/user";
 import { Config } from "../singletons/config";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -23,7 +22,8 @@ export class ImageGenerationTool extends BaseTool {
                 description: [
                     "This tool generates an image based on the provided parameters. It can be used to create images from scratch based on a text prompt.",
                     "If the user asks to you to generate, draw, sketch, or otherwise create an image, photo, picture, or any other similar request, this tool should be used to generate the image.",
-                    "The more detailed the prompt, the more accurate the generated image will be. If the user provides a very simple prompt, you should expand on it to get better results."
+                    "The more detailed the prompt, the more accurate the generated image will be. If the user provides a very simple prompt, you should expand on it to get better results.",
+                    "NSFW prompts are allowed, but the generated image may be filtered to remove any explicit content.",
                 ].join(" "),
                 parameters: {
                     type: "object",
@@ -55,14 +55,6 @@ export class ImageGenerationTool extends BaseTool {
                 const image = await StableDiffusionProvider.generateImage(req, args.prompt);
                 await fs.writeFile(storage, image, "binary");
 
-                if (req instanceof HennosUser) {
-                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${args.prompt} \nSize: 1024x768 \nSource: Stable Diffusion`);
-                    await req.updateUserChatImageContext({
-                        local: storage,
-                        mime: "image/png",
-                    });
-                }
-
                 // @TODO: Make this multi-platform
                 await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with Stable Diffusion." });
                 return [`generate_image success. The requested image was generated using Stable Diffusion with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
@@ -87,14 +79,6 @@ export class ImageGenerationTool extends BaseTool {
 
             const bin = await BaseTool.fetchBinaryData(response.data[0].url!);
             await fs.writeFile(storage, bin, "binary");
-
-            if (req instanceof HennosUser) {
-                await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${prompt} \nSize: 1024x1024 \nSource: OpenAI DALL-E-3`);
-                await req.updateUserChatImageContext({
-                    local: storage,
-                    mime: "image/png",
-                });
-            }
 
             // @TODO: Make this multi-platform
             await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with OpenAI DALL-E-3." });
