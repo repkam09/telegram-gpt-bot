@@ -26,13 +26,23 @@ export class ComfyHealthCheck {
         const client = new ComfyUIClient(Config.COMFY_UI_ADDRESS, randomUUID());
         try {
             ComfyHealthCheck.status = false;
+            const timeout = setTimeout(() => {
+                ComfyHealthCheck.status = false;
+                throw new Error("ComfyUI health check timed out");
+            }, 5000);
+
             await client.connect();
             await client.getSystemStats();
+
+            Logger.debug(undefined, "ComfyUI health check passed");
+            clearTimeout(timeout);
+
             ComfyHealthCheck.status = true;
         } catch (err: unknown) {
             Logger.debug(undefined, "ComfyUI health check failed", err);
             ComfyHealthCheck.status = false;
         } finally {
+            Logger.debug(undefined, "ComfyUI health check completed");
             await client.disconnect();
         }
     }
@@ -61,7 +71,7 @@ export class ComfyHealthCheck {
             return false;
         }
 
-        return true;
+        return false;
     }
 }
 
