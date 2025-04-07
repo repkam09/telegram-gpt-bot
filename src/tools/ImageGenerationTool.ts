@@ -10,6 +10,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { TelegramBotInstance } from "../services/telegram/telegram";
 import { StableDiffusionProvider } from "../singletons/stablediffusion";
+import { InvokeAIProvider } from "../singletons/invokeai";
 
 
 
@@ -45,10 +46,28 @@ export class ImageGenerationTool extends BaseTool {
             return ["generate_image failed, prompt must be provided", metadata];
         }
 
-        await StableDiffusionProvider.health();
+        await Promise.allSettled([
+            StableDiffusionProvider.health(),
+            InvokeAIProvider.health()
+        ]);
+
 
         // write the image to a file
         const storage = path.join(Config.LOCAL_STORAGE(req), `generated_${randomUUID()}.png`);
+
+        if (InvokeAIProvider.shouldUseInvokeAI(req)) {
+            try {
+                const image = await InvokeAIProvider.generateImage(req, args.prompt);
+                await fs.writeFile(storage, image, "binary");
+
+                // @TODO: Make this multi-platform
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with InvokeAI Flux." });
+                return [`generate_image success. The requested image was generated using InvokeAI Flux with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
+            } catch (err: unknown) {
+                Logger.error(req, "InvokeAIProvider error", err);
+            }
+        }
+
 
         if (StableDiffusionProvider.shouldUseStableDiffusion(req)) {
             try {

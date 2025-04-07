@@ -623,6 +623,14 @@ export class Config {
 
         return process.env.SD_API_ADDRESS;
     }
+
+    static get INVOKE_API_ADDRESS(): string | false {
+        if (!process.env.INVOKE_API_ADDRESS) {
+            return false;
+        }
+
+        return process.env.INVOKE_API_ADDRESS;
+    }
 }
 
 
