@@ -422,10 +422,20 @@ async function handleTelegramPhotoMessage(user: HennosUser, msg: TelegramBot.Mes
 export async function handleHennosResponse(req: HennosConsumer, response: HennosResponse, options: TelegramBot.SendMessageOptions): Promise<void> {
     switch (response.__type) {
         case "string": {
+            if (!response.payload) {
+                Logger.warn(req, "Received empty string response from Hennos");
+                return Promise.resolve();
+            }
+
             return TelegramBotInstance.sendMessageWrapper(req, response.payload, options);
         }
 
         case "error": {
+            if (!response.payload) {
+                Logger.warn(req, "Received empty error response from Hennos");
+                return Promise.resolve();
+            }
+
             return TelegramBotInstance.sendMessageWrapper(req, response.payload, options);
         }
 
