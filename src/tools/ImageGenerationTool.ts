@@ -24,27 +24,38 @@ export class ComfyHealthCheck {
         }
 
         const client = new ComfyUIClient(Config.COMFY_UI_ADDRESS, randomUUID());
-        try {
-            ComfyHealthCheck.status = false;
-            const timeout = setTimeout(() => {
-                ComfyHealthCheck.status = false;
-                throw new Error("ComfyUI health check timed out");
-            }, 5000);
+        ComfyHealthCheck.status = false;
 
-            await client.connect();
-            await client.getSystemStats();
+        await new Promise<void>((resolve) => {
+            try {
+                // The websocket connection can hang indefinitely, so we need to set a timeout
+                const timeout = setTimeout(() => {
+                    return resolve();
+                }, 5000);
 
-            Logger.debug(undefined, "ComfyUI health check passed");
-            clearTimeout(timeout);
+                client.connect().then(() => {
+                    client.getSystemStats().then(() => {
+                        // Clear the timeout if the request was successful
+                        clearTimeout(timeout);
 
-            ComfyHealthCheck.status = true;
-        } catch (err: unknown) {
-            Logger.debug(undefined, "ComfyUI health check failed", err);
-            ComfyHealthCheck.status = false;
-        } finally {
-            Logger.debug(undefined, "ComfyUI health check completed");
-            await client.disconnect();
-        }
+                        Logger.debug(undefined, "ComfyUI getSystemStats success");
+                        ComfyHealthCheck.status = true;
+                        return resolve();
+                    }).catch(() => {
+                        Logger.debug(undefined, "ComfyUI getSystemStats failed");
+                        return resolve();
+                    });
+                }).catch(() => {
+                    Logger.debug(undefined, "ComfyUI connection failed");
+                    return resolve();
+                });
+            } catch (err: unknown) {
+                Logger.debug(undefined, "ComfyUI health check failed", err);
+                return resolve();
+            }
+        });
+
+        await client.disconnect();
     }
 
     static async init(): Promise<void> {
