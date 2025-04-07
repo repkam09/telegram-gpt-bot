@@ -68,18 +68,17 @@ export class ComfyHealthCheck {
         }
     }
 
+    static shouldHealthCheck(req: HennosConsumer): boolean {
+        if (Config.COMFY_UI_ADDRESS && req.isAdmin()) {
+            return true;
+        }
+
+        return false;
+    }
+
     static shouldUseComfy(req: HennosConsumer): boolean {
-        if (!Config.COMFY_UI_ADDRESS) {
-            return false;
-        }
-
-        if (!req.isAdmin()) {
-            return false;
-        }
-
-        if (!ComfyHealthCheck.status) {
-            Logger.warn(req, "ComfyUI should be available, but is not. Falling back to OpenAI. ");
-            return false;
+        if (Config.COMFY_UI_ADDRESS && req.isAdmin() && ComfyHealthCheck.status) {
+            return true;
         }
 
         return false;
@@ -122,7 +121,10 @@ export class ImageGenerationTool extends BaseTool {
             return ["generate_image failed, prompt must be provided", metadata];
         }
 
-        await ComfyHealthCheck.update();
+        // Only bother to check the health of ComfyUI if we might use it
+        if (ComfyHealthCheck.shouldHealthCheck(req)) {
+            await ComfyHealthCheck.update();
+        }
 
         // write the image to a file
         const storage = path.join(Config.LOCAL_STORAGE(req), `generated_${randomUUID()}.png`);
