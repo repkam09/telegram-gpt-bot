@@ -139,46 +139,48 @@ export class ImageGenerationTool extends BaseTool {
                         mime: "image/png",
                     });
                 }
+
+                // @TODO: Make this multi-platform
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: args.caption });
+                return ["generate_image success. The image was sent to the user directly.", metadata];
             } catch (err: unknown) {
                 Logger.error(req, "ImageGenerationTool callback error", err);
-                return ["generate_image failed", metadata];
-            }
-        } else {
-            const instance = HennosOpenAISingleton.instance();
-            const openai = instance.client as OpenAI;
-
-            try {
-                const response = await openai.images.generate({
-                    model: "dall-e-3",
-                    prompt: args.prompt,
-                    n: 1,
-                    size: "1024x1024",
-                    response_format: "url"
-                });
-
-                const prompt = response.data[0].revised_prompt;
-
-                const bin = await BaseTool.fetchBinaryData(response.data[0].url!);
-                await fs.writeFile(storage, bin, "binary");
-
-                if (req instanceof HennosUser) {
-                    await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${prompt} \nCaption: ${args.caption} \nSize: 1024x1024 \nSource: OpenAI DALL-E-3`);
-                    await req.updateUserChatImageContext({
-                        local: storage,
-                        mime: "image/png",
-                    });
-                }
-
-            } catch (err: unknown) {
-                Logger.error(req, "ImageGenerationTool callback error", err);
-                return ["generate_image failed", metadata];
             }
         }
 
+        const instance = HennosOpenAISingleton.instance();
+        const openai = instance.client as OpenAI;
 
-        // @TODO: Make this multi-platform
-        await TelegramBotInstance.sendImageWrapper(req, storage, { caption: args.caption });
-        return ["generate_image success. The image was sent to the user directly.", metadata];
+        try {
+            const response = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: args.prompt,
+                n: 1,
+                size: "1024x1024",
+                response_format: "url"
+            });
+
+            const prompt = response.data[0].revised_prompt;
+
+            const bin = await BaseTool.fetchBinaryData(response.data[0].url!);
+            await fs.writeFile(storage, bin, "binary");
+
+            if (req instanceof HennosUser) {
+                await req.updateUserChatContext(req, `Here is the result of the generate_image tool call.\nPrompt: ${prompt} \nCaption: ${args.caption} \nSize: 1024x1024 \nSource: OpenAI DALL-E-3`);
+                await req.updateUserChatImageContext({
+                    local: storage,
+                    mime: "image/png",
+                });
+            }
+
+            // @TODO: Make this multi-platform
+            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: args.caption });
+            return ["generate_image success. The image was sent to the user directly.", metadata];
+
+        } catch (err: unknown) {
+            Logger.error(req, "ImageGenerationTool callback error", err);
+            return ["generate_image failed", metadata];
+        }
     }
 }
 
