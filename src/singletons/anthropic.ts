@@ -80,7 +80,7 @@ export function convertMessages(messages: HennosMessage[]): Anthropic.Messages.M
                 });
             }
 
-            if (message.type === "text") {
+            if (message.type === "text" && message.content && message.content.length > 0) {
                 converted.push({
                     role: message.role,
                     content: [

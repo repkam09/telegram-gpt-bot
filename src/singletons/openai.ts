@@ -272,7 +272,7 @@ function calculateUsage(usage: OpenAI.Completions.CompletionUsage | undefined): 
 
 export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     return messages.reduce((acc, val) => {
-        if (val.type === "text") {
+        if (val.type === "text" && val.content && val.content.length > 0) {
             acc.push({
                 role: val.role as MessageRoles,
                 content: val.content

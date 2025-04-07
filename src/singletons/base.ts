@@ -88,6 +88,11 @@ export abstract class HennosConsumer {
             }
         }
 
+        if (!content) {
+            Logger.warn(this, "Empty content provided to updateAssistantChatContext");
+            return;
+        }
+
         if (typeof content === "string") {
             await this.db.messages.create({
                 data: {
@@ -119,6 +124,12 @@ export abstract class HennosConsumer {
             }
         }
 
+
+        if (!content) {
+            Logger.warn(this, "Empty content provided to updateSystemChatContext");
+            return;
+        }
+
         await this.db.messages.create({
             data: {
                 chatId: this.chatId,
@@ -136,6 +147,12 @@ export abstract class HennosConsumer {
                 await Qdrant.instance().createCollection(String(this.chatId), {});
             }
         }
+
+        if (!content) {
+            Logger.warn(this, "Empty content provided to updateUserChatContext");
+            return;
+        }
+
         await this.db.messages.create({
             data: {
                 chatId: this.chatId,
