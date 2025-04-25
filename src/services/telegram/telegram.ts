@@ -1,6 +1,10 @@
 import fs from "node:fs";
+import path from "node:path";
+import { IncomingMessage } from "node:http";
+
 import TelegramBot from "node-telegram-bot-api";
 import mimetype from "mime-types";
+
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { handleDocumentMessage } from "../../handlers/document";
@@ -14,7 +18,6 @@ import { handleCommandGroupMessage, handleCommandMessage } from "./commands";
 import { HennosUser } from "../../singletons/user";
 import { HennosGroup } from "../../singletons/group";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
-import path from "node:path";
 import { HennosConsumer } from "../../singletons/base";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { handleCalendarImport } from "../../tools/ImportCalendar";
@@ -24,6 +27,10 @@ import { StoreKeyValueMemory } from "../../tools/UserFactsTool";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
+type TelegramError = Error & {
+    code: "EFATAL" | "EPARSE" | "ETELEGRAM"
+    response: IncomingMessage | undefined
+}
 
 type TelegramReactionEmotes = "👍" | "👎" | "❤" | "🔥" | "🥰" | "👏" | "😁" | "🤔" | "🤯" | "😱" | "🤬" | "😢" | "🎉" | "🤩" | "🤮" | "💩" | "🙏" | "👌" | "🕊" | "🤡" | "🥱" | "🥴" | "😍" | "🐳" | "❤‍🔥" | "🌚" | "🌭" | "💯" | "🤣" | "⚡" | "🍌" | "🏆" | "💔" | "🤨" | "😐" | "🍓" | "🍾" | "💋" | "🖕" | "😈" | "😴" | "😭" | "🤓" | "👻" | "👨‍💻" | "👀" | "🎃" | "🙈" | "😇" | "😨" | "🤝" | "✍" | "🤗" | "🫡" | "🎅" | "🎄" | "☃" | "💅" | "🤪" | "🗿" | "🆒" | "💘" | "🙉" | "🦄" | "😘" | "💊" | "🙊" | "😎" | "👾" | "🤷‍♂" | "🤷" | "🤷‍♀" | "😡"
 
@@ -36,7 +43,12 @@ export class TelegramBotInstance {
 
     static instance(): TelegramBot {
         if (!TelegramBotInstance._instance) {
-            TelegramBotInstance._instance = new TelegramBot(Config.TELEGRAM_BOT_KEY, { polling: true });
+            TelegramBotInstance._instance = new TelegramBot(Config.TELEGRAM_BOT_KEY, { polling: true, });
+
+            TelegramBotInstance._instance.on("polling_error", (err: unknown) => {
+                const error = err as TelegramError;
+                Logger.warn(undefined, "Telegram Polling error: ", error);
+            });
         }
 
         return TelegramBotInstance._instance;
@@ -61,15 +73,21 @@ export class TelegramBotInstance {
         }
     }
 
+    /**
+     * Your photo must be in PNG format. The maximum file size is 20 MB.
+     */
     static async sendImageWrapper(req: HennosConsumer, path: string, options: TelegramBot.SendPhotoOptions = {}): Promise<void> {
         if (!path) {
             throw new Error("Message content is undefined");
         }
 
         const bot = TelegramBotInstance.instance();
-        await bot.sendPhoto(req.chatId, fs.createReadStream(path), options);
+        await bot.sendPhoto(req.chatId, fs.createReadStream(path), options, { contentType: "image/png", filename: path.split("/").pop() || "image.png" });
     }
 
+    /**
+     * Your audio must be in an .OGG file encoded with OPUS, or in .MP3 format, or in .M4A format (other formats may be sent as Audio or Document)
+     */
     static async sendVoiceMemoWrapper(req: HennosConsumer, content: Buffer, options: TelegramBot.SendVoiceOptions = {}): Promise<void> {
         if (!content) {
             throw new Error("Message content is undefined");
@@ -80,7 +98,7 @@ export class TelegramBotInstance {
         }
 
         const bot = TelegramBotInstance.instance();
-        await bot.sendVoice(req.chatId, content, options);
+        await bot.sendVoice(req.chatId, content, options, { contentType: "audio/ogg", filename: "voice-memo.ogg" });
     }
 
     static async sendAdminMessage(content: string) {
