@@ -1,7 +1,7 @@
 import { Database } from "./sqlite";
 import { Config } from "./config";
 import { HennosBaseProvider, HennosConsumer } from "./base";
-import { HennosImage, ValidLLMProvider, ValidTTSName } from "../types";
+import { ValidLLMProvider, ValidTTSName } from "../types";
 import { HennosOllamaSingleton } from "./ollama";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosAnthropicSingleton } from "./anthropic";
@@ -79,21 +79,6 @@ export class HennosUser extends HennosConsumer {
         }
 
         return HennosOpenAISingleton.mini();
-    }
-
-    public async updateUserChatImageContext(image: HennosImage): Promise<void> {
-        await this.db.messages.create({
-            data: {
-                chatId: this.chatId,
-                role: "user",
-                type: "image",
-                content: JSON.stringify({
-                    local: image.local,
-                    mime: image.mime,
-                }),
-                from: this.chatId
-            }
-        });
     }
 
     public async lastActive(): Promise<LastActiveResult> {

@@ -41,7 +41,7 @@
     "node-telegram-bot-api": "^0.66.0",
     "nodejs-whisper": "^0.1.18",
     "ollama": "^0.5.14",
-    "openai": "^4.92.0",
+    "openai": "^4.96.0",
     "puppeteer": "^24.6.0",
     "sqlite3": "^5.1.7",
     "tiktoken": "^1.0.20",

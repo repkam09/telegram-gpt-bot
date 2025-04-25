@@ -163,6 +163,21 @@ export abstract class HennosConsumer {
         });
     }
 
+    public async updateUserChatImageContext(image: HennosImage): Promise<void> {
+        await this.db.messages.create({
+            data: {
+                chatId: this.chatId,
+                role: "user",
+                type: "image",
+                content: JSON.stringify({
+                    local: image.local,
+                    mime: image.mime,
+                }),
+                from: this.chatId
+            }
+        });
+    }
+
     public async clearChatContext(): Promise<void> {
         await this.db.messages.deleteMany({
             where: {

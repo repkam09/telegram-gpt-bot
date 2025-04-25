@@ -66,7 +66,7 @@ export class ImageGenerationTool extends BaseTool {
                 clearInterval(interval);
 
                 // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with OpenAI GPT Image." });
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with OpenAI GPT Image. Prompt: ${args.prompt}` });
                 return [`generate_image success. The requested image was generated using OpenAI GPT Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
                 Logger.error(req, "GPTImageProvider error", err);
@@ -81,13 +81,12 @@ export class ImageGenerationTool extends BaseTool {
                 clearInterval(interval);
 
                 // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with InvokeAI Flux." });
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with InvokeAI Flux. Prompt: ${args.prompt}` });
                 return [`generate_image success. The requested image was generated using InvokeAI Flux with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
                 Logger.error(req, "InvokeAIProvider error", err);
             }
         }
-
 
         if (StableDiffusionProvider.shouldUseStableDiffusion(req)) {
             try {
@@ -97,7 +96,7 @@ export class ImageGenerationTool extends BaseTool {
                 clearInterval(interval);
 
                 // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with Stable Diffusion." });
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with Stable Diffusion. Prompt: ${args.prompt}` });
                 return [`generate_image success. The requested image was generated using Stable Diffusion with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
                 Logger.error(req, "StableDiffusionProvider error", err);
@@ -116,15 +115,15 @@ export class ImageGenerationTool extends BaseTool {
                 response_format: "url"
             });
 
-            const prompt = response.data[0].revised_prompt;
+            const prompt = response.data![0].revised_prompt;
 
-            const bin = await BaseTool.fetchBinaryData(response.data[0].url!);
+            const bin = await BaseTool.fetchBinaryData(response.data![0].url!);
             await fs.writeFile(storage, bin, "binary");
 
             clearInterval(interval);
 
             // @TODO: Make this multi-platform
-            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: "Created with OpenAI DALL-E-3." });
+            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with OpenAI DALL-E-3. Prompt: ${prompt}` });
             return [`generate_image success. The requested image was generated using OpenAI DALL-E-3 with the prompt '${prompt}'. The image has been sent to the user directly.`, metadata];
         } catch (err: unknown) {
             Logger.error(req, "ImageGenerationTool callback error", err);

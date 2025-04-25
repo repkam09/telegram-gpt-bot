@@ -19,7 +19,8 @@ export class GPTImageProvider {
             model: "gpt-image-1",
             prompt,
             n: 1,
-            user: req.chatId.toString()
+            user: req.chatId.toString(),
+            moderation: "low"
         });
 
         if (!result.data || result.data.length === 0) {
