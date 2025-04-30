@@ -1,4 +1,4 @@
-import { Content, FunctionDeclaration, FunctionDeclarationsTool, FunctionResponsePart, GoogleGenerativeAI, GoogleGenerativeAIError, Part, UsageMetadata } from "@google/generative-ai";
+import { Content, FunctionDeclaration, FunctionDeclarationsTool, FunctionResponsePart, GoogleGenerativeAI, Part, UsageMetadata } from "@google/generative-ai";
 import { Config } from "./config";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
@@ -120,12 +120,9 @@ class HennosGoogleProvider extends HennosBaseProvider {
                 payload: result.response.text()
             };
         } catch (err: unknown) {
-            if (err instanceof GoogleGenerativeAIError) {
-                Logger.info(req, `Google Completion Error: ${err.message}. Attempting OpenAI Fallback.`);
-                return HennosOpenAISingleton.instance().completion(req, system, complete);
-            }
-
-            throw err;
+            const error = err as Error;
+            Logger.info(req, `Google Completion Error: ${error.message}. Attempting OpenAI Fallback.`);
+            return HennosOpenAISingleton.instance().completion(req, system, complete);
         }
     }
 
