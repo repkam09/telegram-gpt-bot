@@ -47,7 +47,7 @@ export class TelegramBotInstance {
 
             TelegramBotInstance._instance.on("polling_error", (err: unknown) => {
                 const error = err as TelegramError;
-                Logger.warn(undefined, "Telegram Polling error: ", error);
+                Logger.warn(undefined, "Telegram Polling error: ", error.name, error.code, error.message);
             });
         }
 
