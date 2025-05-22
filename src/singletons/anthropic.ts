@@ -1,7 +1,7 @@
 import { Config } from "./config";
 import { Anthropic } from "@anthropic-ai/sdk";
 import { ToolCall } from "ollama";
-import { ImageBlockParam, TextBlock, TextBlockParam, Tool } from "@anthropic-ai/sdk/resources";
+import { ImageBlockParam, TextBlock, TextBlockParam, Tool, ToolChoiceAuto } from "@anthropic-ai/sdk/resources";
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
@@ -21,7 +21,7 @@ export class HennosAnthropicSingleton {
 }
 
 function getAvailableTools(req: HennosConsumer, allow_tools: boolean): [
-    Anthropic.Messages.MessageCreateParams.ToolChoiceAuto | undefined,
+    ToolChoiceAuto | undefined,
     Tool[] | undefined
 ] {
 
@@ -30,7 +30,7 @@ function getAvailableTools(req: HennosConsumer, allow_tools: boolean): [
         return [undefined, undefined];
     }
 
-    const tool_choice: Anthropic.Messages.MessageCreateParams.ToolChoiceAuto = {
+    const tool_choice: ToolChoiceAuto = {
         type: "auto"
     };
 
@@ -245,6 +245,10 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                     });
                     return this.completionWithRecursiveToolCalls(req, system, prompt, depth + 1, false);
                 }
+            }
+
+            if (response.stop_reason === "refusal") {
+                throw new Error("Model declines to generate for safety reasons");
             }
 
             // Check if we had to extend a response
