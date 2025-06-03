@@ -9,6 +9,7 @@ import { Logger } from "./singletons/logger";
 import { WSServerInstance } from "./services/socket/socket";
 import { MessageClassifier } from "./singletons/classifier";
 import { createFollowUpJobs } from "./jobs/FollowUp";
+import { BlueskyInstance } from "./services/bsky/bluesky";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -49,13 +50,19 @@ async function start() {
         console.warn("Web Socket server is disabled, set WS_SERVER_ENABLED=true to enable it");
     }
 
+    if (Config.AT_PROTO_ENABLED) {
+        init.push(BlueskyInstance.init());
+    } else {
+        console.warn("Bluesky is disabled, set AT_PROTO_ENABLED=true to enable it");
+    }
+
     // Initialize the Follow Up Jobs
     init.push(createFollowUpJobs());
 
     await Promise.all(init);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
-    const enabled = [Config.TELEGRAM_ENABLED, Config.TWITCH_ENABLED, Config.WS_SERVER_ENABLED];
+    const enabled = [Config.TELEGRAM_ENABLED, Config.TWITCH_ENABLED, Config.WS_SERVER_ENABLED, Config.AT_PROTO_ENABLED];
     if (Config.HENNOS_DEVELOPMENT_MODE && !enabled.includes(true)) {
         Logger.debug(undefined, "Running command line interface in development mode");
         await CommandLineInstance.run();

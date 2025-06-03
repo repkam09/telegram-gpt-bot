@@ -123,6 +123,41 @@ export class Config {
         return array;
     }
 
+    static get AT_PROTO_ENABLED(): boolean {
+        if (!process.env.AT_PROTO_ENABLED) {
+            return false;
+        }
+
+        if (process.env.AT_PROTO_ENABLED !== "true") {
+            return false;
+        }
+
+        return true;
+    }
+
+    static get AT_PROTO_SERVICE(): string {
+        if (!process.env.AT_PROTO_SERVICE) {
+            return "https://api.bsky.app";
+        }
+
+        return process.env.AT_PROTO_SERVICE;
+    }
+
+    static get AT_PROTO_USERNAME(): string {
+        if (!process.env.AT_PROTO_USERNAME) {
+            throw new Error("Missing AT_PROTO_USERNAME");
+        }
+
+        return process.env.AT_PROTO_USERNAME;
+    }
+
+    static get AT_PROTO_PASSWORD(): string {
+        if (!process.env.AT_PROTO_PASSWORD) {
+            throw new Error("Missing AT_PROTO_PASSWORD");
+        }
+
+        return process.env.AT_PROTO_PASSWORD;
+    }
 
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
