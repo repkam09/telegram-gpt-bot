@@ -9,7 +9,7 @@ export class ReasoningModel extends BaseTool {
     public static isEnabled(): boolean {
         return true;
     }
-    
+
     public static definition(): Tool {
         return {
             type: "function",
@@ -79,7 +79,7 @@ export class ReasoningModel extends BaseTool {
 
             Logger.info(req, "OpenAI Completion Tool Success, Resulted in Text Completion");
             const answer = response.choices[0].message.content;
-            return [`'${args.query}': ${answer}`, metadata];
+            return [answer, metadata, { __type: "string", payload: answer }];
         } catch (err) {
             Logger.error(req, "query_reasoning_model_callback error", { query: args.query, error: err });
             const error = err as Error;

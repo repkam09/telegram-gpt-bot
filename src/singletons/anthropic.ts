@@ -198,9 +198,16 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
                 const shouldEmptyResponse = additional.find(([, , response]) => response?.__type === "empty");
                 if (shouldEmptyResponse) {
+                    Logger.debug(req, "Anthropic Completion Requested Empty Response, Stopping Processing");
                     return {
                         __type: "empty"
                     };
+                }
+
+                const shouldStringResponse = additional.find(([, , response]) => response?.__type === "string");
+                if (shouldStringResponse) {
+                    Logger.debug(req, "Anthropic Completion Requested String Response, Stopping Processing");
+                    return shouldStringResponse[2] as HennosResponse;
                 }
 
                 prompt.push({
