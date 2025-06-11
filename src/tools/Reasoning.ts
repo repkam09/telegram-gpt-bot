@@ -4,6 +4,8 @@ import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } fr
 import { HennosConsumer } from "../singletons/base";
 import { HennosOpenAIProvider, HennosOpenAISingleton } from "../singletons/openai";
 import { Config } from "../singletons/config";
+import OpenAI, { OpenAIError } from "openai";
+import { HennosResponse } from "../types";
 
 export class ReasoningModel extends BaseTool {
     public static isEnabled(): boolean {
@@ -50,40 +52,88 @@ export class ReasoningModel extends BaseTool {
                 return ["query_reasoning_model error, openai instance not available", metadata];
             }
 
-            Logger.info(req, `OpenAI Completion Tool Start (${Config.OPENAI_LLM_REASONING.MODEL})`);
+            Logger.info(req, `OpenAI Reasoning Completion Tool Start (${Config.OPENAI_LLM_REASONING.MODEL})`);
 
             let query = args.query;
             if (args.context) {
                 query = `<context>\n${args.context}\n<context>\n\n${query}`;
             }
 
-            const response = await instance.client.chat.completions.create({
-                model: Config.OPENAI_LLM_REASONING.MODEL,
-                messages: [
-                    {
-                        role: "user",
-                        content: query
-                    }
-                ],
-            });
+            const answer = await reasoningCompletion(req, instance, [
+                {
+                    role: "user",
+                    content: query
+                }
+            ], 0);
 
-            Logger.info(req, `OpenAI Completion Tool Success, Resulted in ${response.usage?.completion_tokens} output tokens`);
-
-            if (!response.choices || !response.choices[0]) {
-                return ["query_reasoning_model error, invalid response shape", metadata];
+            if (answer.__type !== "string") {
+                Logger.error(req, "query_reasoning_model_callback error, expected string response", { query: args.query, answer: answer.__type });
+                return [`query_reasoning_model error, expected string response from reasoning model but got ${answer.__type}`, metadata];
             }
 
-            if (!response.choices[0].message.content) {
-                return ["query_reasoning_model error, invalid response shape", metadata];
-            }
-
-            Logger.info(req, "OpenAI Completion Tool Success, Resulted in Text Completion");
-            const answer = response.choices[0].message.content;
-            return [answer, metadata, { __type: "string", payload: answer }];
+            return [answer.payload, metadata, answer];
         } catch (err) {
             Logger.error(req, "query_reasoning_model_callback error", { query: args.query, error: err });
             const error = err as Error;
             return [`query_reasoning_model error. ${error.message}.`, metadata];
         }
     }
+}
+
+async function reasoningCompletion(req: HennosConsumer, provider: HennosOpenAIProvider, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
+    if (depth > Config.HENNOS_TOOL_DEPTH) {
+        throw new Error("Tool Call Recursion Depth Exceeded");
+    }
+
+    try {
+        const response = await provider.client.chat.completions.create({
+            model: Config.OPENAI_LLM_REASONING.MODEL,
+            messages: prompt,
+        });
+
+        Logger.info(req, `OpenAI Reasoning Completion Tool Success, Usage: ${calculateUsage(response.usage)} (depth=${depth})`);
+        if (!response.choices && !response.choices[0]) {
+            throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
+        }
+
+        if (!response.choices[0].message.tool_calls && !response.choices[0].message.content) {
+            throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Properties");
+        }
+
+        // If this is a normal response with no tool calling, return the content
+        if (response.choices[0].message.content) {
+            if (response.choices[0].finish_reason === "length") {
+                Logger.info(req, "OpenAI Completion Success, Resulted in Length Limit");
+                prompt.push({
+                    role: "assistant",
+                    content: response.choices[0].message.content
+                });
+                return reasoningCompletion(req, provider, prompt, depth + 1);
+            }
+
+            Logger.info(req, "OpenAI Completion Success, Resulted in Text Completion");
+            return {
+                __type: "string",
+                payload: response.choices[0].message.content
+            };
+        }
+
+        throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Content");
+    } catch (err: unknown) {
+        Logger.error(req, "OpenAI Completion Error: ", err);
+
+        if (err instanceof OpenAIError) {
+            Logger.error(req, "OpenAI Error Response: ", err.message);
+        }
+
+        throw err;
+    }
+}
+
+function calculateUsage(usage: OpenAI.Completions.CompletionUsage | undefined): string {
+    if (!usage) {
+        return "Unknown";
+    }
+
+    return `Input: ${usage.prompt_tokens} tokens, Output: ${usage.completion_tokens}, Thinking: ${usage.completion_tokens_details?.reasoning_tokens || 0} tokens`;
 }
