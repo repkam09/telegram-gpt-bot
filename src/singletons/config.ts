@@ -97,6 +97,22 @@ export class Config {
         return process.env.TWITCH_BOT_TOKEN;
     }
 
+    static get DISCORD_BOT_TOKEN(): string {
+        if (!process.env.DISCORD_BOT_TOKEN) {
+            throw new Error("Missing DISCORD_BOT_TOKEN");
+        }
+
+        return process.env.DISCORD_BOT_TOKEN;
+    }
+
+    static get DISCORD_ENABLED(): boolean {
+        if (!process.env.DISCORD_ENABLED) {
+            return false;
+        }
+
+        return process.env.DISCORD_ENABLED === "true";
+    }
+
     static get TWITCH_BOT_USERNAME(): string {
         if (!process.env.TWITCH_BOT_USERNAME) {
             throw new Error("Missing TWITCH_BOT_USERNAME");

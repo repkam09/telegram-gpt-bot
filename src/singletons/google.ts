@@ -95,9 +95,16 @@ class HennosGoogleProvider extends HennosBaseProvider {
 
                 const shouldEmptyResponse = results.find(([, , response]) => response?.__type === "empty");
                 if (shouldEmptyResponse) {
+                    Logger.debug(req, "Google Completion Requested Empty Response, Stopping Processing");
                     return {
                         __type: "empty"
                     };
+                }
+
+                const shouldStringResponse = results.find(([, , response]) => response?.__type === "string");
+                if (shouldStringResponse) {
+                    Logger.debug(req, "Google Completion Requested String Response, Stopping Processing");
+                    return shouldStringResponse[2] as HennosResponse;
                 }
 
                 const responses = results.map(([response, metadata]) => {

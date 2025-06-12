@@ -165,6 +165,12 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                     };
                 }
 
+                const shouldStringResponse = additional.find(([, , response]) => response?.__type === "string");
+                if (shouldStringResponse) {
+                    Logger.debug(req, "OpenAI Completion Requested String Response, Stopping Processing");
+                    return shouldStringResponse[2] as HennosResponse;
+                }
+
                 additional.forEach(([content, metadata]) => {
                     prompt.push({
                         role: "tool",

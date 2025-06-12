@@ -16,6 +16,7 @@ import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaReq
 import { PythonSandbox } from "./PythonSandbox";
 import { Base64Decode } from "./Base64Decode";
 import { PerplexitySearch } from "./PerplexitySearch";
+import { ReasoningModel } from "./Reasoning";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -40,6 +41,7 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
     ImageGenerationTool,
     JellyseerMediaRequest,
     JellyseerMediaSearch,
+    ReasoningModel
 ];
 
 const ADMIN_TOOLS = [
