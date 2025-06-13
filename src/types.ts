@@ -12,6 +12,7 @@ type HennosImageMessage = {
     role: HennosMessageRole,
     image: HennosImage,
     encoded: string
+    remote?: string
 }
 
 export type HennosMessage = HennosTextMessage | HennosImageMessage;

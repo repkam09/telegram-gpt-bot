@@ -175,6 +175,15 @@ export class Config {
         return process.env.AT_PROTO_PASSWORD;
     }
 
+    static get AT_PROTO_RESPOND_USERS(): string[] {
+        if (!process.env.AT_PROTO_RESPOND_USERS) {
+            return [];
+        }
+
+        const users = process.env.AT_PROTO_RESPOND_USERS.split(",").map((user) => user.trim());
+        return users;
+    }
+
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {

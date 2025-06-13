@@ -34,12 +34,13 @@ export class HennosOpenAISingleton {
 
 function getAvailableTools(req: HennosConsumer): [
     OpenAI.Chat.Completions.ChatCompletionToolChoiceOption | undefined,
-    OpenAI.Chat.Completions.ChatCompletionTool[] | undefined
+    OpenAI.Chat.Completions.ChatCompletionTool[] | undefined,
+    boolean | undefined
 ] {
     const tools = availableTools(req);
 
     if (!tools) {
-        return [undefined, undefined];
+        return [undefined, undefined, undefined];
     }
 
     const converted = tools.map((tool) => ({
@@ -47,7 +48,7 @@ function getAvailableTools(req: HennosConsumer): [
         function: tool.function
     }));
 
-    return ["auto", converted];
+    return ["auto", converted, true];
 }
 
 function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]): [ToolCall, OpenAI.Chat.Completions.ChatCompletionMessageToolCall][] {
@@ -109,14 +110,14 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
             throw new Error("Tool Call Recursion Depth Exceeded");
         }
 
-        const [tool_choice, tools] = getAvailableTools(req);
+        const [tool_choice, tools, tools_parallel] = getAvailableTools(req);
         try {
             const response = await this.client.chat.completions.create({
                 model: this.model.MODEL,
                 messages: prompt,
                 tool_choice,
                 tools: tools,
-                parallel_tool_calls: true
+                parallel_tool_calls: tools_parallel
             });
 
             Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(response.usage)} (depth=${depth})`);
@@ -286,21 +287,36 @@ export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Co
         }
 
         if (val.type === "image") {
-            acc.push({
-                role: val.role as "user",
-                content: [
-                    {
-                        type: "text",
-                        text: `Image: ${val.image.local}`
-                    },
-                    {
-                        type: "image_url",
-                        image_url: {
-                            detail: "auto",
-                            url: `data:${val.image.mime};base64,${val.encoded}`
-                        }
-                    }]
-            });
+            if (val.remote) {
+                acc.push({
+                    role: val.role as "user",
+                    content: [
+                        {
+                            type: "image_url",
+                            image_url: {
+                                detail: "auto",
+                                url: val.remote
+                            }
+                        }]
+                });
+            } else {
+                acc.push({
+                    role: val.role as "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: `Image: ${val.image.local}`
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                detail: "auto",
+                                url: `data:${val.image.mime};base64,${val.encoded}`
+                            }
+                        }]
+                });
+            }
+
         }
         return acc;
     }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
