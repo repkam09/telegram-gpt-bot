@@ -1,0 +1,2 @@
+FROM "qwen3:14b"
+PARAMETER num_ctx 10240
