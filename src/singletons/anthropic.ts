@@ -41,7 +41,7 @@ function getAvailableTools(req: HennosConsumer, allow_tools: boolean): [
     }
 
     const converted: Tool[] = tools.map((tool) => ({
-        name: tool.function.name,
+        name: tool.function.name as string,
         input_schema: {
             ...tool.function.parameters,
             type: "object"

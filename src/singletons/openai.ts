@@ -4,7 +4,7 @@ import OpenAI, { OpenAIError } from "openai";
 import { HennosUser } from "./user";
 import { ToolCall } from "ollama";
 import { Logger } from "./logger";
-import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
+import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam, FunctionDefinition } from "openai/resources";
 import { getSizedChatContext } from "./context";
 import { HennosBaseProvider, HennosConsumer } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
@@ -44,7 +44,7 @@ function getAvailableTools(req: HennosConsumer): [
 
     const converted = tools.map((tool) => ({
         type: "function" as const,
-        function: tool.function
+        function: tool.function as FunctionDefinition,
     }));
 
     return ["auto", converted];

@@ -203,10 +203,10 @@ function convertToolCalls(tools: Tool[] | undefined): FunctionDeclarationsTool[]
         return [{ functionDeclarations: [] }];
     }
     return [{
-        functionDeclarations: tools.map((too) => ({
-            name: too.function.name,
-            description: too.function.description,
-            parameters: too.function.parameters as FunctionDeclaration["parameters"],
+        functionDeclarations: tools.map((tool) => ({
+            name: tool.function.name as string,
+            description: tool.function.description,
+            parameters: tool.function.parameters as FunctionDeclaration["parameters"],
         } satisfies FunctionDeclaration))
     }];
 }

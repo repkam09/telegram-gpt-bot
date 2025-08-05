@@ -136,6 +136,19 @@ class HennosOllamaProvider extends HennosBaseProvider {
                 return this.completionWithRecursiveToolCalls(req, prompt, depth + 1);
             }
 
+            // If we're using a thinking model, we might get back thoughts within <think> ... </think> tags.
+            // We should strip these out before returning to the user. Find the index of the first </think> tag and strip everything before it.
+
+            const thinkingBlock = response.message.content.indexOf("</think>");
+            if (thinkingBlock !== -1) {
+                const cleaned = response.message.content.substring(thinkingBlock + 8).trim();
+                Logger.info(req, "Ollama Completion Success, Stripped Thinking Tags");
+                return {
+                    __type: "string",
+                    payload: cleaned
+                };
+            }
+
             Logger.info(req, "Ollama Completion Success, Resulted in Text Completion");
             return {
                 __type: "string",
