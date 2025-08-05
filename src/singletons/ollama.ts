@@ -10,7 +10,7 @@ import { HennosUser } from "./user";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { ToolCallMetadata } from "../tools/BaseTool";
 import { randomUUID } from "node:crypto";
-import { HennosImage, HennosMessage, HennosMessageRole, HennosResponse, HennosTextMessage } from "../types";
+import { HennosMessage, HennosResponse, HennosTextMessage } from "../types";
 import path from "node:path";
 import fs from "node:fs/promises";
 
@@ -65,14 +65,23 @@ class HennosOllamaProvider extends HennosBaseProvider {
         return `Open Source model ${Config.OLLAMA_LLM.MODEL} running under Ollama.`;
     }
 
-    public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
+    public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
         Logger.info(req, `Ollama Completion Start (${Config.OLLAMA_LLM.MODEL})`);
 
         const chat = await getSizedChatContext(req, system, complete, Config.OLLAMA_LLM.CTX);
-        const prompt = system.concat(chat);
+
+        const systemMessages: HennosMessage[] = Array.from(system);
+        const prompt = systemMessages.concat(chat);
 
         const converted = convertHennosMessages(prompt);
-        return this.completionWithRecursiveToolCalls(req, converted, 0);
+        try {
+            return this.completionWithRecursiveToolCalls(req, converted, 0);
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.info(req, `Ollama Completion Error: ${error.message}. Attempting OpenAI Fallback.`);
+            return HennosOpenAISingleton.instance().completion(req, system, complete);
+        }
+
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: Message[], depth: number): Promise<HennosResponse> {
