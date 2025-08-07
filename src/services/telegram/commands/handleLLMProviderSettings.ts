@@ -27,6 +27,7 @@ export async function handleLLMProviderSettingsCallback(user: HennosUser, queryI
 
 export async function sendLLMProviderSettingsPrompt(user: HennosUser) {
     const opts: TelegramBot.SendMessageOptions = {
+        parse_mode: "Markdown",
         reply_markup: {
             resize_keyboard: true,
             one_time_keyboard: true,
@@ -52,12 +53,16 @@ export async function sendLLMProviderSettingsPrompt(user: HennosUser) {
     const bot = TelegramBotInstance.instance();
     bot.sendMessage(user.chatId, `Hennos supports several different model providers.
         
-Anthropic and OpenAI are cloud-based providers that offer powerful frontier models. Both are fast, intelligent, and capable of handling a wide range of tasks. 
+Anthropic and OpenAI are cloud-based providers that offer powerful frontier models. Both are fast, intelligent, and capable of handling a wide range of tasks.
+
 Ollama is a local model provider that will run all queries on the Hennos server itself, and is a great option if you want to keep all data local and private. However, these models will be slower and less capable than the cloud-based options.
 
-Ollama is configured to use ${Config.OLLAMA_LLM.MODEL}.
-OpenAI is configured to use ${Config.OPENAI_LLM.MODEL}.
-Anthropic is configured to use ${Config.ANTHROPIC_LLM.MODEL}.
+Ollama is configured to use \`${Config.OLLAMA_LLM.MODEL}\`.
+
+OpenAI is configured to use \`${Config.OPENAI_LLM.MODEL}\`.
+
+Anthropic is configured to use \`${Config.ANTHROPIC_LLM.MODEL}\`.
+
 
 Select one of the options below: `, opts);
 }
