@@ -1,7 +1,7 @@
 import { Tool, ToolCall } from "ollama";
 import { Logger } from "../singletons/logger";
 import { OpenWeatherMapLookupTool } from "./OpenWeatherMapLookupTool";
-import { QueryWebpageContent } from "./QueryWebpageContent";
+import { FetchWebpageContent } from "./FetchWebpageContent";
 import { HennosConsumer } from "../singletons/base";
 import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
@@ -10,13 +10,10 @@ import { YoutubeVideoTool } from "./YoutubeVideoTool";
 import { WolframAlpha } from "./WolframAlpha";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
-import { ScheduleMessageCallback } from "./MessageCallback";
 import { ImageGenerationTool } from "./ImageGenerationTool";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
 import { PythonSandbox } from "./PythonSandbox";
-import { Base64Decode } from "./Base64Decode";
 import { PerplexitySearch } from "./PerplexitySearch";
-import { ReasoningModel } from "./Reasoning";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -26,13 +23,11 @@ const PUBLIC_TOOLS = [
 ];
 
 const WHITELIST_TOOLS = [
-    QueryWebpageContent,
+    FetchWebpageContent,
     PerplexitySearch,
     OpenWeatherMapLookupTool,
-    ScheduleMessageCallback,
     WolframAlpha,
     PythonSandbox,
-    Base64Decode
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
@@ -40,8 +35,7 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
     AcknowledgeWithoutResponse,
     ImageGenerationTool,
     JellyseerMediaRequest,
-    JellyseerMediaSearch,
-    ReasoningModel
+    JellyseerMediaSearch
 ];
 
 const ADMIN_TOOLS = [

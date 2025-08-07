@@ -3,6 +3,7 @@ import { TelegramBotInstance } from "../telegram";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/user";
 import { ValidLLMProvider, ValidLLMProviders } from "../../../types";
+import { Config } from "../../../singletons/config";
 
 export async function handleLLMProviderSettingsCallback(user: HennosUser, queryId: string, data: string) {
     const provider = data.replace("llm-settings-", "").trim();
@@ -32,23 +33,15 @@ export async function sendLLMProviderSettingsPrompt(user: HennosUser) {
             inline_keyboard: [
                 [
                     {
-                        text: "Anthropic Claude",
+                        text: "Anthropic",
                         callback_data: "llm-settings-anthropic",
                     },
                     {
-                        text: "OpenAI GPT-4",
+                        text: "OpenAI",
                         callback_data: "llm-settings-openai",
                     },
                     {
-                        text: "Google Gemini",
-                        callback_data: "llm-settings-google",
-                    },
-                    {
-                        text: "Mistral AI",
-                        callback_data: "llm-settings-mistral",
-                    },
-                    {
-                        text: "Ollama Models",
+                        text: "Ollama",
                         callback_data: "llm-settings-ollama",
                     },
                 ]
@@ -57,13 +50,14 @@ export async function sendLLMProviderSettingsPrompt(user: HennosUser) {
     };
 
     const bot = TelegramBotInstance.instance();
-    bot.sendMessage(user.chatId, `You can customize the AI model that Hennos uses when responding to messages.
+    bot.sendMessage(user.chatId, `Hennos supports several different model providers.
         
-Anthropic provides Claude, a highly performant, trustworthy, and intelligent AI platform. Claude excels at tasks involving language, reasoning, analysis, coding, and more. You can learn more about Claude at https://www.anthropic.com/claude.
+Anthropic and OpenAI are cloud-based providers that offer powerful frontier models. Both are fast, intelligent, and capable of handling a wide range of tasks. 
+Ollama is a local model provider that will run all queries on the Hennos server itself, and is a great option if you want to keep all data local and private. However, these models will be slower and less capable than the cloud-based options.
 
-OpenAI provides GPT-4. GPT-4 can solve difficult problems with greater accuracy, thanks to its broader general knowledge and problem solving abilities. You can learn more about GPT-4 at https://openai.com/index/gpt-4/
-
-Ollama provides completely private, locally hosted, models that keep all of your data and conversations directly on the Hennos server and does not rely on any external providers. It may not be as fast or intelligent as the other options.
+Ollama is configured to use ${Config.OLLAMA_LLM.MODEL}.
+OpenAI is configured to use ${Config.OPENAI_LLM.MODEL}.
+Anthropic is configured to use ${Config.ANTHROPIC_LLM.MODEL}.
 
 Select one of the options below: `, opts);
 }

@@ -6,10 +6,7 @@ import { HennosOllamaSingleton } from "./ollama";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosAnthropicSingleton } from "./anthropic";
 import { Logger } from "./logger";
-import { HennosGoogleSingleton } from "./google";
-import { HennosMockSingleton } from "./mock";
 import { MessageClassifier } from "./classifier";
-import { HennosMistralSingleton } from "./mistral";
 
 type LastActiveResult = { user: { date: Date, content: string } | null, assistant: { date: Date, content: string } | null }
 
@@ -50,18 +47,9 @@ export class HennosUser extends HennosConsumer {
                 case "anthropic": {
                     return HennosAnthropicSingleton.instance();
                 }
-                case "google": {
-                    return HennosGoogleSingleton.instance();
-                }
-                case "mistral": {
-                    return HennosMistralSingleton.instance();
-                }
-                case "mock": {
-                    return HennosMockSingleton.instance();
-                }
                 default: {
-                    Logger.warn(this, `Unknown provider ${this.provider}, defaulting to Anthropic`);
-                    return HennosAnthropicSingleton.instance();
+                    Logger.warn(this, `Unknown provider ${this.provider}, defaulting to OpenAI`);
+                    return HennosOpenAISingleton.instance();
                 }
             }
         }

@@ -7,7 +7,6 @@ export async function createTestUser() {
     const user = await HennosUser.async(-1, "jest");
     await user.setWhitelisted(true);
     await user.clearChatContext();
-    await user.setPreferredProvider("mock");
 
     return user;
 }

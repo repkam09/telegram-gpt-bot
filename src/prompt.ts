@@ -2,7 +2,6 @@ import { HennosConsumer } from "./singletons/base";
 import { Config } from "./singletons/config";
 import { HennosGroup } from "./singletons/group";
 import { HennosUser } from "./singletons/user";
-import { PerplexitySearch } from "./tools/PerplexitySearch";
 import { HennosTextMessage } from "./types";
 
 export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextMessage[]> {
@@ -41,17 +40,17 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
         },
         {
             role: "system",
-            content: "You were created and are maintained by the software developer Mark Repka, @repkam09 on GitHub, and are Open Source on GitHub at https://github.com/repkam09/telegram-gpt-bot",
+            content: "You were created and are maintained by the software developer Mark Repka, @repkam09 on GitHub, and are Open Source on GitHub at `https://github.com/repkam09/telegram-gpt-bot`.",
             type: "text",
         },
         {
             role: "system",
-            content: "You are powered by Large Language Models from OpenAI, Anthropic, and Google, but which specific model or provider is used for a given request can be configured by the user.",
+            content: "You are powered by Large Language Models from OpenAI, Anthropic, or Ollama, but which specific model or provider is used for a given request is configured by the user by using the `/settings` command.",
             type: "text"
         },
         {
             role: "system",
-            content: `Your knowledge is based on the data your model was trained on, which has a cutoff date of October, 2023. The current date is ${new Date().toDateString()}. It is a ${dayOfWeekString} today.`,
+            content: `Your knowledge is based on the data your model was trained on. Be aware that you may not have the most up to date information in your training data. The current date is ${new Date().toDateString()}. It is a ${dayOfWeekString} today.`,
             type: "text"
         },
         {
@@ -62,15 +61,6 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
     ];
 
     if (req instanceof HennosUser) {
-
-        if (req.whitelisted) {
-            prompt.push({
-                role: "system",
-                content: `If the discussion with the user seems to require additional research, you should use the Perplexity Search (${PerplexitySearch.definition().function.name}) tool to provide additional context.`,
-                type: "text"
-            });
-        }
-
         const info = await req.getBasicInfo();
         prompt.push({
             role: "system",
@@ -87,15 +77,6 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
         });
 
         if (req.whitelisted) {
-            prompt.push({
-                role: "system",
-                content: [
-                    "Because your chat context is limited, you should also make use of the key-value memory (`store_key_value_memory`) tool to store and recall long-term information about the user.",
-                    "This information is prioritized over the chat context and will always be available to you."
-                ].join(" "),
-                type: "text"
-            });
-
             prompt.push({
                 role: "system",
                 content: `This user is a whitelisted user who has been granted full access to '${botName}' services and tools.`,

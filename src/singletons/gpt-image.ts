@@ -6,10 +6,6 @@ import { HennosOpenAISingleton } from "./openai";
 export class GPTImageProvider {
     public static status: boolean = true;
 
-    static shouldUseGPTImage(req: HennosConsumer): boolean {
-        return req.whitelisted;
-    }
-
     static async generateImage(req: HennosConsumer, prompt: string): Promise<Buffer> {
         Logger.info(req, "GPTImageProvider generateImage", { prompt });
         const instance = HennosOpenAISingleton.instance();

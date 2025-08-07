@@ -150,26 +150,6 @@ export class Config {
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
     }
 
-    static get MISTRAL_LLM(): HennosModelConfig {
-        if (!process.env.MISTRAL_LLM) {
-            return {
-                MODEL: "mistral-small-latest",
-                CTX: 10000,
-            };
-        }
-        return parseHennosModelString(process.env.MISTRAL_LLM, "MISTRAL_LLM");
-    }
-
-    static get GOOGLE_LLM(): HennosModelConfig {
-        if (!process.env.GOOGLE_LLM) {
-            return {
-                MODEL: "gemini-1.5-flash",
-                CTX: 65000,
-            };
-        }
-        return parseHennosModelString(process.env.GOOGLE_LLM, "GOOGLE_LLM");
-    }
-
     static get WHISPER_MODEL(): string {
         if (!process.env.WHISPER_MODEL) {
             return "base.en";
@@ -237,26 +217,10 @@ export class Config {
         return process.env.OPENAI_API_KEY;
     }
 
-    static get MISTRAL_API_KEY(): string {
-        if (!process.env.MISTRAL_API_KEY) {
-            throw new Error("Missing MISTRAL_API_KEY");
-        }
-
-        return process.env.MISTRAL_API_KEY;
-    }
-
-    static get GOOGLE_API_KEY(): string {
-        if (!process.env.GOOGLE_API_KEY) {
-            throw new Error("Missing GOOGLE_API_KEY");
-        }
-
-        return process.env.GOOGLE_API_KEY;
-    }
-
     static get OPENAI_LLM(): HennosModelConfig {
         if (!process.env.OPENAI_LLM) {
             return {
-                MODEL: "gpt-4o-mini",
+                MODEL: "gpt-5-nano",
                 CTX: 32000,
             };
         }
@@ -266,19 +230,9 @@ export class Config {
 
     static get OPENAI_MINI_LLM(): HennosModelConfig {
         return {
-            MODEL: "gpt-4o-mini",
+            MODEL: "gpt-5-nano",
             CTX: 16000,
         };
-    }
-
-    static get OPENAI_LLM_REASONING(): HennosModelConfig {
-        if (!process.env.OPENAI_LLM_REASONING) {
-            return {
-                MODEL: "o1-mini",
-                CTX: 32000,
-            };
-        }
-        return parseHennosModelString(process.env.OPENAI_LLM_REASONING, "OPENAI_LLM_REASONING");
     }
 
     static get OPENAI_LLM_EMBED(): HennosEmbeddingModelConfig {

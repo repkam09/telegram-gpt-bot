@@ -20,10 +20,8 @@ import { HennosGroup } from "../../singletons/group";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
 import { HennosConsumer } from "../../singletons/base";
 import { HennosOpenAISingleton } from "../../singletons/openai";
-import { handleCalendarImport } from "../../tools/ImportCalendar";
 import { HennosResponse } from "../../types";
 import { handleAudioMessage } from "../../handlers/audio";
-import { StoreKeyValueMemory } from "../../tools/UserFactsTool";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -522,32 +520,7 @@ async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Mes
 async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.Message & { contact: TelegramBot.Contact }) {
     TelegramBotInstance.setTelegramIndicator(user, "typing");
     Logger.debug(user, "contact", msg.contact);
-
-    await StoreKeyValueMemory.callback(user, {
-        key: JSON.stringify({
-            type: "contact",
-            first_name: msg.contact.first_name,
-            last_name: msg.contact.last_name
-        }), value: JSON.stringify(msg.contact)
-    }, {});
-
-    return TelegramBotInstance.sendMessageWrapper(user, "Contact information stored.");
-}
-
-async function handleTelegramCalendarMessage(user: HennosUser, file: string) {
-    try {
-        const result = await handleCalendarImport(user, file);
-        if (result) {
-            await user.updateUserChatContext(user, "I just uploaded an ICS calendar file. Could you import those events into our chat context?");
-            await user.updateAssistantChatContext(`Calendar imported successfully. Here are the events I found: ${JSON.stringify(result)}`);
-            return TelegramBotInstance.sendMessageWrapper(user, "Calendar imported successfully.");
-        } else {
-            return TelegramBotInstance.sendMessageWrapper(user, "An error occured while processing your calendar.");
-        }
-    } catch (err) {
-        Logger.error(user, "Error while processing calendar import", err);
-        return TelegramBotInstance.sendMessageWrapper(user, "An error occured while processing your calendar.");
-    }
+    return TelegramBotInstance.sendMessageWrapper(user, "Sorry, contacts are not supported at this time.");
 }
 
 async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.Message & { document: TelegramBot.Document }) {
@@ -558,11 +531,6 @@ async function handleTelegramDocumentMessage(user: HennosUser, msg: TelegramBot.
     }
 
     const ext = path.extname(tempFilePath) ? path.extname(tempFilePath).substring(1) : ".bin";
-
-    if (ext === "ics") {
-        TelegramBotInstance.setTelegramMessageReact(user, msg);
-        return handleTelegramCalendarMessage(user, tempFilePath);
-    }
 
     if (ext === "mp3" || ext === "ogg" || ext === "wav" || ext === "flac" || ext === "oga" || ext === "m4a") {
         TelegramBotInstance.setTelegramMessageReact(user, msg);

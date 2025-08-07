@@ -14,33 +14,31 @@ import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } fr
 import { HennosConsumer } from "../singletons/base";
 
 
-export class QueryWebpageContent extends BaseTool {
+export class FetchWebpageContent extends BaseTool {
     public static isEnabled(): boolean {
         return true;
     }
-    
+
     public static definition(): Tool {
         return {
             type: "function",
             function: {
-                name: "query_webpage_content",
+                name: "fetch_webpage_content",
                 description: [
-                    "This tool extracts and summarizes content from a specified URL, providing detailed insights tailored to an optional query parameter.",
-                    "Ideally suited for text-rich webpages such as news articles, blog posts, and similar resources.",
-                    "Use this tool to delve deeper into specific information from URLs obtained via the 'searxng_web_search' tool or when a user supplies a URL.",
-                    "If the webpage content is unavailable, invalid, or non-textual, an error message may result.",
-                    "Apply this tool when additional detail or verification is required from search results, or when users ask for or imply the need for specific content extraction from a given URL."
+                    "This tool fetches the text content of a webpage from a given URL. If the `query` parameter is provided the tool will return a summary of the content based on the query instead of the full page content.",
+                    "If the `query` is not provided the tool will return the full text content of the page up to a maximum of 32000 tokens (~128k characters).",
+                    "If the content exceeds this limit, the tool will save the content to a temporary file and use document processing to provide a summary of the content before returning it.",
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         url: {
                             type: "string",
-                            description: "The URL to be fetched and summarized.",
+                            description: "The URL to load the text content from.",
                         },
                         query: {
                             type: "string",
-                            description: "Optional: A query to refine the summary of the fetched content, based on user-specific questions or interests."
+                            description: "An optional query to summarize or extract specific information from the webpage content."
                         }
                     },
                     required: ["url"],
@@ -51,27 +49,34 @@ export class QueryWebpageContent extends BaseTool {
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         if (!args.url) {
-            return ["query_webpage_content error, required parameter 'url' not provided", metadata];
+            return ["fetch_webpage_content error, required parameter 'url' not provided", metadata];
         }
 
-        Logger.info(req, "query_webpage_content", { url: args.url, query: args.query });
+        Logger.info(req, "fetch_webpage_content", { url: args.url, query: args.query });
         try {
             const html = await fetchPageContent(req, args.url);
+
+
+            // If the HTML is smaller than 32000 tokens (~128k characters), we can just return the whole thing
+            if (!args.query && html.length < 128000) {
+                return [`fetch_webpage_content, url: ${args.url}, page_content: ${html}`, metadata];
+            }
+
             const filePath = path.join(Config.LOCAL_STORAGE(req), "/", `${Date.now().toString()}.html`);
 
             await fs.writeFile(filePath, html, { encoding: "utf-8" });
 
             const query = args.query ? args.query : "Could you provide a summary of this webpage content?";
             const result = await handleDocument(req as HennosUser, filePath, args.url, new HTMLReader(), query);
-            return [`query_webpage_content, url: ${args.url}, result: ${result}`, metadata];
+            return [`fetch_webpage_content, url: ${args.url}, result: ${result}`, metadata];
         } catch (err) {
             if (err instanceof AxiosError) {
-                Logger.error(req, "query_webpage_content error", { url: args.url, status: err.response?.status, statusText: err.response?.statusText });
-                return [`query_webpage_content error, unable to fetch content from URL '${args.url}', HTTP Status: ${err.response?.status}, Status Text: ${err.response?.statusText}`, metadata];
+                Logger.error(req, "fetch_webpage_content error", { url: args.url, status: err.response?.status, statusText: err.response?.statusText });
+                return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}', HTTP Status: ${err.response?.status}, Status Text: ${err.response?.statusText}`, metadata];
             }
 
-            Logger.error(req, "query_webpage_content error", { url: args.url, error: err });
-            return [`query_webpage_content error, unable to fetch content from URL '${args.url}'`, metadata];
+            Logger.error(req, "fetch_webpage_content error", { url: args.url, error: err });
+            return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}'`, metadata];
         }
     }
 }

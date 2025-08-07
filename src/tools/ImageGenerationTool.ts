@@ -2,15 +2,11 @@ import { Logger } from "../singletons/logger";
 import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosOpenAISingleton } from "../singletons/openai";
-import OpenAI from "openai";
 import { Config } from "../singletons/config";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { TelegramBotInstance } from "../services/telegram/telegram";
-import { StableDiffusionProvider } from "../singletons/stablediffusion";
-import { InvokeAIProvider } from "../singletons/invokeai";
 import { GPTImageProvider } from "../singletons/gpt-image";
 
 export class ImageGenerationTool extends BaseTool {
@@ -50,86 +46,20 @@ export class ImageGenerationTool extends BaseTool {
             TelegramBotInstance.setTelegramIndicator(req, "upload_photo");
         }, 3000);
 
-        await Promise.allSettled([
-            StableDiffusionProvider.health(),
-            InvokeAIProvider.health()
-        ]);
-
         // write the image to a file
         const storage = path.join(Config.LOCAL_STORAGE(req), `generated_${randomUUID()}.png`);
 
-        if (GPTImageProvider.shouldUseGPTImage(req)) {
-            try {
-                const image = await GPTImageProvider.generateImage(req, args.prompt);
-                await fs.writeFile(storage, image, "binary");
-
-                clearInterval(interval);
-
-                // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with OpenAI GPT Image. Prompt: ${args.prompt}` });
-                return [`generate_image success. The requested image was generated using OpenAI GPT Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
-            } catch (err: unknown) {
-                Logger.error(req, "GPTImageProvider error", err);
-            }
-        }
-
-        if (InvokeAIProvider.shouldUseInvokeAI(req)) {
-            try {
-                const image = await InvokeAIProvider.generateImage(req, args.prompt);
-                await fs.writeFile(storage, image, "binary");
-
-                clearInterval(interval);
-
-                // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with InvokeAI Flux. Prompt: ${args.prompt}` });
-                return [`generate_image success. The requested image was generated using InvokeAI Flux with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
-            } catch (err: unknown) {
-                Logger.error(req, "InvokeAIProvider error", err);
-            }
-        }
-
-        if (StableDiffusionProvider.shouldUseStableDiffusion(req)) {
-            try {
-                const image = await StableDiffusionProvider.generateImage(req, args.prompt);
-                await fs.writeFile(storage, image, "binary");
-
-                clearInterval(interval);
-
-                // @TODO: Make this multi-platform
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with Stable Diffusion. Prompt: ${args.prompt}` });
-                return [`generate_image success. The requested image was generated using Stable Diffusion with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
-            } catch (err: unknown) {
-                Logger.error(req, "StableDiffusionProvider error", err);
-            }
-        }
-
-        const instance = HennosOpenAISingleton.instance();
-        const openai = instance.client as OpenAI;
-
         try {
-            const response = await openai.images.generate({
-                model: "dall-e-3",
-                prompt: args.prompt,
-                n: 1,
-                size: "1024x1024",
-                response_format: "url"
-            });
-
-            const prompt = response.data![0].revised_prompt;
-
-            const bin = await BaseTool.fetchBinaryData(response.data![0].url!);
-            await fs.writeFile(storage, bin, "binary");
+            const image = await GPTImageProvider.generateImage(req, args.prompt);
+            await fs.writeFile(storage, image, "binary");
 
             clearInterval(interval);
 
-            // @TODO: Make this multi-platform
-            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with OpenAI DALL-E-3. Prompt: ${prompt}` });
-            return [`generate_image success. The requested image was generated using OpenAI DALL-E-3 with the prompt '${prompt}'. The image has been sent to the user directly.`, metadata];
+            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with OpenAI GPT Image. Prompt: ${args.prompt}` });
+            return [`generate_image success. The requested image was generated using OpenAI GPT Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
         } catch (err: unknown) {
-            Logger.error(req, "ImageGenerationTool callback error", err);
-
+            Logger.error(req, "GPTImageProvider error", err);
             clearInterval(interval);
-
             return ["generate_image failed", metadata];
         }
     }

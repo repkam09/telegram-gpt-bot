@@ -76,24 +76,6 @@ export class CommandLineInstance {
                 await user.setPreferredProvider("ollama");
                 query = null;
             }
-
-            if (query === "google") {
-                console.log("Switching to Google...");
-                await user.setPreferredProvider("google");
-                query = null;
-            }
-
-            if (query === "mistral") {
-                console.log("Switching to Mistral...");
-                await user.setPreferredProvider("mistral");
-                query = null;
-            }
-
-            if (query === "mock") {
-                console.log("Switching to Mock...");
-                await user.setPreferredProvider("mock");
-                query = null;
-            }
         }
 
         rl.close();
