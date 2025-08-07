@@ -8,7 +8,6 @@ import { TwitchBotInstance } from "./services/twitch/twitch";
 import { Logger } from "./singletons/logger";
 import { WSServerInstance } from "./services/socket/socket";
 import { MessageClassifier } from "./singletons/classifier";
-import { createFollowUpJobs } from "./jobs/FollowUp";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -49,9 +48,6 @@ async function start() {
     } else {
         console.warn("Web Socket server is disabled, set WS_SERVER_ENABLED=true to enable it");
     }
-
-    // Initialize the Follow Up Jobs
-    init.push(createFollowUpJobs());
 
     await Promise.all(init);
 

@@ -67,11 +67,12 @@ export abstract class HennosConsumer {
         return serviceContextFromDefaults({
             llm: new OpenAI({
                 model: Config.OPENAI_MINI_LLM.MODEL,
-                apiKey: Config.OPENAI_API_KEY
+                apiKey: Config.OPENAI_API_KEY,
+                temperature: 1
             }),
             embedModel: new OpenAIEmbedding({
                 model: Config.OPENAI_LLM_EMBED.MODEL,
-                apiKey: Config.OPENAI_API_KEY,
+                apiKey: Config.OPENAI_API_KEY
             }),
             nodeParser: new SimpleNodeParser({
                 chunkSize: 2048,
