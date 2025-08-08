@@ -2,7 +2,7 @@ import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosConsumer } from "../singletons/base";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class HomeAssistantStatesTool extends BaseTool {
     public static isEnabled(): boolean {

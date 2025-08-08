@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { TelegramBotInstance, registerInputCallback } from "../telegram";
 import { sendVoiceSettingsPrompt } from "./handleVoiceSettings";
-import { HennosUser } from "../../../singletons/user";
+import { HennosUser } from "../../../singletons/consumer";
 import { sendLLMProviderSettingsPrompt } from "./handleLLMProviderSettings";
 
 export async function handleGeneralSettingsCallback(user: HennosUser, queryId: string, data: string) {

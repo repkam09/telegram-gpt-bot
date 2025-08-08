@@ -6,9 +6,8 @@ import {
     SummaryRetrieverMode,
 } from "llamaindex";
 import { Logger } from "../singletons/logger";
-import { HennosUser } from "../singletons/user";
-import { HennosConsumer } from "../singletons/base";
-import { HennosGroup } from "../singletons/group";
+import { HennosUser } from "../singletons/consumer";
+import { HennosConsumer, HennosGroup } from "../singletons/consumer";
 
 export async function handleDocumentMessage(req: HennosConsumer, path: string, file_ext: string, uuid: string): Promise<string> {
     if (req instanceof HennosGroup) {

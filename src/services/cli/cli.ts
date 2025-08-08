@@ -1,7 +1,7 @@
 import readline from "node:readline/promises";
 import { Config } from "../../singletons/config";
 import { handlePrivateMessage } from "../../handlers/text/private";
-import { HennosUser } from "../../singletons/user";
+import { HennosUser } from "../../singletons/consumer";
 
 export class CommandLineInstance {
     static async run(): Promise<void> {

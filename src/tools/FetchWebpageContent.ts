@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import puppeteer from "puppeteer";
+import { JSDOM } from "jsdom";
+import { Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
 import { HTMLReader } from "llamaindex";
 import { AxiosError } from "axios";
@@ -9,9 +11,8 @@ import { AxiosError } from "axios";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { handleDocument } from "../handlers/document";
-import { HennosUser } from "../singletons/user";
+import { HennosConsumer, HennosUser } from "../singletons/consumer";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosConsumer } from "../singletons/base";
 
 
 export class FetchWebpageContent extends BaseTool {
@@ -82,11 +83,23 @@ export class FetchWebpageContent extends BaseTool {
 }
 
 export async function fetchPageContent(req: HennosConsumer, url: string): Promise<string> {
+    // Non-experimental path: basic fetch (original behavior)
     if (!req.experimental) {
         Logger.trace(req, `fetchPageContent fetchTextData: ${url}`);
-        return BaseTool.fetchTextData(url);
+        const raw = await BaseTool.fetchTextData(url);
+        // Attempt a light-weight reader extraction with jsdom if HTML
+        if (/<!DOCTYPE html>|<html[\s>]/i.test(raw)) {
+            try {
+                const extracted = extractReadable(raw, url);
+                if (extracted) return extracted;
+            } catch (e) {
+                Logger.debug(req, "reader-lite extraction failed", { error: e });
+            }
+        }
+        return raw;
     }
 
+    // Experimental path: use puppeteer for fully rendered DOM then Readability.
     try {
         Logger.trace(req, `fetchPageContent puppeteer: ${url}`);
         const browser = await puppeteer.launch({
@@ -96,18 +109,52 @@ export async function fetchPageContent(req: HennosConsumer, url: string): Promis
 
         const page = await browser.newPage();
         await page.setViewport({ width: 1920, height: 1080 });
-        await page.goto(url, {
-            waitUntil: Config.PUPPETEER_WAIT_UNTIL,
+        await page.goto(url, { waitUntil: Config.PUPPETEER_WAIT_UNTIL, timeout: 60000 });
+
+        // Remove script/style/noise before serialization to reduce size.
+        await page.evaluate(() => {
+            const selectors = ["script", "style", "noscript", "iframe", "svg", "canvas", "footer", "header", "form", "nav", "aside"]; // broad removal
+            for (const sel of selectors) {
+                document.querySelectorAll(sel).forEach(el => el.remove());
+            }
         });
 
-        const content = await page.content();
+        const html = await page.content();
+
+        let article: string | undefined;
+        try {
+            article = extractReadable(html, url);
+        } catch (e) {
+            Logger.debug(req, "readability extraction failed", { error: e });
+        }
 
         await page.close();
         await browser.close();
 
-        return content;
+        return article || html;
     } catch (err) {
         Logger.error(req, "fetchPageContent error", { url: url, error: err });
-        return BaseTool.fetchTextData(url);
+        try {
+            const fallback = await BaseTool.fetchTextData(url);
+            const extracted = extractReadable(fallback, url) || fallback;
+            return extracted;
+        } catch {
+            return BaseTool.fetchTextData(url);
+        }
     }
+}
+
+// Extract main article content similar to Firefox Reader Mode. Returns plain text with title and byline.
+function extractReadable(html: string, url: string): string | undefined {
+    const dom = new JSDOM(html, { url });
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+    if (!article) return undefined;
+    const parts = [article.title, article.byline, article.textContent]
+        .filter(Boolean)
+        .map(s => (s as string).trim());
+    const text = parts.join("\n\n");
+    // Basic sanity: require some length
+    if (text.split(/\s+/).length < 50) return undefined; // too short, maybe extraction failed
+    return text;
 }

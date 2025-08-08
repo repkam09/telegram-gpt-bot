@@ -1,7 +1,6 @@
 import { TelegramBotInstance } from "../telegram";
 import { Database } from "../../../singletons/sqlite";
-import { HennosUser } from "../../../singletons/user";
-import { HennosConsumer } from "../../../singletons/base";
+import { HennosUser, isBlacklisted } from "../../../singletons/consumer";
 
 export async function handleBlacklistCommand(user: HennosUser, text: string) {
     const trimmed = text.replace("/blacklist", "").trim();
@@ -15,7 +14,7 @@ export async function handleBlacklistCommand(user: HennosUser, text: string) {
         }
 
         // Check if we have this chatId on the blacklist.
-        const blacklisted = await HennosConsumer.isBlacklisted(input);
+        const blacklisted = await isBlacklisted(input);
         if (blacklisted) {
             return bot.sendMessage(user.chatId, `ChatId ${input} was already blacklisted at ${blacklisted.datetime.toISOString()}`);
         }

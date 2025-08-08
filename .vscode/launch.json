@@ -16,58 +16,6 @@
             "program": "${workspaceFolder}/build/hennos.js",
             "console": "integratedTerminal",
             "sourceMaps": true
-        },
-        {
-            "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
-            "request": "launch",
-            "name": "Launch Classifier",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/scripts/classifier.js",
-            "sourceMaps": true,
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
-            "request": "launch",
-            "name": "Launch Whisper",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/scripts/whisper.js",
-            "sourceMaps": true,
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
-            "request": "launch",
-            "name": "Launch Documents",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/scripts/documents.js",
-            "sourceMaps": true,
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
-            "request": "launch",
-            "name": "Launch Daily Report",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "preLaunchTask": "tsc",
-            "program": "${workspaceFolder}/build/scripts/daily-report.js",
-            "sourceMaps": true,
-            "console": "integratedTerminal"
         }
     ]
 }

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Database } from "../../../singletons/sqlite";
-import { HennosUser } from "../../../singletons/user";
+import { HennosUser } from "../../../singletons/consumer";
 import { TelegramBotInstance } from "../telegram";
 
 export async function handleCreateHennosLink(user: HennosUser) {

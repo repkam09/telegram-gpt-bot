@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class OpenWeatherMapLookupTool extends BaseTool {
     public static isEnabled(): boolean {

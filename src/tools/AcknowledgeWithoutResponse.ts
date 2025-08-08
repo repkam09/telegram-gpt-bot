@@ -1,7 +1,7 @@
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class AcknowledgeWithoutResponse extends BaseTool {
     public static isEnabled(): boolean {

@@ -1,6 +1,6 @@
 import { Logger } from "../singletons/logger";
 import { handlePrivateMessage } from "./text/private";
-import { HennosUser } from "../singletons/user";
+import { HennosUser } from "../singletons/consumer";
 import { HennosResponse } from "../types";
 
 export async function handleVoiceMessage(user: HennosUser, path: string): Promise<HennosResponse> {

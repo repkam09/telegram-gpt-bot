@@ -1,5 +1,5 @@
+import { HennosConsumer } from "../../../singletons/consumer";
 import { TelegramBotInstance } from "../telegram";
-import { HennosConsumer } from "../../../singletons/base";
 
 export async function handleStartCommand(req: HennosConsumer) {
     await TelegramBotInstance.sendMessageWrapper(req, `Hennos is a conversational chat assistant powered by a number of different large language models.

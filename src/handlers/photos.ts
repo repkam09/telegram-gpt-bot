@@ -1,5 +1,5 @@
 import fs from "fs/promises";
-import { HennosUser } from "../singletons/user";
+import { HennosUser } from "../singletons/consumer";
 import { HennosImage, HennosResponse } from "../types";
 import { handlePrivateMessage } from "./text/private";
 import { Logger } from "../singletons/logger";

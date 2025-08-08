@@ -1,10 +1,10 @@
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import axios from "axios";
 import { Config } from "../singletons/config";
 import { TelegramBotInstance } from "../services/telegram/telegram";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class MetaBugReport extends BaseTool {
     public static isEnabled(): boolean {
@@ -158,49 +158,6 @@ async function createGitHubFeatureRequest(req: HennosConsumer, title: string, re
 
     return response.data.html_url;
 }
-
-
-export class MetaDevelopmentThrowError extends BaseTool {
-    public static isEnabled(): boolean {
-        if (Config.HENNOS_DEVELOPMENT_MODE) {
-            return true;
-        }
-
-        return false;
-    }
-
-    public static definition(): Tool {
-        return {
-            type: "function",
-            function: {
-                name: "development_mode_throw_error",
-                description: [
-                    "Use this tool to throw an error in development mode. This is used for testing purposes only.",
-                ].join(" "),
-                parameters: {
-                    type: "object",
-                    properties: {
-                        message: {
-                            type: "string",
-                            description: "The Error message to throw."
-                        },
-                    },
-                    required: ["message"],
-                }
-            }
-        };
-    }
-
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "MetaDevelopmentThrowError callback", { message: args.message });
-        if (!args.message) {
-            return ["message not provided", metadata];
-        }
-
-        throw new Error(`MetaDevelopmentThrowError: ${args.message}`);
-    }
-}
-
 
 export class MetaFeedbackTool extends BaseTool {
     public static isEnabled(): boolean {

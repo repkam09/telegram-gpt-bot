@@ -1,8 +1,8 @@
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosConsumer } from "../singletons/base";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class JellyseerMediaRequest extends BaseTool {
     public static isEnabled(): boolean {

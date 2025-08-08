@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Config } from "./config";
-import { HennosConsumer } from "./base";
 
 export class Logger {
-    static info(req: HennosConsumer | undefined, message?: any, ...optionalParams: any[]): void {
+    static info(req: { toString: () => string } | undefined, message?: any, ...optionalParams: any[]): void {
         if (req) {
             console.log(new Date().toISOString(), req.toString(), message, ...optionalParams);
         } else {
@@ -12,7 +11,7 @@ export class Logger {
         }
     }
 
-    static warn(req: HennosConsumer | undefined, message?: any, ...optionalParams: any[]): void {
+    static warn(req: { toString: () => string } | undefined, message?: any, ...optionalParams: any[]): void {
         if (req) {
             console.warn(new Date().toISOString(), req.toString(), message, ...optionalParams);
         } else {
@@ -20,7 +19,7 @@ export class Logger {
         }
     }
 
-    static error(req: HennosConsumer | undefined, message?: any, ...optionalParams: any[]): void {
+    static error(req: { toString: () => string } | undefined, message?: any, ...optionalParams: any[]): void {
         if (req) {
             console.error(new Date().toISOString(), req.toString(), message, ...optionalParams);
         } else {
@@ -28,7 +27,7 @@ export class Logger {
         }
     }
 
-    static debug(req: HennosConsumer | undefined, message?: any, ...optionalParams: any[]): void {
+    static debug(req: { toString: () => string } | undefined, message?: any, ...optionalParams: any[]): void {
         if (Config.HENNOS_VERBOSE_LOGGING) {
             if (req) {
                 console.log(new Date().toISOString(), "DEBUG:", req.toString(), message, ...optionalParams);
@@ -38,7 +37,7 @@ export class Logger {
         }
     }
 
-    static trace(user: HennosConsumer, context: string) {
+    static trace(user: { toString: () => string }, context: string) {
         console.log(new Date().toISOString(), user.toString(), `context=${context}`);
     }
 }

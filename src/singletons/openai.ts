@@ -1,15 +1,14 @@
 import { createReadStream } from "node:fs";
 import { Config, HennosModelConfig } from "./config";
 import OpenAI, { OpenAIError } from "openai";
-import { HennosUser } from "./user";
+import { HennosConsumer, HennosGroup, HennosUser } from "./consumer";
 import { ToolCall } from "ollama";
 import { Logger } from "./logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam, FunctionDefinition } from "openai/resources";
 import { getSizedChatContext } from "./context";
-import { HennosBaseProvider, HennosConsumer } from "./base";
+import { HennosBaseProvider } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { HennosMessage, HennosResponse } from "../types";
-import { HennosGroup } from "./group";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 
@@ -52,6 +51,10 @@ function getAvailableTools(req: HennosConsumer): [
 
 function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]): [ToolCall, OpenAI.Chat.Completions.ChatCompletionMessageToolCall][] {
     return tools.map((tool) => {
+        if (tool.type !== "function") {
+            throw new Error("The requested tool call is not supported: " + tool.type);
+        }
+
         try {
             return [{
                 function: {
@@ -81,7 +84,6 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         super();
 
         this.client = new OpenAI({
-            baseURL: Config.OPENAI_BASE_URL,
             apiKey: Config.OPENAI_API_KEY,
         });
 
@@ -219,12 +221,12 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         }
     }
 
-    public async transcription(req: HennosConsumer, path: string | Buffer): Promise<HennosResponse> {
+    public async transcription(req: HennosConsumer, path: string): Promise<HennosResponse> {
         Logger.info(req, "OpenAI Transcription Start");
         try {
             const transcription = await this.client.audio.transcriptions.create({
                 model: this.transcriptionModel,
-                file: (typeof path === "string") ? createReadStream(path) : new File([path], "audio", { type: "audio/wav" })
+                file: createReadStream(path)
             });
 
             Logger.info(req, "OpenAI Transcription Success");
@@ -304,23 +306,4 @@ export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Co
         }
         return acc;
     }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
-}
-
-export async function utilityRequest(req: HennosConsumer, body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming): Promise<OpenAI.Chat.Completions.ChatCompletion> {
-    const client = new OpenAI({
-        baseURL: Config.OPENAI_BASE_URL,
-        apiKey: Config.OPENAI_API_KEY,
-    });
-
-    const response = await client.chat.completions.create(body);
-    Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(response.usage)}`);
-    if (!response.choices && !response.choices[0]) {
-        throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
-    }
-
-    if (!response.choices[0].message.tool_calls && !response.choices[0].message.content) {
-        throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Properties");
-    }
-
-    return response;
 }

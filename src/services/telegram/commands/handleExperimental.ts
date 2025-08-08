@@ -1,6 +1,6 @@
 import { TelegramBotInstance } from "../telegram";
 import { Database } from "../../../singletons/sqlite";
-import { HennosUser } from "../../../singletons/user";
+import { HennosUser } from "../../../singletons/consumer";
 
 export async function handleExperimentalCommand(user: HennosUser, text: string) {
     const trimmed = text.replace("/experimental", "").trim();

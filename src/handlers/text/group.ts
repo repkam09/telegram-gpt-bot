@@ -1,7 +1,6 @@
 import { hennosBasePrompt } from "../../prompt";
-import { HennosGroup } from "../../singletons/group";
 import { Logger } from "../../singletons/logger";
-import { HennosUser } from "../../singletons/user";
+import { HennosUser, HennosGroup } from "../../singletons/consumer";
 import { HennosResponse, HennosTextMessage } from "../../types";
 
 export async function handleGroupMessage(user: HennosUser, group: HennosGroup, text: string, hint?: HennosTextMessage): Promise<HennosResponse> {

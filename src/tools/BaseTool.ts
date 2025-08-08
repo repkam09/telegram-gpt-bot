@@ -3,10 +3,10 @@
 
 import axios from "axios";
 import { Tool, ToolCall } from "ollama";
-import { HennosConsumer } from "../singletons/base";
 import { exec } from "child_process";
 import { Logger } from "../singletons/logger";
 import { HennosResponse } from "../types";
+import { HennosConsumer } from "../singletons/consumer";
 
 export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;

@@ -1,7 +1,6 @@
 import { TelegramBotInstance } from "../telegram";
 import { Database } from "../../../singletons/sqlite";
-import { HennosUser } from "../../../singletons/user";
-import { HennosGroup } from "../../../singletons/group";
+import { HennosGroup, HennosUser } from "../../../singletons/consumer";
 
 export async function handleWhitelistCommand(user: HennosUser, text: string) {
     const trimmed = text.replace("/whitelist", "").trim();

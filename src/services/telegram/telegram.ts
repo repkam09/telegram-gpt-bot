@@ -15,10 +15,8 @@ import { handleGeneralSettingsCallback } from "./commands/handleGeneralSettings"
 import { handlePrivateMessage } from "../../handlers/text/private";
 import { handleGroupMessage } from "../../handlers/text/group";
 import { handleCommandGroupMessage, handleCommandMessage } from "./commands";
-import { HennosUser } from "../../singletons/user";
-import { HennosGroup } from "../../singletons/group";
+import { HennosConsumer, HennosGroup, HennosUser, isBlacklisted } from "../../singletons/consumer";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
-import { HennosConsumer } from "../../singletons/base";
 import { HennosOpenAISingleton } from "../../singletons/openai";
 import { HennosResponse } from "../../types";
 import { handleAudioMessage } from "../../handlers/audio";
@@ -80,7 +78,23 @@ export class TelegramBotInstance {
         }
 
         const bot = TelegramBotInstance.instance();
-        await bot.sendPhoto(req.chatId, fs.createReadStream(path), options, { contentType: "image/png", filename: path.split("/").pop() || "image.png" });
+        const filename = path.split("/").pop() || "image";
+        const contentType = mimetype.lookup(filename) || "image/png";
+        await bot.sendPhoto(req.chatId, fs.createReadStream(path), options, { contentType, filename });
+    }
+
+    /**
+     * Sends a generic document (text/code file) to the user. Use for artifacts created via tools.
+     */
+    static async sendDocumentWrapper(req: HennosConsumer, filePath: string, options: TelegramBot.SendDocumentOptions = {}): Promise<void> {
+        if (!filePath) {
+            throw new Error("Document path is undefined");
+        }
+
+        const filename = path.basename(filePath);
+        const contentType = mimetype.lookup(filename) || "application/octet-stream";
+        const bot = TelegramBotInstance.instance();
+        await bot.sendDocument(req.chatId, fs.createReadStream(filePath), options, { filename, contentType });
     }
 
     /**
@@ -166,7 +180,7 @@ export class TelegramBotInstance {
             }
 
             // Check if the user is blacklisted
-            const blacklisted = await HennosConsumer.isBlacklisted(user.chatId);
+            const blacklisted = await isBlacklisted(user.chatId);
             if (blacklisted) {
                 Logger.info(user, `Ignoring message from blacklisted user. User was blacklisted at: ${blacklisted.datetime.toISOString()}`);
                 return;
@@ -176,7 +190,7 @@ export class TelegramBotInstance {
                 const group = await HennosGroup.async(msg.chat.id, msg.chat.title);
 
                 // Check if the group is blacklisted
-                const blacklisted = await HennosConsumer.isBlacklisted(group.chatId);
+                const blacklisted = await isBlacklisted(group.chatId);
                 if (blacklisted) {
                     Logger.info(user, `Ignoring message from blacklisted group. Group was blacklisted at: ${blacklisted.datetime.toISOString()}`);
                     return;
@@ -601,7 +615,7 @@ async function validateIncomingMessage(msg: unknown, requiredProperty: keyof Tel
     }
 
     // Check if the user is blacklisted
-    const blacklisted = await HennosConsumer.isBlacklisted(user.chatId);
+    const blacklisted = await isBlacklisted(user.chatId);
     if (blacklisted) {
         Logger.info(user, `Ignoring message from blacklisted user. User was blacklisted at: ${blacklisted.datetime.toISOString()}`);
         return;

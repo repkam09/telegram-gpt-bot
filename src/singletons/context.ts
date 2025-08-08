@@ -1,6 +1,6 @@
 import { encoding_for_model } from "tiktoken";
 import { Logger } from "./logger";
-import { HennosConsumer } from "./base";
+import { HennosConsumer } from "./consumer";
 import { HennosMessage } from "../types";
 
 export async function getSizedChatContext(req: HennosConsumer, prompt: HennosMessage[], currentChatContext: HennosMessage[], limit: number): Promise<HennosMessage[]> {

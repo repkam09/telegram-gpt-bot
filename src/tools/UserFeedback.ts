@@ -1,8 +1,8 @@
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { TelegramBotInstance } from "../services/telegram/telegram";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class UserFeedback extends BaseTool {
     public static isEnabled(): boolean {

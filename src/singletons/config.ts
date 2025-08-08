@@ -3,8 +3,8 @@ import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import * as dotenv from "dotenv";
-import { HennosConsumer } from "./base";
 import { PuppeteerLifeCycleEvent } from "puppeteer";
+
 dotenv.config();
 
 export type HennosModelConfig = {
@@ -64,82 +64,6 @@ export class Config {
         return ids;
     }
 
-
-    static get CLASSIFIER_ENABLED(): false | "bayes" | "openai" {
-        if (!process.env.CLASSIFIER_ENABLED) {
-            return false;
-        }
-
-        if (process.env.CLASSIFIER_ENABLED === "bayes") {
-            return "bayes";
-        }
-
-        if (process.env.CLASSIFIER_ENABLED === "openai") {
-            return "openai";
-        }
-
-        return false;
-    }
-
-    static get TWITCH_ENABLED(): boolean {
-        if (!process.env.TWITCH_ENABLED) {
-            return false;
-        }
-
-        return process.env.TWITCH_ENABLED === "true";
-    }
-
-    static get TWITCH_BOT_TOKEN(): string {
-        if (!process.env.TWITCH_BOT_TOKEN) {
-            throw new Error("Missing TWITCH_BOT_TOKEN");
-        }
-
-        return process.env.TWITCH_BOT_TOKEN;
-    }
-
-    static get DISCORD_BOT_TOKEN(): string {
-        if (!process.env.DISCORD_BOT_TOKEN) {
-            throw new Error("Missing DISCORD_BOT_TOKEN");
-        }
-
-        return process.env.DISCORD_BOT_TOKEN;
-    }
-
-    static get DISCORD_ENABLED(): boolean {
-        if (!process.env.DISCORD_ENABLED) {
-            return false;
-        }
-
-        return process.env.DISCORD_ENABLED === "true";
-    }
-
-    static get TWITCH_BOT_USERNAME(): string {
-        if (!process.env.TWITCH_BOT_USERNAME) {
-            throw new Error("Missing TWITCH_BOT_USERNAME");
-        }
-
-        return process.env.TWITCH_BOT_USERNAME;
-    }
-
-    static get TWITCH_BOT_ADMIN(): string {
-        if (!process.env.TWITCH_BOT_ADMIN) {
-            throw new Error("Missing TWITCH_BOT_ADMIN");
-        }
-
-        return process.env.TWITCH_BOT_ADMIN;
-    }
-
-    static get TWITCH_JOIN_CHANNELS(): string[] {
-        if (!process.env.TWITCH_JOIN_CHANNELS) {
-            return [];
-        }
-
-        const value = process.env.TWITCH_JOIN_CHANNELS;
-        const array = value.split(",").map((channel) => channel.trim());
-        return array;
-    }
-
-
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
@@ -148,36 +72,6 @@ export class Config {
             };
         }
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
-    }
-
-    static get WHISPER_MODEL(): string {
-        if (!process.env.WHISPER_MODEL) {
-            return "base.en";
-        }
-
-        return process.env.WHISPER_MODEL;
-    }
-
-    static get WHISPER_MAX_PARALLEL(): number {
-        if (!process.env.WHISPER_MAX_PARALLEL) {
-            return 1;
-        }
-
-        const max = parseInt(process.env.WHISPER_MAX_PARALLEL);
-
-        if (Number.isNaN(max)) {
-            throw new Error("Invalid WHISPER_MAX_PARALLEL value");
-        }
-
-        return max;
-    }
-
-    static get OPENAI_BASE_URL(): string | undefined {
-        if (!process.env.OPENAI_BASE_URL) {
-            return undefined;
-        }
-
-        return process.env.OPENAI_BASE_URL;
     }
 
     static get OLLAMA_LLM_EMBED(): HennosEmbeddingModelConfig {
@@ -273,36 +167,6 @@ export class Config {
         }
 
         return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
-    }
-
-    static get WS_SERVER_PORT(): number {
-        if (!process.env.WS_SERVER_PORT) {
-            return 16006;
-        }
-
-        const port = parseInt(process.env.WS_SERVER_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid WS_SERVER_PORT value");
-        }
-
-        return port;
-    }
-
-    static get WS_SERVER_ENABLED(): boolean {
-        if (!process.env.WS_SERVER_ENABLED) {
-            return false;
-        }
-
-        return process.env.WS_SERVER_ENABLED === "true";
-    }
-
-    static get WS_SERVER_TOKEN(): string {
-        if (!process.env.WS_SERVER_TOKEN) {
-            throw new Error("Missing WS_SERVER_TOKEN");
-        }
-
-        return process.env.WS_SERVER_TOKEN;
     }
 
     static get OLLAMA_PORT(): number {
@@ -417,22 +281,13 @@ export class Config {
         return process.env.OPEN_WEATHER_API;
     }
 
-    static get THE_NEWS_API_KEY(): string | false {
-        if (!process.env.THE_NEWS_API_KEY) {
+    static get WOLFRAM_ALPHA_APP_ID(): string | false {
+        if (!process.env.WOLFRAM_ALPHA_APP_ID) {
             return false;
         }
 
-        return process.env.THE_NEWS_API_KEY;
+        return process.env.WOLFRAM_ALPHA_APP_ID;
     }
-
-    static get LAST_FM_API_KEY(): string | false {
-        if (!process.env.LAST_FM_API_KEY) {
-            return false;
-        }
-
-        return process.env.LAST_FM_API_KEY;
-    }
-
 
     static get GITHUB_API_KEY(): string | false {
         if (!process.env.GITHUB_API_KEY) {
@@ -440,14 +295,6 @@ export class Config {
         }
 
         return process.env.GITHUB_API_KEY;
-    }
-
-    static get THE_MOVIE_DB_API_KEY(): string | false {
-        if (!process.env.THE_MOVIE_DB_API_KEY) {
-            return false;
-        }
-
-        return process.env.THE_MOVIE_DB_API_KEY;
     }
 
     static get JELLYSEER_API_KEY(): string | false {
@@ -547,7 +394,7 @@ export class Config {
         return adminId;
     }
 
-    static LOCAL_STORAGE(req?: HennosConsumer): string {
+    static LOCAL_STORAGE(req?: { chatId: number }): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();
         }
@@ -583,23 +430,6 @@ export class Config {
         }
 
         return process.env.PERPLEXITY_MODEL;
-    }
-
-
-    static get SD_API_ADDRESS(): string | false {
-        if (!process.env.SD_API_ADDRESS) {
-            return false;
-        }
-
-        return process.env.SD_API_ADDRESS;
-    }
-
-    static get INVOKE_API_ADDRESS(): string | false {
-        if (!process.env.INVOKE_API_ADDRESS) {
-            return false;
-        }
-
-        return process.env.INVOKE_API_ADDRESS;
     }
 }
 

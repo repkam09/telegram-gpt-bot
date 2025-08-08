@@ -3,11 +3,10 @@ import { handleGeneralSettingsCommand } from "./commands/handleGeneralSettings";
 import { handleWhitelistCommand, handleWhitelistGroupCommand } from "./commands/handleWhitelist";
 import { handleHelpCommand, handleResetCommand, handleStartCommand } from "./commands/basic";
 import { TelegramBotInstance } from "./telegram";
-import { HennosUser } from "../../singletons/user";
+import { HennosUser, HennosGroup} from "../../singletons/consumer";
 import { handleAdminSetProviderCommand } from "./commands/handleLLMProviderSettings";
 import { handleReadCommand } from "./commands/handleVoiceSettings";
 import { handleExperimentalCommand } from "./commands/handleExperimental";
-import { HennosGroup } from "../../singletons/group";
 import { handleBlacklistCommand } from "./commands/handleBlacklist";
 import { handleCreateHennosLink } from "./commands/handleHennosLink";
 

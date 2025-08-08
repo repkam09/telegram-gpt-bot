@@ -1,9 +1,9 @@
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import OpenAI from "openai";
 import { Config } from "../singletons/config";
+import { HennosConsumer } from "../singletons/consumer";
 
 type PerplexityResponse = OpenAI.Chat.Completions.ChatCompletion & {
     citations: string[]

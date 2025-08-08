@@ -1,4 +1,4 @@
-import { HennosUser } from "../../singletons/user";
+import { HennosUser } from "../../singletons/consumer";
 import { Logger } from "../../singletons/logger";
 import { HennosResponse, HennosTextMessage } from "../../types";
 import { hennosBasePrompt } from "../../prompt";
@@ -37,7 +37,7 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
     });
 
     try {
-        const provider = await user.getSmartProvider(text);
+        const provider = user.getProvider();
         const response = await provider.completion(user, prompt, context);
         await user.updateUserChatContext(user, text);
         await user.updateAssistantChatContext(response);

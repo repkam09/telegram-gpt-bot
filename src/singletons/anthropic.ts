@@ -5,9 +5,10 @@ import { ImageBlockParam, TextBlock, TextBlockParam, Tool, ToolChoiceAuto } from
 import { Logger } from "./logger";
 import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
-import { HennosBaseProvider, HennosConsumer } from "./base";
+import { HennosBaseProvider } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
 import { HennosMessage, HennosResponse, HennosTextMessage } from "../types";
+import { HennosConsumer } from "./consumer";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;

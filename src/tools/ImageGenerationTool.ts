@@ -1,5 +1,4 @@
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
@@ -8,6 +7,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { TelegramBotInstance } from "../services/telegram/telegram";
 import { GPTImageProvider } from "../singletons/gpt-image";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class ImageGenerationTool extends BaseTool {
     public static definition(): Tool {

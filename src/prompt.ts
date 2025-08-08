@@ -1,7 +1,5 @@
-import { HennosConsumer } from "./singletons/base";
 import { Config } from "./singletons/config";
-import { HennosGroup } from "./singletons/group";
-import { HennosUser } from "./singletons/user";
+import { HennosConsumer, HennosGroup, HennosUser } from "./singletons/consumer";
 import { HennosTextMessage } from "./types";
 
 export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextMessage[]> {

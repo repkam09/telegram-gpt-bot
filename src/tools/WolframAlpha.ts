@@ -1,11 +1,12 @@
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/base";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
+import { Config } from "../singletons/config";
+import { HennosConsumer } from "../singletons/consumer";
 
 export class WolframAlpha extends BaseTool {
     public static isEnabled(): boolean {
-        if (process.env.WOLFRAM_ALPHA_APP_ID) {
+        if (Config.WOLFRAM_ALPHA_APP_ID) {
             return true;
         }
 
@@ -48,7 +49,7 @@ export class WolframAlpha extends BaseTool {
         }
 
         try {
-            const response = await BaseTool.fetchTextData(`https://www.wolframalpha.com/api/v1/llm-api?appid=${process.env.WOLFRAM_ALPHA_APP_ID}&maxchars=4096&input=${encodeURI(args.input)}`);
+            const response = await BaseTool.fetchTextData(`https://www.wolframalpha.com/api/v1/llm-api?appid=${Config.WOLFRAM_ALPHA_APP_ID}&maxchars=4096&input=${encodeURI(args.input)}`);
             Logger.debug(req, "WolframAlpha callback", { input: args.input, response_length: response.length });
             return [`wolfram_alpha, input '${args.input}', returned the following response: ${response}`, metadata];
         } catch (err) {

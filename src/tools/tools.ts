@@ -2,11 +2,9 @@ import { Tool, ToolCall } from "ollama";
 import { Logger } from "../singletons/logger";
 import { OpenWeatherMapLookupTool } from "./OpenWeatherMapLookupTool";
 import { FetchWebpageContent } from "./FetchWebpageContent";
-import { HennosConsumer } from "../singletons/base";
 import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
-import { MetaBugReport, MetaDevelopmentThrowError, MetaFeatureRequest, MetaFeedbackTool } from "./HennosMetaTools";
-import { YoutubeVideoTool } from "./YoutubeVideoTool";
+import { MetaBugReport, MetaFeatureRequest, MetaFeedbackTool } from "./HennosMetaTools";
 import { WolframAlpha } from "./WolframAlpha";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
@@ -14,6 +12,9 @@ import { ImageGenerationTool } from "./ImageGenerationTool";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
 import { PythonSandbox } from "./PythonSandbox";
 import { PerplexitySearch } from "./PerplexitySearch";
+import { HennosConsumer } from "../singletons/consumer";
+import { CreateArtifact } from "./CreateArtifact";
+import { SendImageFromURL } from "./SendImageFromURL";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -28,12 +29,13 @@ const WHITELIST_TOOLS = [
     OpenWeatherMapLookupTool,
     WolframAlpha,
     PythonSandbox,
+    AcknowledgeWithoutResponse,
+    ImageGenerationTool,
+    CreateArtifact,
+    SendImageFromURL,
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
-    YoutubeVideoTool,
-    AcknowledgeWithoutResponse,
-    ImageGenerationTool,
     JellyseerMediaRequest,
     JellyseerMediaSearch
 ];
@@ -41,7 +43,6 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
     HomeAssistantStatesTool,
-    MetaDevelopmentThrowError,
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { HennosConsumer } from "./base";
+import { HennosConsumer } from "./consumer";
 import { Logger } from "./logger";
 import { HennosOpenAISingleton } from "./openai";
 
