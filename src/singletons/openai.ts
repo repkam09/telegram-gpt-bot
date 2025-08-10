@@ -118,7 +118,8 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 messages: prompt,
                 tool_choice,
                 tools: tools,
-                parallel_tool_calls: true
+                parallel_tool_calls: true,
+                safety_identifier: `${req.chatId}`
             });
 
             Logger.info(req, `OpenAI Completion Success, Usage: ${calculateUsage(response.usage)} (depth=${depth})`);
