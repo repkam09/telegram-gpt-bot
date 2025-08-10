@@ -31,14 +31,20 @@ export class HennosOpenAISingleton {
     }
 }
 
-function getAvailableTools(req: HennosConsumer): [
+function getAvailableTools(req: HennosConsumer, depth: number): [
     OpenAI.Chat.Completions.ChatCompletionToolChoiceOption | undefined,
-    OpenAI.Chat.Completions.ChatCompletionTool[] | undefined
+    OpenAI.Chat.Completions.ChatCompletionTool[] | undefined,
+    boolean | undefined
 ] {
+    if (depth > Config.HENNOS_TOOL_DEPTH) {
+        Logger.warn(req, `OpenAI Tool Depth Limit Reached: ${depth}, No Tools Available`);
+        return [undefined, undefined, undefined];
+    }
+
     const tools = availableTools(req);
 
     if (!tools) {
-        return [undefined, undefined];
+        return [undefined, undefined, undefined];
     }
 
     const converted = tools.map((tool) => ({
@@ -46,7 +52,7 @@ function getAvailableTools(req: HennosConsumer): [
         function: tool.function as FunctionDefinition,
     }));
 
-    return ["auto", converted];
+    return ["auto", converted, true];
 }
 
 function convertToolCallResponse(tools: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]): [ToolCall, OpenAI.Chat.Completions.ChatCompletionMessageToolCall][] {
@@ -107,18 +113,15 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
-        if (depth > Config.HENNOS_TOOL_DEPTH) {
-            throw new Error("Tool Call Recursion Depth Exceeded");
-        }
+        const [tool_choice, tools, parallel_tool_calls] = getAvailableTools(req, depth);
 
-        const [tool_choice, tools] = getAvailableTools(req);
         try {
             const response = await this.client.chat.completions.create({
                 model: this.model.MODEL,
                 messages: prompt,
                 tool_choice,
-                tools: tools,
-                parallel_tool_calls: true,
+                tools,
+                parallel_tool_calls,
                 safety_identifier: `${req.chatId}`
             });
 

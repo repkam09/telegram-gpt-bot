@@ -170,7 +170,8 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, system: string, prompt: Anthropic.Messages.MessageParam[], depth: number, allow_tools: boolean): Promise<HennosResponse> {
         if (depth > Config.HENNOS_TOOL_DEPTH) {
-            throw new Error("Tool Call Recursion Depth Exceeded");
+            Logger.warn(req, `Anthropic Tool Depth Limit Reached: ${depth}, No Tools Available`);
+            allow_tools = false;
         }
 
         try {
