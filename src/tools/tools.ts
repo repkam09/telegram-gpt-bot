@@ -15,6 +15,7 @@ import { PerplexitySearch } from "./PerplexitySearch";
 import { HennosConsumer } from "../singletons/consumer";
 import { CreateArtifact } from "./CreateArtifact";
 import { SendImageFromURL } from "./SendImageFromURL";
+import { BraveSearch } from "./BraveSearch";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -33,6 +34,7 @@ const WHITELIST_TOOLS = [
     ImageGenerationTool,
     CreateArtifact,
     SendImageFromURL,
+    BraveSearch
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [

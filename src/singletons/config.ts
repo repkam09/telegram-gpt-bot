@@ -297,6 +297,14 @@ export class Config {
         return process.env.GITHUB_API_KEY;
     }
 
+    static get BRAVE_SEARCH_API_KEY(): string | false {
+        if (!process.env.BRAVE_SEARCH_API_KEY) {
+            return false;
+        }
+
+        return process.env.BRAVE_SEARCH_API_KEY;
+    }
+
     static get JELLYSEER_API_KEY(): string | false {
         if (!process.env.JELLYSEER_API_KEY) {
             return false;

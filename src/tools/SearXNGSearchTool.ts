@@ -2,9 +2,14 @@ import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { HennosConsumer } from "../singletons/consumer";
+import { Config } from "../singletons/config";
 
 export class SearXNGSearch extends BaseTool {
     public static isEnabled(): boolean {
+        if (Config.BRAVE_SEARCH_API_KEY) {
+            return false;
+        }
+
         return true;
     }
 
@@ -14,17 +19,15 @@ export class SearXNGSearch extends BaseTool {
             function: {
                 name: "searxng_web_search",
                 description: [
-                    "This core tool performs web searches through SearXNG, a privacy-respecting search engine that aggregates results from multiple sources.",
-                    "It provides search results in a JSON format, including the result title, URL, brief content, and originating search engine.",
-                    "This tool should be your go-to method for obtaining up-to-date and comprehensive external information, to enhance the accuracy and relevance of your responses.",
-                    "It is particularly useful for initial queries to gather broad insights that supplement your existing knowledge base."
+                    "The SearXNG Search tool uses the SearXNG API, a privacy-respecting search engine, to get back search results from the web.",
+                    "This tool takes in a search query and will return the top 8 search results. The results will include the page title, url, and description.",
                 ].join(" "),
                 parameters: {
                     type: "object",
                     properties: {
                         query: {
                             type: "string",
-                            description: "The search query",
+                            description: "The search query to send to the SearXNG API.",
                         }
                     },
                     required: ["query"]
