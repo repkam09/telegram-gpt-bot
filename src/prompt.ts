@@ -33,7 +33,7 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
         },
         {
             role: "system",
-            content: "You should respond in concise paragraphs, seperated by two newlines, to maintain readability and clarity.",
+            content: "You should respond in concise paragraphs, separated by two newlines, to maintain readability and clarity.",
             type: "text"
         },
         {
