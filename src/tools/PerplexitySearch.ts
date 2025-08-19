@@ -90,7 +90,7 @@ You should respond using only plain text with no markdown or code blocks.
             const content = result.choices[0].message.content;
 
             const response = `${content}\n\nSources:\n${citations}`;
-            Logger.info(req, "PerplexitySearch response", { response });
+            Logger.debug(req, "PerplexitySearch response", { response });
 
             return [response, metadata];
         } catch {
