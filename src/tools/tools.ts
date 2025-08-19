@@ -4,7 +4,7 @@ import { OpenWeatherMapLookupTool } from "./OpenWeatherMapLookupTool";
 import { FetchWebpageContent } from "./FetchWebpageContent";
 import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
-import { MetaBugReport, MetaFeatureRequest, MetaFeedbackTool } from "./HennosMetaTools";
+import { MetaBugReport, MetaFeatureRequest, MetaFeedbackTool, MetaSetBotPreferredName, MetaSetLLMProvider, MetaSetUserPreferredName } from "./HennosMetaTools";
 import { WolframAlpha } from "./WolframAlpha";
 import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
@@ -34,7 +34,10 @@ const WHITELIST_TOOLS = [
     ImageGenerationTool,
     CreateArtifact,
     SendImageFromURL,
-    BraveSearch
+    BraveSearch,
+    MetaSetBotPreferredName,
+    MetaSetUserPreferredName,
+    MetaSetLLMProvider
 ];
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [

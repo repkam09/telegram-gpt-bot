@@ -4,7 +4,8 @@ import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } fr
 import axios from "axios";
 import { Config } from "../singletons/config";
 import { TelegramBotInstance } from "../services/telegram/telegram";
-import { HennosConsumer } from "../singletons/consumer";
+import { HennosConsumer, HennosGroup } from "../singletons/consumer";
+import { ValidLLMProvider } from "../types";
 
 export class MetaBugReport extends BaseTool {
     public static isEnabled(): boolean {
@@ -206,6 +207,166 @@ export class MetaFeedbackTool extends BaseTool {
             const error = err as Error;
             Logger.error(req, "MetaFeedbackTool unable to send feedback", { message: args.message, error: error.message });
             return ["Unable to send your feedback. Please try again later.", metadata];
+        }
+    }
+}
+
+export class MetaSetUserPreferredName extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+
+    public static definition(): Tool {
+        return {
+            type: "function",
+            function: {
+                name: "set_user_preferred_name",
+                description: [
+                    "Use this tool to set a preferred name for the user.",
+                    "If a user asks to be called something else, you can use this tool to update their preferred name within the system.",
+                    "This tool provides the same functionality that exists in the user '/settings' menu for setting a preferred name."
+                ].join(" "),
+                parameters: {
+                    type: "object",
+                    properties: {
+                        preferredName: {
+                            type: "string",
+                            description: "The preferred name to be set for the user."
+                        },
+                    },
+                    required: ["preferredName"],
+                }
+            }
+        };
+    }
+
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(req, "SetUserPreferredName callback", { preferredName: args.preferredName });
+        if (!args.preferredName) {
+            return ["set_user_preferred_name, preferredName not provided", metadata];
+        }
+
+        try {
+            if (req instanceof HennosGroup) {
+                return ["set_user_preferred_name, this feature is not available for groups", metadata];
+            }
+
+            await req.setPreferredName(args.preferredName);
+            return ["set_user_preferred_name: success", metadata];
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, "SetUserPreferredName unable to set preferred name", { preferredName: args.preferredName, error: error.message });
+            return ["set_user_preferred_name, unable to set preferred name", metadata];
+        }
+    }
+}
+
+export class MetaSetBotPreferredName extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+
+    public static definition(): Tool {
+        return {
+            type: "function",
+            function: {
+                name: "set_bot_preferred_name",
+                description: [
+                    "Use this tool to set a preferred name for yourself. By default you are 'Hennos'.",
+                    "If the user wants to give you a different name, you can use this tool to update their settings within the system.",
+                    "This tool provides the same functionality that exists in the user '/settings' menu for setting a preferred bot name."
+                ].join(" "),
+                parameters: {
+                    type: "object",
+                    properties: {
+                        preferredName: {
+                            type: "string",
+                            description: "The preferred name to be set for the bot."
+                        },
+                    },
+                    required: ["preferredName"],
+                }
+            }
+        };
+    }
+
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(req, "SetBotPreferredName callback", { preferredName: args.preferredName });
+        if (!args.preferredName) {
+            return ["set_bot_preferred_name, preferredName not provided", metadata];
+        }
+
+        try {
+            if (req instanceof HennosGroup) {
+                return ["set_bot_preferred_name, this feature is not available for groups", metadata];
+            }
+
+            await req.setPreferredBotName(args.preferredName);
+            return ["set_bot_preferred_name: success", metadata];
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, "SetBotPreferredName unable to set preferred name", { preferredName: args.preferredName, error: error.message });
+            return ["set_bot_preferred_name, unable to set preferred name", metadata];
+        }
+    }
+}
+
+
+export class MetaSetLLMProvider extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+
+    public static definition(): Tool {
+        return {
+            type: "function",
+            function: {
+                name: "set_llm_provider",
+                description: [
+                    "Use this tool to change the LLM provider that powers Hennos.",
+                    "If the user asks to use a different LLM provider, you can use this tool to update their settings within the system.",
+                    "This tool provides the same functionality that exists in the user '/settings' menu for setting a preferred LLM provider."
+                ].join(" "),
+                parameters: {
+                    type: "object",
+                    properties: {
+                        provider: {
+                            type: "string",
+                            enum: [
+                                "openai",
+                                "anthropic",
+                                "ollama",
+                            ],
+                            description: "The LLM provider to use for future messages."
+                        },
+                    },
+                    required: ["provider"],
+                }
+            }
+        };
+    }
+
+    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(req, "MetaSetLLMProvider callback", { provider: args.provider });
+        if (!args.provider) {
+            return ["set_llm_provider, provider not provided", metadata];
+        }
+
+        if (!["openai", "anthropic", "ollama"].includes(args.provider)) {
+            return ["set_llm_provider, invalid provider specified", metadata];
+        }
+
+        try {
+            if (req instanceof HennosGroup) {
+                return ["set_llm_provider, this feature is not available for groups", metadata];
+            }
+
+            await req.setPreferredProvider(args.provider as ValidLLMProvider);
+            return ["set_llm_provider: success", metadata];
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, "MetaSetLLMProvider unable to set provider", { provider: args.provider, error: error.message });
+            return ["set_llm_provider, unable to set provider", metadata];
         }
     }
 }
