@@ -3,6 +3,7 @@ import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } fr
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
 import { HennosConsumer } from "../singletons/consumer";
+import { TelegramBotInstance } from "../services/telegram/telegram";
 
 export class JellyseerMediaRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -88,7 +89,8 @@ export class JellyseerMediaRequest extends BaseTool {
 
             Logger.debug(req, "jellyseer_media_request", results);
 
-            return ["jellyseer_media_requestm, success", metadata];
+            await TelegramBotInstance.sendAdminMessage(`${req.displayName} has requested ${args.mediaType} with id ${args.mediaId}`);
+            return ["jellyseer_media_request, success", metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(req, `jellyseer_media_request error: ${error.message}, ${error.stack}`);
