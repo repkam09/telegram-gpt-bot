@@ -1,5 +1,4 @@
 import { Config } from "../../singletons/config";
-import { handlePrivateMessage } from "../../handlers/text/private";
 import { HennosUser } from "../../singletons/consumer";
 
 import Koa from "koa";
