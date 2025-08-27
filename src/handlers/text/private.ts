@@ -11,10 +11,6 @@ export async function handlePrivateMessage(user: HennosUser, text: string, hint?
     }
 }
 
-export async function handleOneOffPrivateMessage(user: HennosUser, text: string, hint?: HennosTextMessage): Promise<HennosResponse> {
-    return handleLimitedUserPrivateMessage(user, text, false, hint);
-}
-
 async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, hint?: HennosTextMessage): Promise<HennosResponse> {
     Logger.debug(user, `Whitelisted User Chat Completion Start, Text: ${text}`);
 

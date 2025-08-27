@@ -50,6 +50,28 @@ export class Config {
         return process.env.TELEGRAM_ENABLED === "true";
     }
 
+    static get WEBHOOK_ENABLED(): boolean {
+        if (!process.env.WEBHOOK_ENABLED) {
+            return false;
+        }
+
+        return process.env.WEBHOOK_ENABLED === "true";
+    }
+
+    static get WEBHOOK_PORT(): number {
+        if (!process.env.WEBHOOK_PORT) {
+            return 3000;
+        }
+
+        const port = parseInt(process.env.WEBHOOK_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid WEBHOOK_PORT value");
+        }
+
+        return port;
+    }
+
     static get HENNOS_FOLLOW_UP_ENABLED(): number[] | false {
         if (!process.env.HENNOS_FOLLOW_UP_ENABLED) {
             return false;

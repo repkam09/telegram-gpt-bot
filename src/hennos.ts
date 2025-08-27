@@ -4,6 +4,7 @@ import { Database } from "./singletons/sqlite";
 import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
 import { Logger } from "./singletons/logger";
+import { ServerRESTInterface } from "./services/rest/server";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -24,6 +25,12 @@ async function start() {
         init.push(TelegramBotInstance.init());
     } else {
         console.warn("Telegram bot is disabled, set TELEGRAM_ENABLED=true to enable it");
+    }
+
+    if (Config.WEBHOOK_ENABLED) {
+        init.push(ServerRESTInterface.init());
+    } else {
+        console.warn("Webhook is disabled, set WEBHOOK_ENABLED=true to enable it");
     }
 
     await Promise.all(init);
