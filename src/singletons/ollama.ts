@@ -86,11 +86,12 @@ class HennosOllamaProvider extends HennosBaseProvider {
         }
 
         try {
+            const tools = await availableTools(req);
             const response = await this.client.chat({
                 stream: false,
                 model: Config.OLLAMA_LLM.MODEL,
                 messages: prompt,
-                tools: availableTools(req)
+                tools
             });
 
             Logger.info(req, `Ollama Completion Success, Resulted in ${response.eval_count} output tokens.  (depth=${depth})`);

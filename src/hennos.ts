@@ -5,6 +5,7 @@ import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
 import { Logger } from "./singletons/logger";
 import { ServerRESTInterface } from "./services/rest/server";
+import { HennosMCPClient } from "./singletons/mcp";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -31,6 +32,12 @@ async function start() {
         init.push(ServerRESTInterface.init());
     } else {
         console.warn("Webhook is disabled, set WEBHOOK_ENABLED=true to enable it");
+    }
+
+    if (Config.MCP_SERVERS.length > 0) {
+        init.push(HennosMCPClient.init());
+    } else {
+        console.warn("MCP client is disabled, set MCP_SERVERS to enable it");
     }
 
     await Promise.all(init);

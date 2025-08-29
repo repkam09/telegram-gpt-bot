@@ -21,10 +21,10 @@ export class HennosAnthropicSingleton {
     }
 }
 
-function getAvailableTools(req: HennosConsumer, allow_tools: boolean): [
+async function getAvailableTools(req: HennosConsumer, allow_tools: boolean): Promise<[
     ToolChoiceAuto | undefined,
     Tool[] | undefined
-] {
+]> {
 
     if (!allow_tools) {
         Logger.debug(req, `Tools disabled for ${req.displayName} because tools are blocked`);
@@ -35,7 +35,7 @@ function getAvailableTools(req: HennosConsumer, allow_tools: boolean): [
         type: "auto"
     };
 
-    const tools = availableTools(req);
+    const tools = await availableTools(req);
     if (!tools) {
         Logger.debug(req, `Tools disabled for ${req.displayName} because no tools are available`);
         return [undefined, undefined];
@@ -175,7 +175,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         }
 
         try {
-            const [tool_choice, tools] = getAvailableTools(req, allow_tools);
+            const [tool_choice, tools] = await getAvailableTools(req, allow_tools);
 
             const options: Anthropic.Messages.MessageCreateParamsNonStreaming = {
                 system,

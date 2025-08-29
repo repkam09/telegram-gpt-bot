@@ -16,6 +16,7 @@ import { HennosConsumer } from "../singletons/consumer";
 import { CreateArtifact } from "./CreateArtifact";
 import { SendImageFromURL } from "./SendImageFromURL";
 import { BraveSearch } from "./BraveSearch";
+import { HennosMCPClient } from "../singletons/mcp";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -50,7 +51,7 @@ const ADMIN_TOOLS = [
     HomeAssistantStatesTool,
 ];
 
-export function availableTools(req: HennosConsumer): Tool[] | undefined {
+export async function availableTools(req: HennosConsumer): Promise<Tool[] | undefined> {
     if (req.chatId === -1) {
         return undefined;
     }
@@ -85,6 +86,14 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
                 tools.push(Tool.definition());
             }
         });
+
+        const mcp = await HennosMCPClient.availableTools();
+        mcp.forEach((tool) => {
+            tools.push({
+                type: "function",
+                function: tool
+            });
+        });
     }
 
     Logger.debug(req, `Tools allowed for ${req.displayName}, there are ${tools.length} tools available: ${tools.map((tool) => tool.function.name).join(", ")}`);
@@ -94,6 +103,15 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
 export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCall, ToolCallMetadata][]): Promise<ToolCallResponse[]> {
     try {
         const results = await Promise.all(tool_calls.map(async ([tool_call, metadata]) => {
+            if (tool_call.function.name.startsWith("MCP--")) {
+                const names = HennosMCPClient.splitToolName(tool_call.function.name);
+                const mcpToolArgs = tool_call.function.arguments;
+                if (names === null) {
+                    return [`Unknown MCP tool call: ${tool_call.function.name}`, metadata] as [string, ToolCallMetadata];
+                }
+                return HennosMCPClient.executeTool(req, names.serverName, names.toolName, mcpToolArgs, metadata);
+            }
+
             const ToolMatch = [...PUBLIC_TOOLS, ...WHITELIST_TOOLS, ...EXPERIMENTAL_AVAILABLE_TOOLS, ...ADMIN_TOOLS].find((Tool) => Tool.definition().function.name === tool_call.function.name);
             if (!ToolMatch) {
                 Logger.info(req, `Unknown tool call: ${tool_call.function.name}`);
@@ -112,3 +130,4 @@ export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCal
 
     return [];
 }
+

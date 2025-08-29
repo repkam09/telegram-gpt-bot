@@ -31,17 +31,17 @@ export class HennosOpenAISingleton {
     }
 }
 
-function getAvailableTools(req: HennosConsumer, depth: number): [
+async function getAvailableTools(req: HennosConsumer, depth: number): Promise<[
     OpenAI.Chat.Completions.ChatCompletionToolChoiceOption | undefined,
     OpenAI.Chat.Completions.ChatCompletionTool[] | undefined,
     boolean | undefined
-] {
+]> {
     if (depth > Config.HENNOS_TOOL_DEPTH) {
         Logger.warn(req, `OpenAI Tool Depth Limit Reached: ${depth}, No Tools Available`);
         return [undefined, undefined, undefined];
     }
 
-    const tools = availableTools(req);
+    const tools = await availableTools(req);
 
     if (!tools) {
         return [undefined, undefined, undefined];
@@ -113,7 +113,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
     }
 
     private async completionWithRecursiveToolCalls(req: HennosConsumer, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], depth: number): Promise<HennosResponse> {
-        const [tool_choice, tools, parallel_tool_calls] = getAvailableTools(req, depth);
+        const [tool_choice, tools, parallel_tool_calls] = await getAvailableTools(req, depth);
 
         try {
             const response = await this.client.chat.completions.create({

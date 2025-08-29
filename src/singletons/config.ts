@@ -17,7 +17,26 @@ export type HennosEmbeddingModelConfig = {
     CTX: number
 }
 
+export type ServerConfig = {
+    name: string;
+    type: "http" | "sse";
+    url: string;
+    headers: Record<string, string>;
+};
+
 export class Config {
+    static get MCP_SERVERS(): ServerConfig[] {
+        return [{
+            name: "github",
+            type: "http",
+            url: "https://api.githubcopilot.com/mcp/",
+            headers: {
+                "Authorization": `Bearer ${Config.GITHUB_API_KEY}`
+            }
+        }
+        ];
+    }
+
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
             return false;
