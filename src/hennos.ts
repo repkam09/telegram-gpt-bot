@@ -1,10 +1,12 @@
 import { Config } from "./singletons/config";
 import { Database } from "./singletons/sqlite";
 
+import { Logger } from "./singletons/logger";
+
 import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
-import { Logger } from "./singletons/logger";
 import { ServerRESTInterface } from "./services/rest/server";
+import { HennosTemporalWorker } from "./services/temporal/worker";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -33,10 +35,16 @@ async function start() {
         console.warn("Webhook is disabled, set WEBHOOK_ENABLED=true to enable it");
     }
 
+    if (Config.TEMPORAL_ENABLED) {
+        init.push(HennosTemporalWorker.init());
+    } else {
+        console.warn("Temporal worker is disabled, set TEMPORAL_ENABLED=true to enable it");
+    }
+
     await Promise.all(init);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
-    const enabled = [Config.TELEGRAM_ENABLED];
+    const enabled = [Config.TELEGRAM_ENABLED, Config.WEBHOOK_ENABLED, Config.TEMPORAL_ENABLED];
     if (Config.HENNOS_DEVELOPMENT_MODE && !enabled.includes(true)) {
         Logger.debug(undefined, "Running command line interface in development mode");
         await CommandLineInstance.run();

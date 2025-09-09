@@ -424,6 +424,52 @@ export class Config {
         return adminId;
     }
 
+    static get TEMPORAL_ENABLED(): boolean {
+        if (!process.env.TEMPORAL_ENABLED) {
+            return false;
+        }
+
+        return process.env.TEMPORAL_ENABLED === "true";
+    }
+
+    static get TEMPORAL_HOST(): string {
+        if (!process.env.TEMPORAL_HOST) {
+            return "localhost";
+        }
+
+        return process.env.TEMPORAL_HOST;
+    }
+
+    static get TEMPORAL_PORT(): number {
+        if (!process.env.TEMPORAL_PORT) {
+            return 7233;
+        }
+
+        const port = parseInt(process.env.TEMPORAL_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid TEMPORAL_PORT value");
+        }
+
+        return port;
+    }
+
+    static get TEMPORAL_NAMESPACE(): string {
+        if (!process.env.TEMPORAL_NAMESPACE) {
+            return "default";
+        }
+
+        return process.env.TEMPORAL_NAMESPACE;
+    }
+
+    static get TEMPORAL_TASK_QUEUE(): string {
+        if (!process.env.TEMPORAL_TASK_QUEUE) {
+            return "development";
+        }
+
+        return process.env.TEMPORAL_TASK_QUEUE;
+    }
+
     static LOCAL_STORAGE(req?: { chatId: number }): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();
