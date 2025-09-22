@@ -16,6 +16,7 @@ import { HennosConsumer } from "../singletons/consumer";
 import { CreateArtifact } from "./CreateArtifact";
 import { SendImageFromURL } from "./SendImageFromURL";
 import { BraveSearch } from "./BraveSearch";
+import { VideoGenerationTool } from "./VideoGenerationTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -32,6 +33,7 @@ const WHITELIST_TOOLS = [
     PythonSandbox,
     AcknowledgeWithoutResponse,
     ImageGenerationTool,
+    VideoGenerationTool,
     CreateArtifact,
     SendImageFromURL,
     BraveSearch,

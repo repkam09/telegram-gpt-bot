@@ -80,7 +80,31 @@ export class TelegramBotInstance {
         const bot = TelegramBotInstance.instance();
         const filename = path.split("/").pop() || "image";
         const contentType = mimetype.lookup(filename) || "image/png";
-        await bot.sendPhoto(req.chatId, fs.createReadStream(path), options, { contentType, filename });
+
+        try {
+            await bot.sendPhoto(req.chatId, fs.createReadStream(path), options, { contentType, filename });
+        } catch (err: unknown) {
+            Logger.error(req, "TelegramBotInstance sendImageWrapper error", err);
+            throw err;
+        }
+    }
+
+    /**
+     * Your video must be in MP4 format. The maximum file size is 50 MB.
+     */
+    static async sendVideoWrapper(req: HennosConsumer, path: string): Promise<void> {
+        if (!path) {
+            throw new Error("Message content is undefined");
+        }
+
+        const filename = path.split("/").pop() || "video.mp4";
+        const bot = TelegramBotInstance.instance();
+        try {
+            await bot.sendVideo(req.chatId, fs.createReadStream(path), {}, { contentType: "video/mp4", filename });
+        } catch (err: unknown) {
+            Logger.error(req, "TelegramBotInstance sendVideoWrapper error", err);
+            throw err;
+        }
     }
 
     /**
@@ -94,7 +118,13 @@ export class TelegramBotInstance {
         const filename = path.basename(filePath);
         const contentType = mimetype.lookup(filename) || "application/octet-stream";
         const bot = TelegramBotInstance.instance();
-        await bot.sendDocument(req.chatId, fs.createReadStream(filePath), options, { filename, contentType });
+
+        try {
+            await bot.sendDocument(req.chatId, fs.createReadStream(filePath), options, { filename, contentType });
+        } catch (err: unknown) {
+            Logger.error(req, "TelegramBotInstance sendDocumentWrapper error", err);
+            throw err;
+        }
     }
 
     /**

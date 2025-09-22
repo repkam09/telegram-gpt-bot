@@ -33,6 +33,16 @@ export async function isBlacklisted(chatId: number): Promise<{ chatId: number, d
     };
 }
 
+export async function HennosAnonUser(): Promise<HennosUser> {
+    const user = new HennosUser(-1);
+    await user.clearChatContext();
+    user.displayName = "User";
+    user.whitelisted = false;
+    user.experimental = false;
+    user.provider = "ollama";
+    return user;
+}
+
 export class HennosUser {
     public chatId: number;
     public displayName: string;

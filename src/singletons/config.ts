@@ -133,6 +133,14 @@ export class Config {
         return process.env.OPENAI_API_KEY;
     }
 
+    static get GOOGLE_API_KEY(): string {
+        if (!process.env.GOOGLE_API_KEY) {
+            throw new Error("Missing GOOGLE_API_KEY");
+        }
+
+        return process.env.GOOGLE_API_KEY;
+    }
+
     static get OPENAI_LLM(): HennosModelConfig {
         if (!process.env.OPENAI_LLM) {
             return {

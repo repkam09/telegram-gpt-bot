@@ -8,6 +8,7 @@ import fs from "node:fs/promises";
 import { TelegramBotInstance } from "../services/telegram/telegram";
 import { GPTImageProvider } from "../singletons/gpt-image";
 import { HennosConsumer } from "../singletons/consumer";
+import { NanoBananaImageProvider } from "../singletons/nano-banana";
 
 export class ImageGenerationTool extends BaseTool {
     public static definition(): Tool {
@@ -49,20 +50,38 @@ export class ImageGenerationTool extends BaseTool {
         // write the image to a file
         const storage = path.join(Config.LOCAL_STORAGE(req), `generated_${randomUUID()}.png`);
 
-        try {
-            const image = await GPTImageProvider.generateImage(req, args.prompt);
-            await fs.writeFile(storage, image, "binary");
+        if (!req.experimental) {
+            try {
+                const image = await GPTImageProvider.generateImage(req, args.prompt);
+                await fs.writeFile(storage, image, "binary");
 
-            clearInterval(interval);
+                clearInterval(interval);
 
-            const caption = `Created with OpenAI GPT Image. Prompt: ${args.prompt}`;
-            const truncatedCaption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
-            await TelegramBotInstance.sendImageWrapper(req, storage, { caption: truncatedCaption });
-            return [`generate_image success. The requested image was generated using OpenAI GPT Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
-        } catch (err: unknown) {
-            Logger.error(req, "GPTImageProvider error", err);
-            clearInterval(interval);
-            return ["generate_image failed", metadata];
+                const caption = `Created with OpenAI GPT Image. Prompt: ${args.prompt}`;
+                const truncatedCaption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: truncatedCaption });
+                return [`generate_image success. The requested image was generated using OpenAI GPT Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
+            } catch (err: unknown) {
+                Logger.error(req, "GPTImageProvider error", err);
+                clearInterval(interval);
+                return ["generate_image failed", metadata];
+            }
+        } else {
+            try {
+                const image = await NanoBananaImageProvider.generateImage(req, args.prompt);
+                await fs.writeFile(storage, image, "binary");
+
+                clearInterval(interval);
+
+                const caption = `Created with NanoBanana Image. Prompt: ${args.prompt}`;
+                const truncatedCaption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: truncatedCaption });
+                return [`generate_image success. The requested image was generated using NanoBanana Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
+            } catch (err: unknown) {
+                Logger.error(req, "NanoBananaImageProvider error", err);
+                clearInterval(interval);
+                return ["generate_image failed", metadata];
+            }
         }
     }
 }

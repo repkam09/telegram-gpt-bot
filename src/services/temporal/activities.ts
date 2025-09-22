@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { HennosUser } from "../../singletons/consumer";
+import { HennosAnonUser, HennosUser } from "../../singletons/consumer";
 import { Logger } from "../../singletons/logger";
 import { ApplicationFailure } from "@temporalio/workflow";
 import { handlePrivateMessage } from "../../handlers/text/private";
@@ -57,4 +57,21 @@ async function getHennosUser(chatId: number): Promise<HennosUser> {
     }
 
     return user;
+}
+
+
+type MessageLite = {
+    role: "user" | "assistant" | "system";
+    content: string;
+};
+
+export async function hennosLiteChat(messages: MessageLite[]): Promise<MessageLite> {
+    const hennosUser = await HennosAnonUser();
+
+    const response = await handlePrivateMessage(hennosUser, messages.filter(m => m.role === "user").map(m => m.content).join("\n"));
+    if (response.__type === "string") {
+        return { role: "assistant", content: response.payload };
+    }
+
+    return { role: "assistant", content: JSON.stringify(response) };
 }
