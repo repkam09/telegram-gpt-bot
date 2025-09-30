@@ -17,6 +17,7 @@ import { CreateArtifact } from "./CreateArtifact";
 import { SendImageFromURL } from "./SendImageFromURL";
 import { BraveSearch } from "./BraveSearch";
 import { VideoGenerationTool } from "./VideoGenerationTool";
+import { AudiobookRequest, EbookRequest } from "./MiscFileRequestTool";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -44,7 +45,9 @@ const WHITELIST_TOOLS = [
 
 const EXPERIMENTAL_AVAILABLE_TOOLS = [
     JellyseerMediaRequest,
-    JellyseerMediaSearch
+    JellyseerMediaSearch,
+    AudiobookRequest,
+    EbookRequest
 ];
 
 const ADMIN_TOOLS = [
