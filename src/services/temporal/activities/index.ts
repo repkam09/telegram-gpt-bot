@@ -1,9 +1,11 @@
 import OpenAI from "openai";
-import { HennosAnonUser, HennosUser } from "../../singletons/consumer";
-import { Logger } from "../../singletons/logger";
+import { HennosAnonUser, HennosUser } from "../../../singletons/consumer";
+import { Logger } from "../../../singletons/logger";
 import { ApplicationFailure } from "@temporalio/workflow";
-import { handlePrivateMessage } from "../../handlers/text/private";
-import { Config } from "../../singletons/config";
+import { handlePrivateMessage } from "../../../handlers/text/private";
+import { Config } from "../../../singletons/config";
+
+export * from "./openai";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 

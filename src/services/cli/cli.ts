@@ -70,7 +70,6 @@ export class CommandLineInstance {
                 query = null;
             }
 
-
             if (query === "ollama") {
                 console.log("Switching to Ollama...");
                 await user.setPreferredProvider("ollama");
