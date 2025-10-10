@@ -3,18 +3,23 @@ import { Config } from "../../../singletons/config";
 import { ApplicationFailure } from "@temporalio/workflow";
 import { Logger } from "../../../singletons/logger";
 import { HennosWorkflowUser } from "../types";
+import { minimalBasePrompt } from "../../../prompt";
+import { ChatCompletionSystemMessageParam } from "openai/resources";
 
 export async function chat(user: HennosWorkflowUser, messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): Promise<OpenAI.Chat.Completions.ChatCompletion.Choice> {
+    Logger.info(`Starting chat completion for user ${user.userId.value} with ${messages.length} messages`);
     const client = new OpenAI({
         apiKey: Config.OPENAI_API_KEY,
     });
 
     const model = user.isWhitelisted ? Config.OPENAI_LLM.MODEL : Config.OPENAI_MINI_LLM.MODEL;
 
-    const [tool_choice, tools, parallel_tool_calls] = getAvailableTools(user);
+    const prompt: ChatCompletionSystemMessageParam[] = minimalBasePrompt("Hennos").map((text) => ({ role: "system", content: text.content }));
+
+    const [tool_choice, tools, parallel_tool_calls] = getAvailableTools();
     const response = await client.chat.completions.create({
         model,
-        messages,
+        messages: [...prompt, ...messages],
         tool_choice,
         tools,
         parallel_tool_calls,
@@ -30,14 +35,14 @@ export async function chat(user: HennosWorkflowUser, messages: OpenAI.Chat.Compl
         throw ApplicationFailure.retryable("Invalid OpenAI Response Shape, Missing Expected Message Properties", "InvalidOpenAIResponseShape");
     }
 
+    Logger.info(`Completed chat completion for user ${user.userId.value} with model ${model}`);
     return response.choices[0];
 }
 
-function getAvailableTools(user: HennosWorkflowUser): [
+function getAvailableTools(): [
     OpenAI.Chat.Completions.ChatCompletionToolChoiceOption | undefined,
     OpenAI.Chat.Completions.ChatCompletionTool[] | undefined,
     boolean | undefined
 ] {
-    Logger.info(`Fetching available tools for chatId ${user.userId.value}`);
     return [undefined, undefined, undefined];
 }

@@ -50,6 +50,22 @@ export class Config {
         return process.env.TELEGRAM_ENABLED === "true";
     }
 
+    static get DISCORD_ENABLED(): boolean {
+        if (!process.env.DISCORD_ENABLED) {
+            return false;
+        }
+
+        return process.env.DISCORD_ENABLED === "true";
+    }
+
+    static get DISCORD_BOT_TOKEN(): string {
+        if (!process.env.DISCORD_BOT_TOKEN) {
+            throw new Error("Missing DISCORD_BOT_TOKEN");
+        }
+
+        return process.env.DISCORD_BOT_TOKEN;
+    }
+
     static get WEBHOOK_ENABLED(): boolean {
         if (!process.env.WEBHOOK_ENABLED) {
             return false;

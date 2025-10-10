@@ -7,6 +7,7 @@ import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
 import { ServerRESTInterface } from "./services/rest/server";
 import { HennosTemporalWorker } from "./services/temporal/worker";
+import { DiscordBotInstance } from "./services/discord/discord";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -27,6 +28,12 @@ async function start() {
         init.push(TelegramBotInstance.init());
     } else {
         console.warn("Telegram bot is disabled, set TELEGRAM_ENABLED=true to enable it");
+    }
+
+    if (Config.DISCORD_ENABLED) {
+        init.push(DiscordBotInstance.init());
+    } else {
+        console.warn("Discord bot is disabled, set DISCORD_ENABLED=true to enable it");
     }
 
     if (Config.WEBHOOK_ENABLED) {

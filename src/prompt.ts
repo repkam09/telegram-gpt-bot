@@ -2,25 +2,12 @@ import { Config } from "./singletons/config";
 import { HennosConsumer, HennosGroup, HennosUser } from "./singletons/consumer";
 import { HennosTextMessage } from "./types";
 
-export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextMessage[]> {
-    let botName = Config.HENNOS_BOT_NAME;
-    let preferredName = req.displayName;
-
-    if (req instanceof HennosUser) {
-        const preferences = await req.getPreferences();
-        if (preferences.botName) {
-            botName = preferences.botName;
-        }
-
-        if (preferences.preferredName) {
-            preferredName = preferences.preferredName;
-        }
-    }
+export function minimalBasePrompt(botName: string): HennosTextMessage[] {
     // day of the week right now
     const dayOfWeek = new Date().getDay();
     const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 
-    const prompt: HennosTextMessage[] = [
+    return [
         {
             role: "system",
             content: `You are a conversational assistant named '${botName}' that is helpful, creative, clever, and friendly.`,
@@ -51,12 +38,30 @@ export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextM
             content: `Your knowledge is based on the data your model was trained on. Be aware that you may not have the most up to date information in your training data. The current date is ${new Date().toDateString()}. It is a ${dayOfWeekString} today.`,
             type: "text"
         },
-        {
-            role: "system",
-            content: "In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.",
-            type: "text"
-        }
     ];
+}
+
+export async function hennosBasePrompt(req: HennosConsumer): Promise<HennosTextMessage[]> {
+    let botName = Config.HENNOS_BOT_NAME;
+    let preferredName = req.displayName;
+
+    if (req instanceof HennosUser) {
+        const preferences = await req.getPreferences();
+        if (preferences.botName) {
+            botName = preferences.botName;
+        }
+
+        if (preferences.preferredName) {
+            preferredName = preferences.preferredName;
+        }
+    }
+
+    const prompt: HennosTextMessage[] = minimalBasePrompt(botName);
+    prompt.push({
+        role: "system",
+        content: "In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.",
+        type: "text"
+    });
 
     if (req instanceof HennosUser) {
         const info = await req.getBasicInfo();

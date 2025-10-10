@@ -13,26 +13,31 @@ const WAIT_TIME_MS = 60_000 * 60; // 60 minutes
 type HennosUserChatInput = {
     user: HennosWorkflowUser;
     continueAsNewState?: {
-        chatHistory: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+        chatHistory: HennosUserChatHistoryMessage[];
         pendingMessages: { messageId: string; message: string }[];
     }
 }
 
-const handleHennosUserMessage = defineSignal<[{ messageId: string, message: string }]>("handleHennosUserMessage");
+type HennosUserChatHistoryMessage = {
+    messageId: string;
+    message: OpenAI.Chat.Completions.ChatCompletionMessageParam;
+}
+
+export const handleHennosUserMessage = defineSignal<[{ messageId: string, message: string }]>("handleHennosUserMessage");
 const handleHennosUserSetProvider = defineSignal<[{ provider: HennosWorkflowProvider }]>("handleHennosUserSetProvider");
 const handleHennosUserSetWhitelisted = defineSignal<[{ isWhitelisted: boolean }]>("handleHennosUserSetWhitelisted");
 const handleHennosUserSetExperimental = defineSignal<[{ isExperimental: boolean }]>("handleHennosUserSetExperimental");
 const handleHennosUserSetAdmin = defineSignal<[{ isAdmin: boolean }]>("handleHennosUserSetAdmin");
 const handleHennosUserForceContinueAsNew = defineSignal("handleHennosUserForceContinueAsNew");
 
-const queryHennosUserChatHistory = defineQuery<OpenAI.Chat.Completions.ChatCompletionMessageParam[], [number]>("queryHennosUserChatHistory");
-const queryHennosUserMessageHandled = defineQuery<boolean, [string]>("queryHennosUserMessageHandled");
+const queryHennosUserChatHistory = defineQuery<HennosUserChatHistoryMessage[], [number]>("queryHennosUserChatHistory");
+export const queryHennosUserMessageHandled = defineQuery<false | string, [string]>("queryHennosUserMessageHandled");
 
 export async function hennosUserChat(input: HennosUserChatInput): Promise<never> {
     const { user, continueAsNewState } = input;
 
     const pendingMessages: { messageId: string; message: string }[] = continueAsNewState ? continueAsNewState.pendingMessages : [];
-    const chatHistory: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = continueAsNewState ? continueAsNewState.chatHistory : [];
+    const chatHistory: HennosUserChatHistoryMessage[] = continueAsNewState ? continueAsNewState.chatHistory : [];
 
     let forceContinueAsNew = false;
 
@@ -47,7 +52,8 @@ export async function hennosUserChat(input: HennosUserChatInput): Promise<never>
 
     // Set up the query handler to check if a message has been handled
     setHandler(queryHennosUserMessageHandled, (messageId) => {
-        return !pendingMessages.find((msg) => msg.messageId === messageId);
+        const found = chatHistory.find((msg) => msg.messageId === messageId && msg.message.role === "assistant");
+        return found ? found.message.content as string : false;
     });
 
     // Set up the signal handler to receive messages
@@ -97,11 +103,14 @@ export async function hennosUserChat(input: HennosUserChatInput): Promise<never>
         }
 
         chatHistory.push({
-            role: "user",
-            content: pendingMessage.message
+            messageId: pendingMessage.messageId,
+            message: {
+                role: "user",
+                content: pendingMessage.message
+            }
         });
 
-        const response = await chat(user, chatHistory);
+        const response = await chat(user, chatHistory.map((msg) => msg.message));
         if (response.finish_reason === "tool_calls" || response.finish_reason === "function_call") {
             throw new Error("Not Implemented: Handle tool calls.");
         }
@@ -112,8 +121,11 @@ export async function hennosUserChat(input: HennosUserChatInput): Promise<never>
 
         if (response.finish_reason === "content_filter") {
             chatHistory.push({
-                role: "assistant",
-                content: "I'm sorry, but I can't assist with that request."
+                messageId: pendingMessage.messageId,
+                message: {
+                    role: "assistant",
+                    content: "I'm sorry, but I can't assist with that request."
+                }
             });
             continue;
         }
@@ -122,8 +134,11 @@ export async function hennosUserChat(input: HennosUserChatInput): Promise<never>
             // Only treat this as the final message if the user didnt send another message while we were generating
             if (pendingMessages.length == 0 && response.message.content) {
                 chatHistory.push({
-                    role: "assistant",
-                    content: response.message.content
+                    messageId: pendingMessage.messageId,
+                    message: {
+                        role: "assistant",
+                        content: response.message.content
+                    }
                 });
             }
         }
