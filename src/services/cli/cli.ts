@@ -64,6 +64,12 @@ export class CommandLineInstance {
                 query = null;
             }
 
+            if (query === "bedrock") {
+                console.log("Switching to Bedrock...");
+                await user.setPreferredProvider("bedrock");
+                query = null;
+            }
+
             if (query === "openai") {
                 console.log("Switching to OpenAI...");
                 await user.setPreferredProvider("openai");

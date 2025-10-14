@@ -35,7 +35,7 @@ export type HennosArrayBufferResponse = {
     payload: ArrayBuffer
 }
 
-export const ValidLLMProviders = ["openai", "ollama", "anthropic"] as const;
+export const ValidLLMProviders = ["openai", "ollama", "anthropic", "bedrock"] as const;
 export type ValidLLMProvider = typeof ValidLLMProviders[number];
 
 

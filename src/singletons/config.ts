@@ -215,6 +215,33 @@ export class Config {
         return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
     }
 
+    static get AWS_BEDROCK_LLM(): HennosModelConfig {
+        if (!process.env.AWS_BEDROCK_LLM) {
+            return {
+                MODEL: "amazon.nova-micro-v1:0",
+                CTX: 16000
+            };
+        }
+
+        return parseHennosModelString(process.env.AWS_BEDROCK_LLM, "AWS_BEDROCK_LLM");
+    }
+
+    static get AWS_BEARER_TOKEN_BEDROCK(): string {
+        if (!process.env.AWS_BEARER_TOKEN_BEDROCK) {
+            throw new Error("Missing AWS_BEARER_TOKEN_BEDROCK");
+        }
+
+        return process.env.AWS_BEARER_TOKEN_BEDROCK;
+    }
+
+    static get AWS_BEDROCK_REGION(): string {
+        if (!process.env.AWS_BEDROCK_REGION) {
+            return "us-east-1";
+        }
+
+        return process.env.AWS_BEDROCK_REGION;
+    }
+
     static get OLLAMA_PORT(): number {
         if (!process.env.OLLAMA_PORT) {
             return 11434;

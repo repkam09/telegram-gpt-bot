@@ -9,6 +9,7 @@ import { Logger } from "./logger";
 import { PrismaClient } from "@prisma/client";
 import { OpenAI, OpenAIEmbedding, ServiceContext, serviceContextFromDefaults, SimpleNodeParser } from "llamaindex";
 import { loadHennosImage } from "../handlers/photos";
+import { HennosBedrockSingleton } from "./bedrock";
 
 type LastActiveResult = { user: { date: Date, content: string } | null, assistant: { date: Date, content: string } | null }
 
@@ -113,6 +114,9 @@ export class HennosUser {
                 }
                 case "anthropic": {
                     return HennosAnthropicSingleton.instance();
+                }
+                case "bedrock": {
+                    return HennosBedrockSingleton.instance();
                 }
                 default: {
                     Logger.warn(this, `Unknown provider ${this.provider}, defaulting to OpenAI`);

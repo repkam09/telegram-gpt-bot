@@ -352,7 +352,7 @@ export class MetaSetLLMProvider extends BaseTool {
             return ["set_llm_provider, provider not provided", metadata];
         }
 
-        if (!["openai", "anthropic", "ollama"].includes(args.provider)) {
+        if (!["openai", "anthropic", "ollama", "bedrock"].includes(args.provider)) {
             return ["set_llm_provider, invalid provider specified", metadata];
         }
 
