@@ -139,12 +139,14 @@ class HennosBedrockProvider extends HennosBaseProvider {
             Logger.info(req, `Bedrock Converse Success, Usage: ${calculateUsage(data.usage)}`);
 
             if (!data.output || !data.output.message || !data.output.message.content) {
+                Logger.debug(req, "Bedrock Response Missing Output or Message, Full Response: ", data);
                 throw new Error("Invalid Bedrock Response Shape, Missing Output Message Content");
             }
 
-            if (!data.output.message.content[0] || !data.output.message.content[0].text) {
-                throw new Error("Invalid Bedrock Response Shape, Missing Output Message Text");
-            }
+            // Remove any non 'toolUse' or 'text' blocks from the response, this is usually some metadata or reasoning tokens
+            Logger.debug(req, `Bedrock Response Original Content Blocks: ${data.output.message.content.length}`);
+            data.output.message.content = data.output.message.content.filter((block) => block.toolUse || block.text);
+            Logger.debug(req, `Bedrock Response Filtered Content Blocks: ${data.output.message.content.length}`);
 
             if (data.stopReason === "content_filtered" || data.stopReason === "guardrail_intervened" || data.stopReason === "model_context_window_exceeded" || data.stopReason === "stop_sequence") {
                 Logger.info(req, `Bedrock Completion Stopped: ${data.stopReason}`);
@@ -157,7 +159,7 @@ class HennosBedrockProvider extends HennosBaseProvider {
                 prompt.push({
                     role: "assistant",
                     content: [{
-                        text: data.output.message.content[0].text
+                        text: data.output.message.content[0].text!
                     }]
                 });
 
@@ -168,7 +170,7 @@ class HennosBedrockProvider extends HennosBaseProvider {
                 Logger.info(req, "Bedrock Completion Success, Resulted in Text Completion");
                 return {
                     __type: "string",
-                    payload: data.output.message.content[0].text
+                    payload: data.output.message.content[0].text!
                 };
             }
 
