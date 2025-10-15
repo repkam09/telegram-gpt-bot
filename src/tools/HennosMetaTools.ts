@@ -336,6 +336,7 @@ export class MetaSetLLMProvider extends BaseTool {
                                 "openai",
                                 "anthropic",
                                 "ollama",
+                                "bedrock"
                             ],
                             description: "The LLM provider to use for future messages."
                         },
