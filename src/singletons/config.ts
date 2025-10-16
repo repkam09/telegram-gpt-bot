@@ -66,6 +66,36 @@ export class Config {
         return process.env.DISCORD_BOT_TOKEN;
     }
 
+    static get VTUBE_STUDIO_ENABLED(): boolean {
+        if (!process.env.VTUBE_STUDIO_ENABLED) {
+            return false;
+        }
+
+        return process.env.VTUBE_STUDIO_ENABLED === "true";
+    }
+
+    static get VTUBE_STUDIO_PORT(): number {
+        if (!process.env.VTUBE_STUDIO_PORT) {
+            return 8001;
+        }
+
+        const port = parseInt(process.env.VTUBE_STUDIO_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid VTUBE_STUDIO_PORT value");
+        }
+
+        return port;
+    }
+
+    static get VTUBE_STUDIO_HOST(): string {
+        if (!process.env.VTUBE_STUDIO_HOST) {
+            return "localhost";
+        }
+
+        return process.env.VTUBE_STUDIO_HOST;
+    }
+
     static get WEBHOOK_ENABLED(): boolean {
         if (!process.env.WEBHOOK_ENABLED) {
             return false;

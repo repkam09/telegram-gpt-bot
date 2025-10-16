@@ -8,6 +8,7 @@ import { CommandLineInstance } from "./services/cli/cli";
 import { ServerRESTInterface } from "./services/rest/server";
 import { HennosTemporalWorker } from "./services/temporal/worker";
 import { DiscordBotInstance } from "./services/discord/discord";
+import { VTubeStudioInstance } from "./services/vtuber/studio";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -48,10 +49,16 @@ async function start() {
         console.warn("Temporal worker is disabled, set TEMPORAL_ENABLED=true to enable it");
     }
 
+    if (Config.VTUBE_STUDIO_ENABLED) {
+        init.push(VTubeStudioInstance.init());
+    } else {
+        console.warn("VTube Studio is disabled, set VTUBE_STUDIO_ENABLED=true to enable it");
+    }
+
     await Promise.all(init);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
-    const enabled = [Config.TELEGRAM_ENABLED, Config.WEBHOOK_ENABLED, Config.TEMPORAL_ENABLED];
+    const enabled = [Config.TELEGRAM_ENABLED, Config.WEBHOOK_ENABLED, Config.TEMPORAL_ENABLED, Config.VTUBE_STUDIO_ENABLED, Config.DISCORD_ENABLED];
     if (Config.HENNOS_DEVELOPMENT_MODE && !enabled.includes(true)) {
         Logger.debug(undefined, "Running command line interface in development mode");
         await CommandLineInstance.run();
