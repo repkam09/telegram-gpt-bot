@@ -58,7 +58,7 @@ async function start() {
     await Promise.all(init);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
-    const enabled = [Config.TELEGRAM_ENABLED, Config.WEBHOOK_ENABLED, Config.TEMPORAL_ENABLED, Config.VTUBE_STUDIO_ENABLED, Config.DISCORD_ENABLED];
+    const enabled = [Config.TELEGRAM_ENABLED, Config.WEBHOOK_ENABLED, Config.VTUBE_STUDIO_ENABLED, Config.DISCORD_ENABLED];
     if (Config.HENNOS_DEVELOPMENT_MODE && !enabled.includes(true)) {
         Logger.debug(undefined, "Running command line interface in development mode");
         await CommandLineInstance.run();

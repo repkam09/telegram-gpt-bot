@@ -7,7 +7,7 @@ import { getSizedChatContext } from "./context";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosBaseProvider } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
-import { HennosMessage, HennosResponse, HennosTextMessage } from "../types";
+import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../types";
 import { HennosConsumer } from "./consumer";
 
 export class HennosAnthropicSingleton {
@@ -149,6 +149,11 @@ class HennosAnthropicProvider extends HennosBaseProvider {
 
     public details(): string {
         return `Anthropic Claude model ${Config.ANTHROPIC_LLM.MODEL}`;
+    }
+
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
+        Logger.warn(req, "Anthropic Invoke Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().invoke(req, messages);
     }
 
     public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {

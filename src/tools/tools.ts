@@ -56,10 +56,6 @@ const ADMIN_TOOLS = [
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
-    if (req.chatId === -1) {
-        return undefined;
-    }
-
     const tools: Tool[] = [];
 
     PUBLIC_TOOLS.forEach((Tool) => {
@@ -95,6 +91,15 @@ export function availableTools(req: HennosConsumer): Tool[] | undefined {
     Logger.debug(req, `Tools allowed for ${req.displayName}, there are ${tools.length} tools available: ${tools.map((tool) => tool.function.name).join(", ")}`);
     return tools.length > 0 ? tools : undefined;
 }
+
+export function availableToolsAsString(req: HennosConsumer): string {
+    const tools = availableTools(req);
+    if (!tools) {
+        return "null";
+    }
+    return tools.map((tool) => `<tool><name>${tool.function.name}</name><description>${tool.function.description}</description><parameters>${JSON.stringify(tool.function.parameters)}</parameters></tool>`).join("\n");
+}
+
 
 export async function processToolCalls(req: HennosConsumer, tool_calls: [ToolCall, ToolCallMetadata][]): Promise<ToolCallResponse[]> {
     try {

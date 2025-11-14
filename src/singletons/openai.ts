@@ -8,7 +8,7 @@ import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam, Fu
 import { getSizedChatContext } from "./context";
 import { HennosBaseProvider } from "./base";
 import { availableTools, processToolCalls } from "../tools/tools";
-import { HennosMessage, HennosResponse } from "../types";
+import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../types";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 
@@ -101,6 +101,36 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
 
     public details(): string {
         return `OpenAI GPT model ${this.model.MODEL}`;
+    }
+
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
+        Logger.info(req, `OpenAI Invoke Start (${this.model.MODEL})`);
+        const prompt = convertHennosMessages(messages);
+
+        const response = await this.client.chat.completions.create({
+            model: this.model.MODEL,
+            messages: prompt,
+            safety_identifier: `${req.chatId}`
+        });
+
+        Logger.info(req, `OpenAI Invoke Success, Usage: ${calculateUsage(response.usage)}`);
+        if (!response.choices && !response.choices[0]) {
+            throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
+        }
+
+        if (!response.choices[0].message.tool_calls && !response.choices[0].message.content) {
+            throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Properties");
+        }
+
+        if (!response.choices[0].message.content) {
+            throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Content");
+        }
+
+        Logger.info(req, "OpenAI Invoke Success, Resulted in Text Completion");
+        return {
+            __type: "string",
+            payload: response.choices[0].message.content
+        };
     }
 
     public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {

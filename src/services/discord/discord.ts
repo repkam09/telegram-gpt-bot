@@ -2,7 +2,8 @@ import { Client, Events, GatewayIntentBits, Partials } from "discord.js";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { createDefaultUser, createTemporalClient } from "../../singletons/temporal";
-import { handleHennosUserMessage, hennosUserChat, queryHennosUserMessageHandled } from "../temporal/workflows";
+import { agentWorkflow, agentWorkflowMessageSignal } from "../temporal/workflows";
+import { EventManager } from "../events/events";
 
 export class DiscordBotInstance {
     static async init() {
@@ -33,35 +34,38 @@ export class DiscordBotInstance {
         client.on(Events.MessageCreate, async message => {
             if (message.author.bot) return; // Ignore messages from bots
 
+            const workflowId = `discord-user:${message.author.username}-channel:${message.channelId}`;
             const client = await createTemporalClient();
-            const handle = await client.workflow.signalWithStart(hennosUserChat, {
-                taskQueue: Config.TEMPORAL_TASK_QUEUE,
-                workflowId: `discord-user:${message.author.username}-channel:${message.channelId}`,
-                args: [{
-                    user: createDefaultUser(message.author.id)
-                }],
-                signal: handleHennosUserMessage,
-                signalArgs: [{ messageId: message.id, message: message.content }],
+
+            const emitter = EventManager.getInstance();
+            emitter.createEventEmitter(workflowId);
+
+            const result = emitter.subscribe<string>(workflowId, "agentWorkflowMessageBroadcast", async (response: string) => {
+                result.unsubscribe();
+
+                // If the Response is longer than 3500 characters, split it into multiple messages
+                if (response.length > 3500) {
+                    const parts = response.match(/.{1,3500}/g);
+                    if (parts) {
+                        for (const part of parts) {
+                            await message.channel.send(part);
+                        }
+                    }
+                } else {
+                    await message.channel.send(response);
+                }
             });
 
-            // Poll the workflow every 5 seconds to see if the message has been handled yet
-            let response: false | string = false;
-            while (!response) {
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                response = await handle.query(queryHennosUserMessageHandled, message.id);
-            }
-
-            // If the Response is longer than 3500 characters, split it into multiple messages
-            if (response.length > 3500) {
-                const parts = response.match(/.{1,3500}/g);
-                if (parts) {
-                    for (const part of parts) {
-                        await message.channel.send(part);
-                    }
-                }
-            } else {
-                await message.channel.send(response);
-            }
+            await client.workflow.signalWithStart(agentWorkflow, {
+                taskQueue: Config.TEMPORAL_TASK_QUEUE,
+                workflowId: workflowId,
+                args: [{
+                    user: createDefaultUser(message.author.id, message.author.displayName),
+                    aggressiveContinueAsNew: true,
+                }],
+                signal: agentWorkflowMessageSignal,
+                signalArgs: [message.content, new Date().toISOString()],
+            });
         });
 
         await client.login(Config.DISCORD_BOT_TOKEN);

@@ -1,7 +1,7 @@
 import { HennosBaseProvider } from "./base";
 import { BedrockRuntimeClient, ContentBlock, ConverseCommand, Message, SystemContentBlock, TokenUsage, Tool, ToolConfiguration, ToolUseBlock } from "@aws-sdk/client-bedrock-runtime";
 import { Config } from "./config";
-import { HennosTextMessage, HennosMessage, HennosResponse } from "../types";
+import { HennosTextMessage, HennosMessage, HennosResponse, HennosStringResponse } from "../types";
 import { HennosConsumer } from "./consumer";
 import { Logger } from "./logger";
 import { HennosOpenAISingleton } from "./openai";
@@ -100,6 +100,11 @@ class HennosBedrockProvider extends HennosBaseProvider {
 
         Logger.debug(undefined, `Final message count for Bedrock: ${converted.length}`);
         return converted;
+    }
+
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
+        Logger.warn(req, "Bedrock Invoke Start (OpenAI Fallback)");
+        return HennosOpenAISingleton.instance().invoke(req, messages);
     }
 
     public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {

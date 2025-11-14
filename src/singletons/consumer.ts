@@ -10,6 +10,7 @@ import { PrismaClient } from "@prisma/client";
 import { OpenAI, OpenAIEmbedding, ServiceContext, serviceContextFromDefaults, SimpleNodeParser } from "llamaindex";
 import { loadHennosImage } from "../handlers/photos";
 import { HennosBedrockSingleton } from "./bedrock";
+import { HennosWorkflowUser } from "../services/temporal/common/types";
 
 type LastActiveResult = { user: { date: Date, content: string } | null, assistant: { date: Date, content: string } | null }
 
@@ -37,10 +38,20 @@ export async function isBlacklisted(chatId: number): Promise<{ chatId: number, d
 export async function HennosAnonUser(): Promise<HennosUser> {
     const user = new HennosUser(-1);
     await user.clearChatContext();
-    user.displayName = "User";
+    user.displayName = "Anon";
     user.whitelisted = false;
     user.experimental = false;
     user.provider = "ollama";
+    return user;
+}
+
+export async function HennosUserFromWorkflowUser(workflowUser: HennosWorkflowUser): Promise<HennosUser> {
+    const user = new HennosUser(-1);
+    await user.clearChatContext();
+    user.displayName = "WorkflowUser";
+    user.whitelisted = workflowUser.isWhitelisted;
+    user.experimental = workflowUser.isExperimental;
+    user.provider = workflowUser.provider;
     return user;
 }
 
