@@ -1,14 +1,14 @@
 import { createReadStream } from "node:fs";
-import { Config, HennosModelConfig } from "./config";
+import { Config, HennosModelConfig } from "../config";
 import OpenAI, { OpenAIError } from "openai";
-import { HennosConsumer, HennosGroup, HennosUser } from "./consumer";
+import { HennosConsumer, HennosGroup, HennosUser } from "../consumer";
 import { ToolCall } from "ollama";
-import { Logger } from "./logger";
+import { Logger } from "../logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam, FunctionDefinition } from "openai/resources";
-import { getSizedChatContext } from "./context";
+import { getSizedChatContext } from "../data/context";
 import { HennosBaseProvider } from "./base";
-import { availableTools, processToolCalls } from "../tools/tools";
-import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../types";
+import { availableTools, processToolCalls } from "../../tools/tools";
+import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 

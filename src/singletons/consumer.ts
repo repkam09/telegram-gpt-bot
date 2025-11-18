@@ -1,15 +1,15 @@
-import { Database } from "./sqlite";
+import { Database } from "./data/sqlite";
 import { Config } from "./config";
-import { HennosBaseProvider } from "./base";
+import { HennosBaseProvider } from "./llms/base";
 import { HennosImage, HennosMessage, HennosMessageRole, HennosResponse, ValidLLMProvider, ValidTTSName } from "../types";
-import { HennosOllamaSingleton } from "./ollama";
-import { HennosOpenAISingleton } from "./openai";
-import { HennosAnthropicSingleton } from "./anthropic";
+import { HennosOllamaSingleton } from "./llms/ollama";
+import { HennosOpenAISingleton } from "./llms/openai";
+import { HennosAnthropicSingleton } from "./llms/anthropic";
 import { Logger } from "./logger";
 import { PrismaClient } from "@prisma/client";
 import { OpenAI, OpenAIEmbedding, ServiceContext, serviceContextFromDefaults, SimpleNodeParser } from "llamaindex";
 import { loadHennosImage } from "../handlers/photos";
-import { HennosBedrockSingleton } from "./bedrock";
+import { HennosBedrockSingleton } from "./llms/bedrock";
 import { HennosWorkflowUser } from "../services/temporal/common/types";
 
 type LastActiveResult = { user: { date: Date, content: string } | null, assistant: { date: Date, content: string } | null }

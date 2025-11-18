@@ -6,9 +6,9 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { TelegramBotInstance } from "../services/telegram/telegram";
-import { GPTImageProvider } from "../singletons/gpt-image";
+import { GPTImageProvider } from "../singletons/image/gpt-image";
 import { HennosConsumer } from "../singletons/consumer";
-import { NanoBananaImageProvider } from "../singletons/nano-banana";
+import { NanoBananaImageProvider } from "../singletons/image/nano-banana";
 
 export class ImageGenerationTool extends BaseTool {
     public static definition(): Tool {

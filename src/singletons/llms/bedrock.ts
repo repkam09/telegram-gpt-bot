@@ -1,12 +1,12 @@
 import { HennosBaseProvider } from "./base";
 import { BedrockRuntimeClient, ContentBlock, ConverseCommand, Message, SystemContentBlock, TokenUsage, Tool, ToolConfiguration, ToolUseBlock } from "@aws-sdk/client-bedrock-runtime";
-import { Config } from "./config";
-import { HennosTextMessage, HennosMessage, HennosResponse, HennosStringResponse } from "../types";
-import { HennosConsumer } from "./consumer";
-import { Logger } from "./logger";
+import { Config } from "../config";
+import { HennosTextMessage, HennosMessage, HennosResponse, HennosStringResponse } from "../../types";
+import { HennosConsumer } from "../consumer";
+import { Logger } from "../logger";
 import { HennosOpenAISingleton } from "./openai";
-import { getSizedChatContext } from "./context";
-import { availableTools, processToolCalls } from "../tools/tools";
+import { getSizedChatContext } from "../data/context";
+import { availableTools, processToolCalls } from "../../tools/tools";
 import { ToolCall } from "ollama";
 
 export class HennosBedrockSingleton {

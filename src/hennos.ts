@@ -1,5 +1,5 @@
 import { Config } from "./singletons/config";
-import { Database } from "./singletons/sqlite";
+import { Database } from "./singletons/data/sqlite";
 
 import { Logger } from "./singletons/logger";
 

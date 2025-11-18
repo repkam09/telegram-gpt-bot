@@ -1,5 +1,5 @@
 import { TelegramBotInstance } from "../telegram";
-import { Database } from "../../../singletons/sqlite";
+import { Database } from "../../../singletons/data/sqlite";
 import { HennosGroup, HennosUser } from "../../../singletons/consumer";
 
 export async function handleWhitelistCommand(user: HennosUser, text: string) {

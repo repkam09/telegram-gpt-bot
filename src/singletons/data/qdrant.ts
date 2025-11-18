@@ -1,5 +1,5 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
-import { Config } from "./config";
+import { Config } from "../config";
 
 export class Qdrant {
     private static _qdrantClient: QdrantClient;

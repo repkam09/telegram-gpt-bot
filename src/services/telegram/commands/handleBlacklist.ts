@@ -1,5 +1,5 @@
 import { TelegramBotInstance } from "../telegram";
-import { Database } from "../../../singletons/sqlite";
+import { Database } from "../../../singletons/data/sqlite";
 import { HennosUser, isBlacklisted } from "../../../singletons/consumer";
 
 export async function handleBlacklistCommand(user: HennosUser, text: string) {

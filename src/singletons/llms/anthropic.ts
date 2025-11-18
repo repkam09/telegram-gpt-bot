@@ -1,14 +1,14 @@
-import { Config } from "./config";
+import { Config } from "../config";
 import { Anthropic } from "@anthropic-ai/sdk";
 import { ToolCall } from "ollama";
 import { ImageBlockParam, TextBlock, TextBlockParam, Tool, ToolChoiceAuto } from "@anthropic-ai/sdk/resources";
-import { Logger } from "./logger";
-import { getSizedChatContext } from "./context";
+import { Logger } from "../logger";
+import { getSizedChatContext } from "../data/context";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosBaseProvider } from "./base";
-import { availableTools, processToolCalls } from "../tools/tools";
-import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../types";
-import { HennosConsumer } from "./consumer";
+import { availableTools, processToolCalls } from "../../tools/tools";
+import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
+import { HennosConsumer } from "../consumer";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosBaseProvider | null = null;

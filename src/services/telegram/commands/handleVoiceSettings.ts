@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { handleHennosResponse, TelegramBotInstance } from "../telegram";
 import { Logger } from "../../../singletons/logger";
 import { HennosUser } from "../../../singletons/consumer";
-import { HennosOpenAISingleton } from "../../../singletons/openai";
+import { HennosOpenAISingleton } from "../../../singletons/llms/openai";
 import { ValidTTSName } from "../../../types";
 
 export async function handleVoiceSettingsCallback(user: HennosUser, queryId: string, data: string) {

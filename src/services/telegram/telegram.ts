@@ -17,7 +17,7 @@ import { handleGroupMessage } from "../../handlers/text/group";
 import { handleCommandGroupMessage, handleCommandMessage } from "./commands";
 import { HennosConsumer, HennosGroup, HennosUser, isBlacklisted } from "../../singletons/consumer";
 import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderSettings";
-import { HennosOpenAISingleton } from "../../singletons/openai";
+import { HennosOpenAISingleton } from "../../singletons/llms/openai";
 import { HennosResponse } from "../../types";
 import { handleAudioMessage } from "../../handlers/audio";
 

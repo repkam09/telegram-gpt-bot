@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Database } from "../../../singletons/sqlite";
+import { Database } from "../../../singletons/data/sqlite";
 import { HennosUser } from "../../../singletons/consumer";
 import { TelegramBotInstance } from "../telegram";
 

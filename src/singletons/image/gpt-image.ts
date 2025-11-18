@@ -1,7 +1,7 @@
 import OpenAI from "openai";
-import { HennosConsumer } from "./consumer";
-import { Logger } from "./logger";
-import { HennosOpenAISingleton } from "./openai";
+import { HennosConsumer } from "../consumer";
+import { Logger } from "../logger";
+import { HennosOpenAISingleton } from "../llms/openai";
 
 export class GPTImageProvider {
     public static status: boolean = true;

@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Message, Ollama, ToolCall } from "ollama";
-import { Config } from "./config";
-import { Logger } from "./logger";
-import { getSizedChatContext } from "./context";
+import { Config } from "../config";
+import { Logger } from "../logger";
+import { getSizedChatContext } from "../data/context";
 import { HennosBaseProvider } from "./base";
 import { HennosOpenAISingleton } from "./openai";
-import { HennosConsumer, HennosUser } from "./consumer";
-import { availableTools, processToolCalls } from "../tools/tools";
-import { ToolCallMetadata } from "../tools/BaseTool";
-import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../types";
+import { HennosConsumer, HennosUser } from "../consumer";
+import { availableTools, processToolCalls } from "../../tools/tools";
+import { ToolCallMetadata } from "../../tools/BaseTool";
+import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;

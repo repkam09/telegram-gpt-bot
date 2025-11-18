@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { TelegramBotInstance } from "../services/telegram/telegram";
 import { HennosConsumer } from "../singletons/consumer";
-import { VeoThreeVideoProvider } from "../singletons/veo-3";
+import { VeoThreeVideoProvider } from "../singletons/image/veo-3";
 
 export class VideoGenerationTool extends BaseTool {
     public static definition(): Tool {

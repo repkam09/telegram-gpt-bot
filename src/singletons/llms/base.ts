@@ -1,5 +1,5 @@
-import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../types";
-import { HennosConsumer } from "./consumer";
+import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
+import { HennosConsumer } from "../consumer";
 
 export abstract class HennosBaseProvider {
     public client: unknown;

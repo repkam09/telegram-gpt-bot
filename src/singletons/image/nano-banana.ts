@@ -1,6 +1,6 @@
-import { Config } from "./config";
-import { HennosConsumer } from "./consumer";
-import { Logger } from "./logger";
+import { Config } from "../config";
+import { HennosConsumer } from "../consumer";
+import { Logger } from "../logger";
 import { Candidate, GoogleGenAI } from "@google/genai";
 
 export class NanoBananaImageProvider {
