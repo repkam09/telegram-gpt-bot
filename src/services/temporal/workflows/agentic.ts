@@ -9,6 +9,19 @@ import {
 import type * as activities from "../activities";
 import { HennosWorkflowUser } from "../common/types";
 
+export function createWorkflowId(platform: string, data: object): string {
+    const payload = JSON.stringify({
+        platform,
+        ...data,
+    });
+    return Buffer.from(payload).toString("base64");
+}
+
+export function parseWorkflowId(workflowId: string): { platform: string;[key: string]: unknown } {
+    const decoded = Buffer.from(workflowId, "base64").toString("utf-8");
+    return JSON.parse(decoded);
+}
+
 const { action, broadcast } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
@@ -93,7 +106,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
         if (agentThought.__type === "answer") {
             await broadcast({
-                sessionId: workflowInfo().workflowId,
+                workflowId: workflowInfo().workflowId,
                 answer: agentThought.answer,
             });
             context.push(`<answer>\n${agentThought.answer}\n</answer>`);

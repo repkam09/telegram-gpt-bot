@@ -2,7 +2,7 @@ import { HennosAnonUser, HennosUserFromWorkflowUser } from "../../../singletons/
 import { ToolCallResponse } from "../../../tools/BaseTool";
 import { availableToolsAsString, processToolCalls } from "../../../tools/tools";
 import { HennosStringResponse } from "../../../types";
-import { EventManager } from "../../events/events";
+import { SocketSessionHandler } from "../../events/events";
 import { compactPromptTemplate, observationPromptTemplate, thoughtPromptTemplate } from "../common/prompts";
 import { HennosWorkflowUser, UsageMetadata } from "../common/types";
 
@@ -142,19 +142,17 @@ export async function compact(
 }
 
 type BroadcastInput = {
-    sessionId: string;
+    workflowId: string;
     answer?: string;
     usage?: UsageMetadata;
 };
 
 export async function broadcast(input: BroadcastInput): Promise<void> {
     if (input.answer) {
-        const emitter = EventManager.getInstance();
-        emitter.emit<string>(input.sessionId, "agentWorkflowMessageBroadcast", input.answer);
+        SocketSessionHandler.broadcast(input.workflowId, "message", input.answer);
     }
 
     if (input.usage) {
-        const emitter = EventManager.getInstance();
-        emitter.emit<UsageMetadata>(input.sessionId, "agentWorkflowUsageBroadcast", input.usage);
+        SocketSessionHandler.broadcast(input.workflowId, "usage", JSON.stringify(input.usage));
     }
 }

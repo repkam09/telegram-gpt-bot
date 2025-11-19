@@ -1,59 +1,106 @@
-import { EventEmitter } from "node:events";
-import { randomUUID } from "node:crypto";
+import { PassThrough } from "node:stream";
+import { Logger } from "../../singletons/logger";
+import { parseWorkflowId } from "../temporal/workflows";
 
-export class EventManager {
-    private static instance: EventManager;
+type SocketSession = {
+    workflowId: string;
+    socketId: string;
+    socket: PassThrough;
+};
 
-    private emitters: Map<string, EventEmitter> = new Map();
+type BroadcastType = "message" | "usage";
 
-    private constructor() { }
+export class SocketSessionHandler {
+    private static sessions: Map<string, SocketSession[]> = new Map();
+    private static handlers: Map<string, (workflow: object, type: BroadcastType, message: string) => void> = new Map();
 
-    static getInstance(): EventManager {
-        if (!EventManager.instance) {
-            EventManager.instance = new EventManager();
+    public static register(
+        workflowId: string,
+        socketId: string,
+        socket: PassThrough
+    ): void {
+        if (!SocketSessionHandler.sessions.has(workflowId)) {
+            SocketSessionHandler.sessions.set(workflowId, []);
         }
-        return EventManager.instance;
+
+        const session = SocketSessionHandler.sessions.get(workflowId);
+        if (!session) {
+            throw new Error(`Session map not found for user ${workflowId}`);
+        }
+
+        socket.write(`data: ${JSON.stringify({ type: "metadata", msg: "connected" })}\n\n`);
+        session.push({ workflowId, socketId, socket });
     }
 
-    createEventEmitter(emitterId: string): string {
-        if (this.emitters.has(emitterId)) {
-            return emitterId;
+    public static unregister(workflowId: string, socketId: string): void {
+        if (!SocketSessionHandler.sessions.has(workflowId)) {
+            return;
         }
-        this.emitters.set(emitterId, new EventEmitter());
-        return emitterId;
+
+        const sessions = SocketSessionHandler.sessions.get(workflowId);
+        if (!sessions) {
+            return;
+        }
+
+        const index = sessions.findIndex((s) => s.socketId === socketId);
+        if (index === -1) {
+            return;
+        }
+
+        const session = sessions[index];
+        try {
+            session.socket.end();
+        } catch (e) {
+            Logger.error(
+                `Failed to close socket ${session.socketId} for workflow ${session.workflowId}, error: ${e}`
+            );
+        }
+
+        sessions.splice(index, 1);
     }
 
-    subscribe<T = unknown>(emitterId: string, eventName: string, callback: (data: T) => void): { id: string; unsubscribe: () => void } {
-        const emitter = this.emitters.get(emitterId);
-        if (!emitter) {
-            throw new Error(`Event emitter with id ${emitterId} not found`);
+    public static registerHandler(type: string, callback: (workflow: object) => void): void {
+        if (SocketSessionHandler.handlers.has(type)) {
+            Logger.warn(`Overwriting existing handler for type ${type}`);
         }
+        SocketSessionHandler.handlers.set(type, callback);
+    }
 
-        const subscriptionId = randomUUID();
-        emitter.on(eventName, callback);
-
-        return {
-            id: subscriptionId,
-            unsubscribe: () => {
-                emitter.off(eventName, callback);
+    public static broadcast(workflowId: string, type: BroadcastType, message: string): void {
+        try {
+            const workflowObj = parseWorkflowId(workflowId);
+            if (SocketSessionHandler.handlers.has(workflowObj.platform)) {
+                const handler = SocketSessionHandler.handlers.get(workflowObj.platform);
+                if (handler) {
+                    handler(workflowObj, type, message);
+                }
             }
-        };
-    }
-
-    emit<T = unknown>(emitterId: string, eventName: string, data?: T): boolean {
-        const emitter = this.emitters.get(emitterId);
-        if (!emitter) {
-            throw new Error(`Event emitter with id ${emitterId} not found`);
+        } catch (e) {
+            Logger.error(`Failed to parse workflowId ${workflowId}, error: ${e}`);
         }
-        return emitter.emit(eventName, data);
-    }
 
-    removeEventEmitter(emitterId: string): boolean {
-        const emitter = this.emitters.get(emitterId);
-        if (emitter) {
-            emitter.removeAllListeners();
-            return this.emitters.delete(emitterId);
+        if (!SocketSessionHandler.sessions.has(workflowId)) {
+            Logger.error(`No sessions found for workflow ${workflowId}`);
+            return;
         }
-        return false;
+
+        const sessions = SocketSessionHandler.sessions.get(workflowId);
+        if (!sessions) {
+            Logger.error(`Session map is undefined for workflow ${workflowId}`);
+            return;
+        }
+
+        Logger.info(
+            `Broadcasting message to ${sessions.length} sessions for workflow ${workflowId}`
+        );
+        for (const session of sessions) {
+            try {
+                session.socket.write(`data: ${JSON.stringify({ type, msg: message })}\n\n`);
+            } catch (e) {
+                Logger.error(
+                    `Failed to send message to socket ${session.socketId} for user ${session.workflowId}, error: ${e}`
+                );
+            }
+        }
     }
 }
