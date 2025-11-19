@@ -6,6 +6,7 @@ import { handlePrivateMessage } from "../../../handlers/text/private";
 import { Config } from "../../../singletons/config";
 
 export * from "./openai";
+export * from "./search";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 

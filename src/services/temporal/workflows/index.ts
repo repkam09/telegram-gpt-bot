@@ -3,6 +3,7 @@ import { hennosLiteChatWorkflow } from "./lite-chat";
 import { hennosFetchHistory } from "./history";
 
 export * from "./hennos-user-chat";
+export * from "./search";
 
 // Export the names of the workflows to match the Client configuration
 exports["hennos-fetch-history"] = hennosFetchHistory;
