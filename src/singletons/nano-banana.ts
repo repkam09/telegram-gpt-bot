@@ -12,7 +12,7 @@ export class NanoBananaImageProvider {
             apiKey: Config.GOOGLE_API_KEY
         });
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-image-preview",
+            model: Config.GOOGLE_IMAGE_MODEL,
             contents: prompt,
         });
 

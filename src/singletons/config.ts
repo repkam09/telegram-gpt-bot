@@ -187,6 +187,22 @@ export class Config {
         return process.env.GOOGLE_API_KEY;
     }
 
+    static get GOOGLE_IMAGE_MODEL(): string {
+        if (!process.env.GOOGLE_IMAGE_MODEL) {
+            return "gemini-3-pro-image-preview";
+        }
+
+        return process.env.GOOGLE_IMAGE_MODEL;
+    }
+
+    static get OPENAI_IMAGE_MODEL(): string {
+        if (!process.env.OPENAI_IMAGE_MODEL) {
+            return "gpt-image-1";
+        }
+
+        return process.env.OPENAI_IMAGE_MODEL;
+    }
+
     static get OPENAI_LLM(): HennosModelConfig {
         if (!process.env.OPENAI_LLM) {
             return {
