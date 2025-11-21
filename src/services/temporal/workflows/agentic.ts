@@ -22,7 +22,7 @@ export function parseWorkflowId(workflowId: string): { platform: string;[key: st
     return JSON.parse(decoded);
 }
 
-const { action, broadcast } = proxyActivities<typeof activities>({
+const { action, broadcast, tokens } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
         backoffCoefficient: 1,
@@ -169,7 +169,10 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                 `<observation>\n${agentObservation.observations}\n</observation>`,
             );
 
-            if (workflowInfo().continueAsNewSuggested) {
+            const tokenCount = await tokens(input.user, context);
+            const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
+
+            if (workflowInfo().continueAsNewSuggested || passedTokenLimit) {
                 const compactContext = await compact(input.user, context);
                 return continueAsNew<typeof agentWorkflow>({
                     user: input.user,

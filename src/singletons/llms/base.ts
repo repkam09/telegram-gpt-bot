@@ -3,6 +3,7 @@ import { HennosConsumer } from "../consumer";
 
 export abstract class HennosBaseProvider {
     public client: unknown;
+    public tokenLimit: number = 0;
     public abstract invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse>;
     public abstract completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse>;
     public abstract moderation(req: HennosConsumer, input: string): Promise<boolean>;

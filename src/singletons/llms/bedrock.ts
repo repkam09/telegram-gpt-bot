@@ -60,6 +60,8 @@ class HennosBedrockProvider extends HennosBaseProvider {
                 token: Config.AWS_BEARER_TOKEN_BEDROCK
             },
         });
+
+        this.tokenLimit = Config.AWS_BEDROCK_LLM.CTX;
     }
 
     public details(): string {

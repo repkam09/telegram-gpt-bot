@@ -97,6 +97,7 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         this.moderationModel = "omni-moderation-latest";
         this.transcriptionModel = "whisper-1";
         this.speechModel = "tts-1";
+        this.tokenLimit = model.CTX;
     }
 
     public details(): string {

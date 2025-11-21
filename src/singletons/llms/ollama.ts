@@ -55,6 +55,8 @@ class HennosOllamaProvider extends HennosBaseProvider {
         this.client = new Ollama({
             host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
         });
+
+        this.tokenLimit = Config.OLLAMA_LLM.CTX;
     }
 
     public details(): string {

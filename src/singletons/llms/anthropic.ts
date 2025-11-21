@@ -145,6 +145,8 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         this.client = new Anthropic({
             apiKey: Config.ANTHROPIC_API_KEY
         });
+
+        this.tokenLimit = Config.ANTHROPIC_LLM.CTX;
     }
 
     public details(): string {

@@ -1,4 +1,5 @@
 import { HennosUserFromWorkflowUser } from "../../../singletons/consumer";
+import { countTokens } from "../../../singletons/data/context";
 import { Database } from "../../../singletons/data/sqlite";
 import { HennosOpenAISingleton } from "../../../singletons/llms/openai";
 import { ToolCallResponse } from "../../../tools/BaseTool";
@@ -67,6 +68,32 @@ export async function thought(
     }
 
     return parsed as AgentResult;
+}
+
+export async function tokens(
+    userDetails: HennosWorkflowUser,
+    context: string[],
+): Promise<{
+    tokenCount: number;
+    tokenLimit: number;
+}> {
+    const req = await HennosUserFromWorkflowUser(userDetails);
+    const provider = req.getProvider();
+    const promptTemplate = thoughtPromptTemplate({
+        userDetails: userDetails,
+        currentDate: new Date().toISOString().split("T")[0],
+        previousSteps: context.join("\n"),
+        availableActions: availableToolsAsString(req),
+    });
+
+    const result = await countTokens(req, [
+        { role: "user", content: promptTemplate, type: "text" },
+    ]);
+
+    return {
+        tokenCount: result,
+        tokenLimit: provider.tokenLimit,
+    };
 }
 
 export async function action(

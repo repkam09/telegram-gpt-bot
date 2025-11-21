@@ -21,6 +21,11 @@ export async function getSizedChatContext(req: HennosConsumer, prompt: HennosMes
     return currentChatContext;
 }
 
+export async function countTokens(req: HennosConsumer, messages: HennosMessage[]): Promise<number> {
+    Logger.debug(req, `Counting tokens for ${messages.length} messages`);
+    return getChatContextTokenCount(messages);
+}
+
 function getChatContextTokenCount(context: HennosMessage[]): number {
     const encoder = encoding_for_model("gpt-4o-mini");
     const total = context.reduce((acc: number, val: HennosMessage) => {
