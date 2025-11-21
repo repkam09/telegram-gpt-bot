@@ -118,20 +118,6 @@ export class Config {
         return port;
     }
 
-    static get HENNOS_FOLLOW_UP_ENABLED(): number[] | false {
-        if (!process.env.HENNOS_FOLLOW_UP_ENABLED) {
-            return false;
-        }
-
-        const ids = process.env.HENNOS_FOLLOW_UP_ENABLED.split(",").map((id) => parseInt(id.trim()));
-        if (ids.some((id) => Number.isNaN(id))) {
-            console.error("Invalid HENNOS_FOLLOW_UP_ENABLED value. Expected a comma-separated list of numbers. Disabling follow-up.");
-            return false;
-        }
-
-        return ids;
-    }
-
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
@@ -565,6 +551,22 @@ export class Config {
         }
 
         return process.env.TEMPORAL_TASK_QUEUE;
+    }
+
+    static get LIFEFORCE_AUTH_TOKEN(): string {
+        if (!process.env.LIFEFORCE_AUTH_TOKEN) {
+            throw new Error("Missing LIFEFORCE_AUTH_TOKEN");
+        }
+
+        return process.env.LIFEFORCE_AUTH_TOKEN;
+    }
+
+    static get LIFEFORCE_BASE_URL(): string {
+        if (!process.env.LIFEFORCE_BASE_URL) {
+            return "https://api.repkam09.com";
+        }
+
+        return process.env.LIFEFORCE_BASE_URL;
     }
 
     static LOCAL_STORAGE(req?: { chatId: number }): string {

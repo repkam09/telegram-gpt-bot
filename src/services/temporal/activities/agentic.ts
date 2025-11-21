@@ -3,7 +3,8 @@ import { Database } from "../../../singletons/data/sqlite";
 import { ToolCallResponse } from "../../../tools/BaseTool";
 import { availableToolsAsString, processToolCalls } from "../../../tools/tools";
 import { HennosStringResponse } from "../../../types";
-import { SocketSessionHandler } from "../../events/events";
+import { InternalCallbackHandler } from "../../events/internal";
+import { LifeforceBroadcast } from "../../events/lifeforce";
 import { compactPromptTemplate, observationPromptTemplate, thoughtPromptTemplate } from "../common/prompts";
 import { HennosWorkflowUser, UsageMetadata } from "../common/types";
 
@@ -142,7 +143,7 @@ export async function compact(
     };
 }
 
-type BroadcastInput = BroadcastUsageInput | BroadcastUserInput | BroadcastAgentInput;
+export type BroadcastInput = BroadcastUsageInput | BroadcastUserInput | BroadcastAgentInput;
 
 type BroadcastUserInput = {
     type: "user-message"
@@ -168,16 +169,21 @@ export async function broadcast(input: BroadcastInput): Promise<void> {
     switch (input.type) {
         case "user-message":
             // Using the user info, update the database with the message for long term storage
-            await updateWorkflowMessageDatabase(input);
-            SocketSessionHandler.broadcast(input.workflowId, "message", input.message);
+            await Promise.all([
+                updateWorkflowMessageDatabase(input),
+                InternalCallbackHandler.broadcast(input.workflowId, "message", input.message),
+            ]);
             break;
         case "agent-message":
             // Using the user info, update the database with the message for long term storage
-            await updateWorkflowMessageDatabase(input);
-            SocketSessionHandler.broadcast(input.workflowId, "message", input.message);
+            await Promise.all([
+                updateWorkflowMessageDatabase(input),
+                LifeforceBroadcast.broadcast(input),
+                InternalCallbackHandler.broadcast(input.workflowId, "message", input.message),
+            ]);
             break;
         case "usage":
-            SocketSessionHandler.broadcast(input.workflowId, "usage", JSON.stringify(input.usage));
+            InternalCallbackHandler.broadcast(input.workflowId, "usage", JSON.stringify(input.usage));
             break;
         default:
             console.error("Unknown broadcast input type:", (input as BroadcastInput).type);

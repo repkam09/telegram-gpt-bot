@@ -3,7 +3,7 @@ import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { createDefaultUser, createTemporalClient } from "../../singletons/temporal";
 import { agentWorkflow, agentWorkflowMessageSignal, createWorkflowId } from "../temporal/workflows";
-import { SocketSessionHandler } from "../events/events";
+import { InternalCallbackHandler } from "../events/internal";
 
 export class DiscordBotInstance {
     static async init() {
@@ -26,7 +26,7 @@ export class DiscordBotInstance {
             console.log(`Logged in as ${readyClient.user.tag}!`);
 
             // Setting up workflow callback handler
-            SocketSessionHandler.registerHandler("discord", async (workflow: object) => {
+            InternalCallbackHandler.registerHandler("discord", async (workflow: object) => {
                 const workflowObj = workflow as { userId: string, channelId: string, message: string };
                 Logger.info(
                     undefined,

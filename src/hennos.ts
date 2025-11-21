@@ -5,7 +5,6 @@ import { Logger } from "./singletons/logger";
 
 import { TelegramBotInstance } from "./services/telegram/telegram";
 import { CommandLineInstance } from "./services/cli/cli";
-import { ServerRESTInterface } from "./services/rest/server";
 import { HennosTemporalWorker } from "./services/temporal/worker";
 import { DiscordBotInstance } from "./services/discord/discord";
 import { VTubeStudioInstance } from "./services/vtuber/studio";
@@ -35,12 +34,6 @@ async function start() {
         init.push(DiscordBotInstance.init());
     } else {
         console.warn("Discord bot is disabled, set DISCORD_ENABLED=true to enable it");
-    }
-
-    if (Config.WEBHOOK_ENABLED) {
-        init.push(ServerRESTInterface.init());
-    } else {
-        console.warn("Webhook is disabled, set WEBHOOK_ENABLED=true to enable it");
     }
 
     if (Config.TEMPORAL_ENABLED) {
