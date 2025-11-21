@@ -8,7 +8,7 @@ export type SearchWorkflowInput = {
 
 export type SearchWorkflowOutput = {
     results: Array<object>
-    summary: string
+    summary: string | null
 }
 
 const { searchResults, summarizeResults } = proxyActivities<typeof activities>({

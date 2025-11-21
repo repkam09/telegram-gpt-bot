@@ -2,10 +2,19 @@ import { Config } from "./singletons/config";
 import { HennosConsumer, HennosGroup, HennosUser } from "./singletons/consumer";
 import { HennosTextMessage } from "./types";
 
-export function minimalBasePrompt(botName: string): HennosTextMessage[] {
+export function temporalGrounding(): { date: string, day: string } {
     // day of the week right now
     const dayOfWeek = new Date().getDay();
     const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
+
+    return {
+        date: new Date().toDateString(),
+        day: dayOfWeekString
+    };
+}
+
+export function minimalBasePrompt(botName: string): HennosTextMessage[] {
+    const { date, day } = temporalGrounding();
 
     return [
         {
@@ -35,7 +44,7 @@ export function minimalBasePrompt(botName: string): HennosTextMessage[] {
         },
         {
             role: "system",
-            content: `Your knowledge is based on the data your model was trained on. Be aware that you may not have the most up to date information in your training data. The current date is ${new Date().toDateString()}. It is a ${dayOfWeekString} today.`,
+            content: `Your knowledge is based on the data your model was trained on. Be aware that you may not have the most up to date information in your training data. The current date is ${date}. It is a ${day} today.`,
             type: "text"
         },
     ];
