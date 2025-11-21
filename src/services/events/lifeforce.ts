@@ -13,6 +13,33 @@ type BroadcastPayload = {
 };
 
 export class LifeforceBroadcast {
+
+    public static async init(): Promise<void> {
+        const healthy = await this.health();
+        if (healthy) {
+            Logger.info("LifeforceBroadcast: Successfully connected to Lifeforce service");
+        } else {
+            Logger.error("LifeforceBroadcast: Failed to connect to Lifeforce service");
+            throw new Error("Lifeforce service is not healthy");
+        }
+    }
+
+    public static async health(): Promise<boolean> {
+        try {
+            const response = await fetch(`${Config.LIFEFORCE_BASE_URL}/api/health`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${Config.LIFEFORCE_AUTH_TOKEN}`
+                }
+            });
+
+            return response.ok;
+        } catch (error) {
+            Logger.error("LifeforceBroadcast: Health check failed", error);
+            return false;
+        }
+    }
+
     public static async broadcast(input: BroadcastInput): Promise<void> {
         if (input.type !== "user-message" && input.type !== "agent-message") {
             Logger.debug("LifeforceBroadcast: Unsupported input type for broadcasting:", input.type);

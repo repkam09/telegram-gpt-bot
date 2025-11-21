@@ -23,7 +23,8 @@ export class InternalCallbackHandler {
                 }
             }
         } catch (e) {
-            Logger.error(`Failed to parse workflowId ${workflowId}, error: ${e}`);
+            // Ignore parsing errors, this is normal if the workflow is not an internal one
+            Logger.debug("InternalCallbackHandler: Failed to parse workflow ID", e);
         }
     }
 }

@@ -8,6 +8,7 @@ import { CommandLineInstance } from "./services/cli/cli";
 import { HennosTemporalWorker } from "./services/temporal/worker";
 import { DiscordBotInstance } from "./services/discord/discord";
 import { VTubeStudioInstance } from "./services/vtuber/studio";
+import { LifeforceBroadcast } from "./services/events/lifeforce";
 
 async function start() {
     // Check that all the right environment variables are set
@@ -47,6 +48,8 @@ async function start() {
     } else {
         console.warn("VTube Studio is disabled, set VTUBE_STUDIO_ENABLED=true to enable it");
     }
+
+    init.push(LifeforceBroadcast.init());
 
     await Promise.all(init);
 

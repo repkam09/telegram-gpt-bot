@@ -70,7 +70,7 @@ model Blacklist {
 model WorkflowMessage {
   id         Int      @id @default(autoincrement())
   workflowId String
-  userId     String   @unique()
+  userId     String
   content    String
   type       String
   datetime   DateTime @default(now())
