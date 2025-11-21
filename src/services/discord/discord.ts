@@ -4,6 +4,7 @@ import { Logger } from "../../singletons/logger";
 import { createDefaultUser, createTemporalClient } from "../../singletons/temporal";
 import { agentWorkflow, agentWorkflowMessageSignal, createWorkflowId } from "../temporal/workflows";
 import { InternalCallbackHandler } from "../events/internal";
+import type { BroadcastType } from "../events/internal";
 
 export class DiscordBotInstance {
     static async init() {
@@ -26,11 +27,16 @@ export class DiscordBotInstance {
             console.log(`Logged in as ${readyClient.user.tag}!`);
 
             // Setting up workflow callback handler
-            InternalCallbackHandler.registerHandler("discord", async (workflow: object) => {
-                const workflowObj = workflow as { userId: string, channelId: string, message: string };
+            InternalCallbackHandler.registerHandler("discord", async (workflow: object, type: BroadcastType, message: string) => {
+                if (type !== "message") {
+                    Logger.error("Unsupported broadcast type for DiscordBotInstance:", type);
+                    return;
+                }
+
+                const workflowObj = workflow as { userId: string, channelId: string };
                 Logger.info(
                     undefined,
-                    `Received workflow callback for Discord user ${workflowObj.userId} in channel ${workflowObj.channelId}`
+                    `Received workflow callback for Discord user ${workflowObj.userId} in channel ${workflowObj.channelId}, type: ${type}`
                 );
 
                 const channel = await readyClient.channels.fetch(workflowObj.channelId);
@@ -39,15 +45,15 @@ export class DiscordBotInstance {
                     const textChannel = channel as any;
 
                     // If the Response is longer than 3500 characters, split it into multiple messages
-                    if (workflowObj.message.length > 3500) {
-                        const parts = workflowObj.message.match(/.{1,3500}/g);
+                    if (message.length > 3500) {
+                        const parts = message.match(/.{1,3500}/g);
                         if (parts) {
                             for (const part of parts) {
                                 await textChannel.send(part);
                             }
                         }
                     } else {
-                        await textChannel.send(workflowObj.message);
+                        await textChannel.send(message);
                     }
                 } else {
                     Logger.error(`Channel with ID ${workflowObj.channelId} not found or is not text-based`);

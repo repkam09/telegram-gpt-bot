@@ -171,7 +171,6 @@ export async function broadcast(input: BroadcastInput): Promise<void> {
             // Using the user info, update the database with the message for long term storage
             await Promise.all([
                 updateWorkflowMessageDatabase(input),
-                InternalCallbackHandler.broadcast(input.workflowId, "message", input.message),
             ]);
             break;
         case "agent-message":

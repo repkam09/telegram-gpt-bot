@@ -1,12 +1,13 @@
 import { Logger } from "../../singletons/logger";
 import { parseWorkflowId } from "../temporal/workflows";
 
-type BroadcastType = "message" | "usage";
+export type BroadcastType = "message" | "usage";
+export type HandlerCallback = (workflow: object, type: BroadcastType, message: string) => void;
 
 export class InternalCallbackHandler {
-    private static handlers: Map<string, (workflow: object, type: BroadcastType, message: string) => void> = new Map();
+    private static handlers: Map<string, HandlerCallback> = new Map();
 
-    public static registerHandler(type: string, callback: (workflow: object) => void): void {
+    public static registerHandler(type: string, callback: HandlerCallback): void {
         if (InternalCallbackHandler.handlers.has(type)) {
             Logger.warn(`Overwriting existing handler for type ${type}`);
         }
