@@ -1,4 +1,5 @@
 import { HennosAnonUser, HennosUserFromWorkflowUser } from "../../../singletons/consumer";
+import { Database } from "../../../singletons/data/sqlite";
 import { ToolCallResponse } from "../../../tools/BaseTool";
 import { availableToolsAsString, processToolCalls } from "../../../tools/tools";
 import { HennosStringResponse } from "../../../types";
@@ -141,18 +142,58 @@ export async function compact(
     };
 }
 
-type BroadcastInput = {
+type BroadcastInput = BroadcastUsageInput | BroadcastUserInput | BroadcastAgentInput;
+
+type BroadcastUserInput = {
+    type: "user-message"
+    user: HennosWorkflowUser;
     workflowId: string;
-    answer?: string;
-    usage?: UsageMetadata;
-};
+    message: string;
+}
+
+type BroadcastAgentInput = {
+    type: "agent-message"
+    workflowId: string;
+    user: HennosWorkflowUser;
+    message: string;
+}
+
+type BroadcastUsageInput = {
+    type: "usage"
+    workflowId: string;
+    usage: UsageMetadata;
+}
 
 export async function broadcast(input: BroadcastInput): Promise<void> {
-    if (input.answer) {
-        SocketSessionHandler.broadcast(input.workflowId, "message", input.answer);
+    switch (input.type) {
+        case "user-message":
+            // Using the user info, update the database with the message for long term storage
+            await updateWorkflowMessageDatabase(input);
+            SocketSessionHandler.broadcast(input.workflowId, "message", input.message);
+            break;
+        case "agent-message":
+            // Using the user info, update the database with the message for long term storage
+            await updateWorkflowMessageDatabase(input);
+            SocketSessionHandler.broadcast(input.workflowId, "message", input.message);
+            break;
+        case "usage":
+            SocketSessionHandler.broadcast(input.workflowId, "usage", JSON.stringify(input.usage));
+            break;
+        default:
+            console.error("Unknown broadcast input type:", (input as BroadcastInput).type);
     }
+}
 
-    if (input.usage) {
-        SocketSessionHandler.broadcast(input.workflowId, "usage", JSON.stringify(input.usage));
-    }
+async function updateWorkflowMessageDatabase(input: BroadcastUserInput | BroadcastAgentInput): Promise<void> {
+    const db = Database.instance();
+    await db.workflowMessage.create({
+        data: {
+            workflowId: input.workflowId,
+            content: input.message,
+            type: "text",
+            userId: input.user.userId.value,
+            role: input.type === "user-message" ? "user" : "assistant",
+            datetime: new Date(),
+        }
+    });
 }

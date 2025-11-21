@@ -49,12 +49,17 @@ const { compact, observation } = proxyActivities<typeof activities>({
     },
 });
 
+type PendingMessage = {
+    message: string;
+    date: string;
+}
+
 export type AgentWorkflowInput = {
     user: HennosWorkflowUser;
     aggressiveContinueAsNew: boolean;
     continueAsNew?: {
         context: string[];
-        pending: string[];
+        pending: PendingMessage[];
         userRequestedExit: boolean;
     };
 };
@@ -70,7 +75,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         ? input.continueAsNew.context
         : [];
 
-    const pending: string[] = input.continueAsNew
+    const pending: PendingMessage[] = input.continueAsNew
         ? input.continueAsNew.pending
         : [];
 
@@ -79,7 +84,10 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         : false;
 
     setHandler(agentWorkflowMessageSignal, (message: string, date: string) => {
-        pending.push(`<user_message date="${date}">\n${message}\n</user_message>`);
+        pending.push({
+            message,
+            date,
+        });
     });
 
     setHandler(agentWorkflowExitSignal, () => {
@@ -96,8 +104,16 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         }
         // grab all the pending messages and put them into context
         while (pending.length > 0) {
-            const message = pending.shift()!;
-            context.push(message);
+            const entry = pending.shift()!;
+
+            await broadcast({
+                workflowId: workflowInfo().workflowId,
+                user: input.user,
+                type: "user-message",
+                message: entry.message,
+            });
+
+            context.push(`<user_message date="${entry.date}">\n${entry.message}\n</user_message>`);
         }
 
         const agentThought = await thought(input.user, context);
@@ -107,8 +123,11 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         if (agentThought.__type === "answer") {
             await broadcast({
                 workflowId: workflowInfo().workflowId,
-                answer: agentThought.answer,
+                user: input.user,
+                type: "agent-message",
+                message: agentThought.answer,
             });
+
             context.push(`<answer>\n${agentThought.answer}\n</answer>`);
 
             if (input.aggressiveContinueAsNew) {

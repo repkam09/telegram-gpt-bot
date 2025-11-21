@@ -66,3 +66,13 @@ model Blacklist {
   chatId   BigInt   @id
   datetime DateTime @default(now())
 }
+
+model WorkflowMessage {
+  id         Int      @id @default(autoincrement())
+  workflowId String
+  userId     String   @unique()
+  content    String
+  type       String
+  datetime   DateTime @default(now())
+  role       String
+}
