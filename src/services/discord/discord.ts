@@ -1,7 +1,7 @@
 import { Client, Events, GatewayIntentBits, Partials } from "discord.js";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
-import { createDefaultUser, createTemporalClient } from "../../singletons/temporal";
+import { createTemporalClient, createWhitelistedUser } from "../../singletons/temporal";
 import { agentWorkflow, agentWorkflowMessageSignal, createWorkflowId } from "../temporal/workflows";
 import { InternalCallbackHandler } from "../events/internal";
 import type { BroadcastType } from "../events/internal";
@@ -78,8 +78,8 @@ export class DiscordBotInstance {
                 taskQueue: Config.TEMPORAL_TASK_QUEUE,
                 workflowId: workflowId,
                 args: [{
-                    user: createDefaultUser(message.author.id, message.author.displayName),
-                    aggressiveContinueAsNew: true,
+                    user: createWhitelistedUser(message.author.id, message.author.displayName),
+                    aggressiveContinueAsNew: false,
                 }],
                 signal: agentWorkflowMessageSignal,
                 signalArgs: [message.content, new Date().toISOString()],

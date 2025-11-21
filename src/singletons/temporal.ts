@@ -23,6 +23,20 @@ export function createDefaultUser(userId: string, displayName: string): HennosWo
     };
 }
 
+export function createWhitelistedUser(userId: string, displayName: string): HennosWorkflowUser {
+    return {
+        userId: {
+            __typename: "HennosWorkflowUserId" as const,
+            value: userId
+        },
+        displayName: displayName,
+        isAdmin: false,
+        isExperimental: false,
+        isWhitelisted: true,
+        provider: "openai" as const,
+    };
+}
+
 export function createAdminUser(userId: string, displayName: string): HennosWorkflowUser {
     return {
         userId: {
