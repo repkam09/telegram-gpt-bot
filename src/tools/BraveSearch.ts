@@ -56,9 +56,19 @@ export class BraveSearch extends BaseTool {
             return [`brave_search, invalid resource '${resource}' provided. Expected one of: web, images, news, videos`, metadata];
         }
 
+        try {
+            const body = await BraveSearch.searchResults({ query: args.query, resource: resource });
+            return [`brave_search, query '${args.query}', returned the following results: ${JSON.stringify(body)}`, metadata];
+        } catch {
+            Logger.error(req, "BraveSearch callback error", { query: args.query });
+            return [`brave_search, query '${args.query}', encountered an error while fetching results`, metadata];
+        }
+    }
+
+    static async searchResults(args: { query: string; resource: string; }): Promise<Array<object>> {
         let params = new URLSearchParams();
 
-        switch (resource) {
+        switch (args.resource) {
             case "images":
                 params = new URLSearchParams({
                     q: args.query,
@@ -90,20 +100,16 @@ export class BraveSearch extends BaseTool {
                 break;
         }
 
-        try {
-            const response = await fetch(`https://api.search.brave.com/res/v1/${resource}/search?${params}`, {
-                method: "GET",
-                headers: {
-                    "Accept": "application/json",
-                    "Accept-Encoding": "gzip",
-                    "x-subscription-token": Config.BRAVE_SEARCH_API_KEY as string,
-                },
-            });
-            const body = await response.json();
-            return [`brave_search, query '${args.query}', returned the following results: ${JSON.stringify(body)}`, metadata];
-        } catch {
-            Logger.error(req, "BraveSearch callback error", { query: args.query });
-            return [`brave_search, query '${args.query}', encountered an error while fetching results`, metadata];
-        }
+        const response = await fetch(`https://api.search.brave.com/res/v1/${args.resource}/search?${params}`, {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "x-subscription-token": Config.BRAVE_SEARCH_API_KEY as string,
+            },
+        });
+
+        const body = await response.json();
+        return body;
     }
 }

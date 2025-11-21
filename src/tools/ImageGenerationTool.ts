@@ -57,9 +57,7 @@ export class ImageGenerationTool extends BaseTool {
 
                 clearInterval(interval);
 
-                const caption = `Created with OpenAI GPT Image. Prompt: ${args.prompt}`;
-                const truncatedCaption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: truncatedCaption });
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with OpenAI GPT Image. Model: ${Config.OPENAI_IMAGE_MODEL}` });
                 return [`generate_image success. The requested image was generated using OpenAI GPT Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
                 Logger.error(req, "GPTImageProvider error", err);
@@ -73,9 +71,7 @@ export class ImageGenerationTool extends BaseTool {
 
                 clearInterval(interval);
 
-                const caption = `Created with NanoBanana Image. Prompt: ${args.prompt}`;
-                const truncatedCaption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
-                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: truncatedCaption });
+                await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with NanoBanana Image. Model: ${Config.GOOGLE_IMAGE_MODEL}` });
                 return [`generate_image success. The requested image was generated using NanoBanana Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
                 Logger.error(req, "NanoBananaImageProvider error", err);

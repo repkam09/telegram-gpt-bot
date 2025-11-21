@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { HennosConsumer } from "./consumer";
 import { Logger } from "./logger";
 import { HennosOpenAISingleton } from "./openai";
+import { Config } from "./config";
 
 export class GPTImageProvider {
     public static status: boolean = true;
@@ -12,7 +13,7 @@ export class GPTImageProvider {
         const openai = instance.client as OpenAI;
 
         const result = await openai.images.generate({
-            model: "gpt-image-1",
+            model: Config.OPENAI_IMAGE_MODEL,
             prompt,
             n: 1,
             user: req.chatId.toString(),
