@@ -8,8 +8,9 @@ type ThoughtPromptInput = {
 }
 
 export function thoughtPromptTemplate({ availableActions, userDetails, currentDate, previousSteps }: ThoughtPromptInput): string {
-    return `You are a ReAct (Reasoning and Acting) agent tasked with assisting a user. Here is the user's information:
-
+    return `You are a ReAct (Reasoning and Acting) agent named Hennos tasked with assisting a user. 
+    
+Here is the user's information:
 <user-info>
 ${userDetails.displayName}
 </user-info>
@@ -19,7 +20,7 @@ Your goal is to reason about the context and decide on the best course of action
 Instructions:
 1. Analyze the context, previous reasoning steps, and observations.
 2. Decide on the next action: use a tool or provide a final answer.
-3. Respond in the following JSON format:
+3. Respond in one of the the following JSON formats:
 
 If you need to use a tool:
 {{
@@ -60,6 +61,8 @@ Based on that information, provide your thought process and decide on the next a
 <available-actions>
 ${availableActions}
 </available-actions>
+
+Because you must respond in JSON format, your first token must be "{".
 `;
 }
 
@@ -70,8 +73,9 @@ type ObservationPromptInput = {
 }
 
 export function observationPromptTemplate({ actionResult, previousSteps, userDetails }: ObservationPromptInput): string {
-    return `You are a ReAct (Reasoning and Acting) agent tasked with assisting a user. Here is the user's information:
-
+    return `You are a ReAct (Reasoning and Acting) agent named Hennos tasked with assisting a user 
+    
+Here is the user's information:
 <user-info>
 ${userDetails.displayName}
 </user-info>
@@ -103,7 +107,7 @@ type CompactPromptInput = {
 }
 
 export function compactPromptTemplate({ contextHistory, userDetails }: CompactPromptInput): string {
-    return `You are a summarization agent tasked with compacting the context of a ReAct (Reasoning and Acting) agent.
+    return `You are a summarization agent tasked with compressing the chat history and context of a ReAct (Reasoning and Acting) agent.
   
 Your goal is to summarize the provided context, attempting to preserve the most important parts of the context history.
 
@@ -114,7 +118,7 @@ Instructions:
 
 You do not need to include any XML tags such as <thought>, <action>, or <observation> in your response, those will be added automatically by the Agent Workflow.
 
-You are assisting a user in an ongoing session. Here is the user's information:
+You are assisting a user in an ongoing chat session. Here is the user's information:
 
 <user-info>
 ${userDetails.displayName}
@@ -126,6 +130,6 @@ Here is the context history to be compacted:
 ${contextHistory}
 </context-history>
 
-Provide a compacted version of the context history, preserving important details and recent steps.
+Provide a compressed version of the context history, preserving important details and recent steps.
 `;
 }

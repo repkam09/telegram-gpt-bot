@@ -53,6 +53,13 @@ export async function thought(
         { role: "user", content: promptTemplate, type: "text" },
     ]) as HennosStringResponse;
 
+    try {
+        JSON.parse(response.payload);
+    } catch (e) {
+        console.error(`Failed to parse agent result JSON: ${(e as Error).message}\nResponse payload: ${response.payload}`);
+        throw e;
+    }
+
     const parsed = JSON.parse(response.payload);
 
     if (Object.prototype.hasOwnProperty.call(parsed, "answer")) {
