@@ -48,7 +48,7 @@ export async function HennosAnonUser(): Promise<HennosUser> {
 export async function HennosUserFromWorkflowUser(workflowUser: HennosWorkflowUser): Promise<HennosUser> {
     const user = new HennosUser(-1);
     await user.clearChatContext();
-    user.displayName = "WorkflowUser";
+    user.displayName = workflowUser.displayName ?? "WorkflowUser";
     user.whitelisted = workflowUser.isWhitelisted;
     user.experimental = workflowUser.isExperimental;
     user.provider = workflowUser.provider;

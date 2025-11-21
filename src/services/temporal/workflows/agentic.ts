@@ -154,6 +154,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
             );
 
             const agentAction = await action(
+                input.user,
                 agentThought.action.name,
                 agentThought.action.input,
             );

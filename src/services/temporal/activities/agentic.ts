@@ -1,5 +1,6 @@
-import { HennosAnonUser, HennosUserFromWorkflowUser } from "../../../singletons/consumer";
+import { HennosUserFromWorkflowUser } from "../../../singletons/consumer";
 import { Database } from "../../../singletons/data/sqlite";
+import { HennosOpenAISingleton } from "../../../singletons/llms/openai";
 import { ToolCallResponse } from "../../../tools/BaseTool";
 import { availableToolsAsString, processToolCalls } from "../../../tools/tools";
 import { HennosStringResponse } from "../../../types";
@@ -69,10 +70,11 @@ export async function thought(
 }
 
 export async function action(
+    userDetails: HennosWorkflowUser,
     toolName: string,
     input: unknown,
 ): Promise<string> {
-    const req = await HennosAnonUser();
+    const req = await HennosUserFromWorkflowUser(userDetails);
     const toolCall = {
         function: {
             name: toolName,
@@ -105,7 +107,7 @@ export async function observation(
     actionResult: string,
 ): Promise<ObservationResult> {
     const req = await HennosUserFromWorkflowUser(userDetails);
-    const model = req.getProvider();
+    const model = HennosOpenAISingleton.mini();
 
     const promptTemplate = observationPromptTemplate({
         userDetails: userDetails,
@@ -126,7 +128,7 @@ export async function compact(
     context: string[],
 ): Promise<CompactionResult> {
     const req = await HennosUserFromWorkflowUser(userDetails);
-    const model = req.getProvider();
+    const model = HennosOpenAISingleton.mini();
 
     const compactTemplate = compactPromptTemplate({
         userDetails: userDetails,
