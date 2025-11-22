@@ -6,9 +6,9 @@ import { ToolCall } from "ollama";
 import { Logger } from "../logger";
 import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam, FunctionDefinition } from "openai/resources";
 import { getSizedChatContext } from "../data/context";
-import { HennosBaseProvider } from "./base";
+import { HennosBaseProvider, InvokeToolOptions } from "./base";
 import { availableTools, processToolCalls } from "../../tools/tools";
-import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
+import { HennosAgentResponse, HennosMessage, HennosResponse, HennosTextMessage } from "../../types";
 
 type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
 
@@ -104,14 +104,18 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         return `OpenAI GPT model ${this.model.MODEL}`;
     }
 
-    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
-        Logger.info(req, `OpenAI Invoke Start (${this.model.MODEL})`);
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[], tools: InvokeToolOptions = [undefined, undefined, undefined]): Promise<HennosAgentResponse> {
+        Logger.info(req, `OpenAI Agentic Invoke Start (${this.model.MODEL})`);
         const prompt = convertHennosMessages(messages);
+        const [tool_choice, available_tools, parallel_tool_calls] = tools;
 
         const response = await this.client.chat.completions.create({
             model: this.model.MODEL,
             messages: prompt,
-            safety_identifier: `${req.chatId}`
+            safety_identifier: `${req.chatId}`,
+            tool_choice: tool_choice,
+            tools: available_tools,
+            parallel_tool_calls: parallel_tool_calls
         });
 
         Logger.info(req, `OpenAI Invoke Success, Usage: ${calculateUsage(response.usage)}`);
@@ -119,19 +123,30 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
             throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
         }
 
-        if (!response.choices[0].message.tool_calls && !response.choices[0].message.content) {
-            throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Properties");
+        if (response.choices[0].message.content) {
+            Logger.info(req, "OpenAI Invoke Success, Resulted in Text Completion");
+            return {
+                __type: "message",
+                payload: response.choices[0].message.content
+            };
         }
 
-        if (!response.choices[0].message.content) {
-            throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Content");
+        if (response.choices[0].message.tool_calls && response.choices[0].message.tool_calls.length > 0) {
+            Logger.info(req, `OpenAI Invoke Success, Resulted in ${response.choices[0].message.tool_calls.length} Tool Calls`);
+
+            const toolCall = response.choices[0].message.tool_calls[0];
+            if (toolCall.type != "function") {
+                throw new Error("The requested tool call is not supported: " + toolCall.type);
+            }
+
+            return {
+                __type: "tool",
+                tool_name: toolCall.function.name,
+                tool_input: toolCall.function.arguments
+            };
         }
 
-        Logger.info(req, "OpenAI Invoke Success, Resulted in Text Completion");
-        return {
-            __type: "string",
-            payload: response.choices[0].message.content
-        };
+        throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Properties");
     }
 
     public async completion(req: HennosConsumer, system: HennosMessage[], complete: HennosMessage[]): Promise<HennosResponse> {

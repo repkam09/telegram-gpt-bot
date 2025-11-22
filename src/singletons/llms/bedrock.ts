@@ -1,7 +1,7 @@
-import { HennosBaseProvider } from "./base";
+import { HennosBaseProvider, InvokeToolOptions } from "./base";
 import { BedrockRuntimeClient, ContentBlock, ConverseCommand, Message, SystemContentBlock, TokenUsage, Tool, ToolConfiguration, ToolUseBlock } from "@aws-sdk/client-bedrock-runtime";
 import { Config } from "../config";
-import { HennosTextMessage, HennosMessage, HennosResponse, HennosStringResponse } from "../../types";
+import { HennosTextMessage, HennosMessage, HennosResponse, HennosAgentResponse } from "../../types";
 import { HennosConsumer } from "../consumer";
 import { Logger } from "../logger";
 import { HennosOpenAISingleton } from "./openai";
@@ -104,9 +104,9 @@ class HennosBedrockProvider extends HennosBaseProvider {
         return converted;
     }
 
-    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[], tools: InvokeToolOptions): Promise<HennosAgentResponse> {
         Logger.warn(req, "Bedrock Invoke Start (OpenAI Fallback)");
-        return HennosOpenAISingleton.instance().invoke(req, messages);
+        return HennosOpenAISingleton.instance().invoke(req, messages, tools);
     }
 
     public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {

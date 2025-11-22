@@ -5,9 +5,9 @@ import { ImageBlockParam, TextBlock, TextBlockParam, Tool, ToolChoiceAuto } from
 import { Logger } from "../logger";
 import { getSizedChatContext } from "../data/context";
 import { HennosOpenAISingleton } from "./openai";
-import { HennosBaseProvider } from "./base";
+import { HennosBaseProvider, InvokeToolOptions } from "./base";
 import { availableTools, processToolCalls } from "../../tools/tools";
-import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
+import { HennosAgentResponse, HennosMessage, HennosResponse, HennosTextMessage } from "../../types";
 import { HennosConsumer } from "../consumer";
 
 export class HennosAnthropicSingleton {
@@ -153,9 +153,9 @@ class HennosAnthropicProvider extends HennosBaseProvider {
         return `Anthropic Claude model ${Config.ANTHROPIC_LLM.MODEL}`;
     }
 
-    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[], tools: InvokeToolOptions): Promise<HennosAgentResponse> {
         Logger.warn(req, "Anthropic Invoke Start (OpenAI Fallback)");
-        return HennosOpenAISingleton.instance().invoke(req, messages);
+        return HennosOpenAISingleton.instance().invoke(req, messages, tools);
     }
 
     public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {

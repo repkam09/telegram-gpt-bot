@@ -26,7 +26,10 @@ export async function summarizeResults(input: SearchWorkflowInput, results: Arra
 
     const instance = HennosOpenAISingleton.mini();
     const req = await HennosAnonUser();
-    const response = await instance.invoke(req, prompt);
+    const response = await instance.invoke(req, prompt, [undefined, undefined, undefined]);
+    if (response.__type !== "message") {
+        throw new Error("Invalid OpenAI Response Shape for Search Summary");
+    }
 
     return response.payload;
 }

@@ -1,4 +1,16 @@
 export type HennosResponse = HennosStringResponse | HennosEmptyResponse | HennosArrayBufferResponse | HennosErrorResponse;
+export type HennosAgentResponse = HennosMessageResponse | HennosToolResponse;
+
+export type HennosToolResponse = {
+    __type: "tool";
+    tool_name: string;
+    tool_input: string;
+}
+
+export type HennosMessageResponse = {
+    __type: "message";
+    payload: string;
+}
 
 export type HennosMessageRole = "user" | "assistant" | "system";
 export type HennosTextMessage = {

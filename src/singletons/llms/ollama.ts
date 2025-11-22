@@ -3,12 +3,12 @@ import { Message, Ollama, ToolCall } from "ollama";
 import { Config } from "../config";
 import { Logger } from "../logger";
 import { getSizedChatContext } from "../data/context";
-import { HennosBaseProvider } from "./base";
+import { HennosBaseProvider, InvokeToolOptions } from "./base";
 import { HennosOpenAISingleton } from "./openai";
 import { HennosConsumer, HennosUser } from "../consumer";
 import { availableTools, processToolCalls } from "../../tools/tools";
 import { ToolCallMetadata } from "../../tools/BaseTool";
-import { HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
+import { HennosAgentResponse, HennosMessage, HennosResponse, HennosStringResponse, HennosTextMessage } from "../../types";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosBaseProvider | null = null;
@@ -63,9 +63,9 @@ class HennosOllamaProvider extends HennosBaseProvider {
         return `Open Source model ${Config.OLLAMA_LLM.MODEL} running under Ollama.`;
     }
 
-    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[], tools: InvokeToolOptions): Promise<HennosAgentResponse> {
         Logger.warn(req, "Ollama Invoke Start (OpenAI Fallback)");
-        return HennosOpenAISingleton.instance().invoke(req, messages);
+        return HennosOpenAISingleton.instance().invoke(req, messages, tools);
     }
 
     public async completion(req: HennosConsumer, system: HennosTextMessage[], complete: HennosMessage[]): Promise<HennosResponse> {
