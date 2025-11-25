@@ -49,12 +49,16 @@ async function start() {
         console.warn("VTube Studio is disabled, set VTUBE_STUDIO_ENABLED=true to enable it");
     }
 
-    init.push(LifeforceBroadcast.init());
+    if (Config.LIFEFORCE_ENABLED) {
+        init.push(LifeforceBroadcast.init());
+    } else {
+        console.warn("Lifeforce Broadcast is disabled, set LIFEFORCE_ENABLED=true to enable it");
+    }
 
     await Promise.all(init);
 
     // If we are in development mode and no other providers are enabled, run the command line interface
-    const enabled = [Config.TELEGRAM_ENABLED, Config.WEBHOOK_ENABLED, Config.VTUBE_STUDIO_ENABLED, Config.DISCORD_ENABLED];
+    const enabled = [Config.TELEGRAM_ENABLED, Config.TEMPORAL_ENABLED, Config.WEBHOOK_ENABLED, Config.VTUBE_STUDIO_ENABLED, Config.DISCORD_ENABLED];
     if (Config.HENNOS_DEVELOPMENT_MODE && !enabled.includes(true)) {
         Logger.debug(undefined, "Running command line interface in development mode");
         await CommandLineInstance.run();

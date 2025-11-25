@@ -569,6 +569,14 @@ export class Config {
         return process.env.LIFEFORCE_BASE_URL;
     }
 
+    static get LIFEFORCE_ENABLED(): boolean {
+        if (!process.env.LIFEFORCE_ENABLED) {
+            return false;
+        }
+
+        return process.env.LIFEFORCE_ENABLED === "true";
+    }
+
     static LOCAL_STORAGE(req?: { chatId: number }): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();

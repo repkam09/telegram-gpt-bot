@@ -41,6 +41,11 @@ export class LifeforceBroadcast {
     }
 
     public static async broadcast(input: BroadcastInput): Promise<void> {
+        if (!Config.LIFEFORCE_ENABLED) {
+            Logger.debug("LifeforceBroadcast: Broadcasting is disabled via configuration");
+            return;
+        }
+
         if (input.type !== "user-message" && input.type !== "agent-message") {
             Logger.debug("LifeforceBroadcast: Unsupported input type for broadcasting:", input.type);
             return;
