@@ -12,7 +12,7 @@ export type SearchWorkflowOutput = {
 }
 
 const { searchResults, summarizeResults } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "15 seconds",
+    startToCloseTimeout: "60 seconds",
     retry: {
         backoffCoefficient: 1,
         initialInterval: "3 seconds",
