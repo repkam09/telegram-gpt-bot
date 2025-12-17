@@ -16,7 +16,6 @@ import { HennosConsumer } from "../singletons/consumer";
 import { CreateArtifact } from "./CreateArtifact";
 import { SendImageFromURL } from "./SendImageFromURL";
 import { BraveSearch } from "./BraveSearch";
-import { VideoGenerationTool } from "./VideoGenerationTool";
 import { AudiobookRequest, EbookRequest } from "./MiscFileRequestTool";
 
 const PUBLIC_TOOLS = [
@@ -34,7 +33,6 @@ const WHITELIST_TOOLS = [
     PythonSandbox,
     AcknowledgeWithoutResponse,
     ImageGenerationTool,
-    VideoGenerationTool,
     CreateArtifact,
     SendImageFromURL,
     BraveSearch,
