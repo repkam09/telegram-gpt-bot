@@ -122,7 +122,8 @@ class HennosBedrockProvider extends HennosBaseProvider {
         try {
             return this.completionWithRecursiveToolCalls(req, convertedSystem, convertedMessages, 0, true);
         } catch (err: unknown) {
-            Logger.error(req, `Bedrock Completion with Tools Error: ${err}, Falling back to standard completion`);
+            const error = err as Error;
+            Logger.error(req, `Bedrock Completion with Tools Error: ${error.message}`, error);
             return HennosOpenAISingleton.instance().completion(req, system, complete);
         }
     }
@@ -146,7 +147,7 @@ class HennosBedrockProvider extends HennosBaseProvider {
             Logger.info(req, `Bedrock Converse Success, Usage: ${calculateUsage(data.usage)}`);
 
             if (!data.output || !data.output.message || !data.output.message.content) {
-                Logger.debug(req, "Bedrock Response Missing Output or Message, Full Response: ", data);
+                Logger.debug(req, `Bedrock Response Missing Output or Message, Full Response: ${JSON.stringify(data)}`);
                 throw new Error("Invalid Bedrock Response Shape, Missing Output Message Content");
             }
 
@@ -244,7 +245,8 @@ class HennosBedrockProvider extends HennosBaseProvider {
 
             throw new Error(`Bedrock Completion Stopped for Unknown Reason: ${data.stopReason}`);
         } catch (err: unknown) {
-            Logger.info(req, "Bedrock Completion Error: ", err);
+            const error = err as Error;
+            Logger.error(req, `Bedrock Completion Error: ${error.message}`, error);
             throw err;
         }
     }

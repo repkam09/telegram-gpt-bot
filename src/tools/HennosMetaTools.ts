@@ -46,7 +46,7 @@ export class MetaBugReport extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "MetaBugReport callback", { title: args.title, report: args.report });
+        Logger.info(req, `MetaBugReport callback. ${JSON.stringify({ title: args.title, report: args.report })}`);
         if (!args.title) {
             return ["bug_report, title not provided", metadata];
         }
@@ -60,14 +60,14 @@ export class MetaBugReport extends BaseTool {
             return [`bug_report: ${url}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "MetaBugReport unable to create bug report", { title: args.title, report: args.report, error: error.message });
+            Logger.error(req, `MetaBugReport unable to create bug report. ${JSON.stringify({ title: args.title, report: args.report, error: error.message })}`);
             return ["bug_report, unable to create but report", metadata];
         }
     }
 }
 
 async function createGitHubIssue(req: HennosConsumer, title: string, report: string): Promise<string> {
-    Logger.debug(req, "createGitHubIssue", { title, report });
+    Logger.debug(req, `createGitHubIssue. ${JSON.stringify({ title, report })}`);
 
     const response = await axios.post("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
         title: title,
@@ -123,7 +123,7 @@ export class MetaFeatureRequest extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "MetaFeatureRequest callback", { title: args.title, request: args.request });
+        Logger.info(req, `MetaFeatureRequest callback. ${JSON.stringify({ title: args.title, request: args.request })}`);
         if (!args.title) {
             return ["feature_request, title not provided", metadata];
         }
@@ -137,14 +137,14 @@ export class MetaFeatureRequest extends BaseTool {
             return [`feature_request: ${url}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "MetaFeatureRequest unable to create feature request", { title: args.title, request: args.request, error: error.message });
+            Logger.error(req, `MetaFeatureRequest unable to create feature request. ${JSON.stringify({ title: args.title, request: args.request, error: error.message })}`);
             return ["feature_request, unable to create feature request", metadata];
         }
     }
 }
 
 async function createGitHubFeatureRequest(req: HennosConsumer, title: string, request: string): Promise<string> {
-    Logger.debug(req, "createGitHubIssue", { title, request });
+    Logger.debug(req, `createGitHubIssue. ${JSON.stringify({ title, request })}`);
 
     const response = await axios.post("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
         title,
@@ -191,7 +191,7 @@ export class MetaFeedbackTool extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "MetaFeedbackTool callback", { message: args.message });
+        Logger.info(req, `MetaFeedbackTool callback. ${JSON.stringify({ message: args.message })}`);
 
         if (!args.message) {
             return ["hennos_feedback: message not provided", metadata];
@@ -205,7 +205,7 @@ export class MetaFeedbackTool extends BaseTool {
             return ["Your feedback has been sent to the creator. Thank you for your input!", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "MetaFeedbackTool unable to send feedback", { message: args.message, error: error.message });
+            Logger.error(req, `MetaFeedbackTool unable to send feedback. Error: ${args.message}`, error);
             return ["Unable to send your feedback. Please try again later.", metadata];
         }
     }
@@ -241,7 +241,7 @@ export class MetaSetUserPreferredName extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "SetUserPreferredName callback", { preferredName: args.preferredName });
+        Logger.info(req, `SetUserPreferredName callback. ${JSON.stringify({ preferredName: args.preferredName })}`);
         if (!args.preferredName) {
             return ["set_user_preferred_name, preferredName not provided", metadata];
         }
@@ -255,7 +255,7 @@ export class MetaSetUserPreferredName extends BaseTool {
             return ["set_user_preferred_name: success", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "SetUserPreferredName unable to set preferred name", { preferredName: args.preferredName, error: error.message });
+            Logger.error(req, `SetUserPreferredName unable to set preferred name. ${JSON.stringify({ preferredName: args.preferredName, error: error.message })}`, error);
             return ["set_user_preferred_name, unable to set preferred name", metadata];
         }
     }
@@ -291,7 +291,7 @@ export class MetaSetBotPreferredName extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "SetBotPreferredName callback", { preferredName: args.preferredName });
+        Logger.info(req, `SetBotPreferredName callback. ${JSON.stringify({ preferredName: args.preferredName })}`);
         if (!args.preferredName) {
             return ["set_bot_preferred_name, preferredName not provided", metadata];
         }
@@ -305,7 +305,7 @@ export class MetaSetBotPreferredName extends BaseTool {
             return ["set_bot_preferred_name: success", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "SetBotPreferredName unable to set preferred name", { preferredName: args.preferredName, error: error.message });
+            Logger.error(req, `SetBotPreferredName unable to set preferred name. ${JSON.stringify({ preferredName: args.preferredName, error: error.message })}`, error);
             return ["set_bot_preferred_name, unable to set preferred name", metadata];
         }
     }
@@ -348,7 +348,7 @@ export class MetaSetLLMProvider extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "MetaSetLLMProvider callback", { provider: args.provider });
+        Logger.info(req, `MetaSetLLMProvider callback. ${JSON.stringify({ provider: args.provider })}`);
         if (!args.provider) {
             return ["set_llm_provider, provider not provided", metadata];
         }
@@ -366,7 +366,7 @@ export class MetaSetLLMProvider extends BaseTool {
             return ["set_llm_provider: success", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "MetaSetLLMProvider unable to set provider", { provider: args.provider, error: error.message });
+            Logger.error(req, `MetaSetLLMProvider unable to set provider. ${JSON.stringify({ provider: args.provider, error: error.message })}`, error);
             return ["set_llm_provider, unable to set provider", metadata];
         }
     }

@@ -7,7 +7,7 @@ export class NanoBananaImageProvider {
     public static status: boolean = true;
 
     static async generateImage(req: HennosConsumer, prompt: string): Promise<Buffer> {
-        Logger.info(req, "NanoBananaImageProvider generateImage", { prompt });
+        Logger.info(req, `NanoBananaImageProvider generateImage. Prompt: ${prompt}`);
         const ai = new GoogleGenAI({
             apiKey: Config.GOOGLE_API_KEY
         });
@@ -18,18 +18,18 @@ export class NanoBananaImageProvider {
 
         let buffer: Buffer | null = null;
         if (!response.candidates || response.candidates.length === 0) {
-            Logger.error(req, "NanoBananaImageProvider generateImage error", { prompt });
+            Logger.error(req, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
             throw new Error("Failed to generate image, no data returned");
         }
 
         const candidate = response.candidates[0] as Candidate;
         if (!candidate.content) {
-            Logger.error(req, "NanoBananaImageProvider generateImage error", { prompt });
+            Logger.error(req, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
             throw new Error("Failed to generate image, no content returned");
         }
 
         if (!candidate.content.parts || candidate.content.parts.length === 0) {
-            Logger.error(req, "NanoBananaImageProvider generateImage error", { prompt });
+            Logger.error(req, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
             throw new Error("Failed to generate image, no parts returned");
         }
 
@@ -42,7 +42,7 @@ export class NanoBananaImageProvider {
         }
 
         if (!buffer) {
-            Logger.error(req, "NanoBananaImageProvider generateImage error", { prompt });
+            Logger.error(req, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
             throw new Error("Failed to generate image, no inline data returned");
         }
 

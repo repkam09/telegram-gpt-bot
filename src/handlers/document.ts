@@ -22,8 +22,9 @@ export async function handleDocumentMessage(req: HennosConsumer, path: string, f
         }
         return handleDocument(user, path, uuid, reader);
 
-    } catch (err) {
-        Logger.error(user, `Error while processing document at path ${path} with UUID ${uuid}.`, err);
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.error(user, `Error while processing document at path ${path} with UUID ${uuid}.`, error);
         return "An error occured while processing your document.";
     }
 }

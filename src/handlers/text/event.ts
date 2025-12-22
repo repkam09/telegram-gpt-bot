@@ -33,7 +33,7 @@ export async function handleEventMessage(user: HennosUser, text: string): Promis
         return response;
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error(user, `Error processing event completion: ${error.message}`, error.stack);
+        Logger.error(user, `Error processing event completion: ${error.message}`, error);
         return {
             __type: "empty",
         };

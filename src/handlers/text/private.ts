@@ -40,7 +40,7 @@ async function handleWhitelistedPrivateMessage(user: HennosUser, text: string, h
         return response;
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error(user, `Error processing chat completion: ${error.message}`, error.stack);
+        Logger.error(user, `Error processing chat completion: ${error.message}`, error);
         return {
             __type: "error",
             payload: "Sorry, I was unable to process your message"

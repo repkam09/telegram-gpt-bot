@@ -53,7 +53,7 @@ export class FetchWebpageContent extends BaseTool {
             return ["fetch_webpage_content error, required parameter 'url' not provided", metadata];
         }
 
-        Logger.info(req, "fetch_webpage_content", { url: args.url, query: args.query });
+        Logger.info(req, `fetch_webpage_content, url=${args.url}, query=${args.query}`);
         try {
             const html = await fetchPageContent(req, args.url);
 
@@ -70,13 +70,14 @@ export class FetchWebpageContent extends BaseTool {
             const query = args.query ? args.query : "Could you provide a summary of this webpage content?";
             const result = await handleDocument(req as HennosUser, filePath, args.url, new HTMLReader(), query);
             return [`fetch_webpage_content, url: ${args.url}, result: ${result}`, metadata];
-        } catch (err) {
+        } catch (err: unknown) {
+            const error = err as Error;
             if (err instanceof AxiosError) {
-                Logger.error(req, "fetch_webpage_content error", { url: args.url, status: err.response?.status, statusText: err.response?.statusText });
+                Logger.error(req, `fetch_webpage_content error. url=${args.url} status=${err.response?.status} statusText=${err.response?.statusText}`, error);
                 return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}', HTTP Status: ${err.response?.status}, Status Text: ${err.response?.statusText}`, metadata];
             }
 
-            Logger.error(req, "fetch_webpage_content error", { url: args.url, error: err });
+            Logger.error(req, `fetch_webpage_content error url=${args.url} error=${error.message}`, error);
             return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}'`, metadata];
         }
     }
@@ -92,8 +93,9 @@ export async function fetchPageContent(req: HennosConsumer, url: string): Promis
             try {
                 const extracted = extractReadable(raw, url);
                 if (extracted) return extracted;
-            } catch (e) {
-                Logger.debug(req, "reader-lite extraction failed", { error: e });
+            } catch (err: unknown) {
+                const e = err as Error;
+                Logger.debug(req, `reader-lite extraction failed. Error: ${e.message}`);
             }
         }
         return raw;
@@ -124,16 +126,18 @@ export async function fetchPageContent(req: HennosConsumer, url: string): Promis
         let article: string | undefined;
         try {
             article = extractReadable(html, url);
-        } catch (e) {
-            Logger.debug(req, "readability extraction failed", { error: e });
+        } catch (err: unknown) {
+            const e = err as Error;
+            Logger.debug(req, `readability extraction failed. Error: ${e.message}`);
         }
 
         await page.close();
         await browser.close();
 
         return article || html;
-    } catch (err) {
-        Logger.error(req, "fetchPageContent error", { url: url, error: err });
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.error(req, `fetchPageContent error url=${url} error=${error.message}`, error);
         try {
             const fallback = await BaseTool.fetchTextData(url);
             const extracted = extractReadable(fallback, url) || fallback;

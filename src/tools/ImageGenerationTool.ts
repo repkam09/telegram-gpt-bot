@@ -37,7 +37,7 @@ export class ImageGenerationTool extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "ImageGenerationTool callback", { prompt: args.prompt });
+        Logger.info(req, `ImageGenerationTool callback. ${JSON.stringify({ prompt: args.prompt })}`);
         if (!args.prompt) {
             return ["generate_image failed, prompt must be provided", metadata];
         }
@@ -60,7 +60,8 @@ export class ImageGenerationTool extends BaseTool {
                 await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with OpenAI GPT Image. Model: ${Config.OPENAI_IMAGE_MODEL}` });
                 return [`generate_image success. The requested image was generated using OpenAI GPT Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
-                Logger.error(req, "GPTImageProvider error", err);
+                const error = err as Error;
+                Logger.error(req, `GPTImageProvider error. ${JSON.stringify({ prompt: args.prompt, error: error.message })}`, error);
                 clearInterval(interval);
                 return ["generate_image failed", metadata];
             }
@@ -74,7 +75,8 @@ export class ImageGenerationTool extends BaseTool {
                 await TelegramBotInstance.sendImageWrapper(req, storage, { caption: `Created with NanoBanana Image. Model: ${Config.GOOGLE_IMAGE_MODEL}` });
                 return [`generate_image success. The requested image was generated using NanoBanana Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
             } catch (err: unknown) {
-                Logger.error(req, "NanoBananaImageProvider error", err);
+                const error = err as Error;
+                Logger.error(req, `NanoBananaImageProvider error. ${JSON.stringify({ prompt: args.prompt, error: error.message })}`, error);
                 clearInterval(interval);
                 return ["generate_image failed", metadata];
             }

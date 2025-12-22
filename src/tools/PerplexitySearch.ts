@@ -38,7 +38,7 @@ export class PerplexitySearch extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "PerplexitySearch callback", { query: args.query });
+        Logger.info(req, `PerplexitySearch callback. ${JSON.stringify({ query: args.query })}`);
         if (!args.query) {
             return ["Error: Invalid Request, missing 'query'.", metadata];
         }
@@ -75,12 +75,12 @@ You should respond using only plain text with no markdown or code blocks.
             }) as PerplexityResponse;
 
             if (!result.choices || result.choices.length === 0) {
-                Logger.warn(req, "Perplexity returned no choices", { query: args.query });
+                Logger.warn(req, `Perplexity returned no choices. ${JSON.stringify({ query: args.query })}`);
                 return ["Error: Perplexity returned an unexpected response.", metadata];
             }
 
             if (!result.choices[0].message || !result.choices[0].message.content) {
-                Logger.warn(req, "Perplexity returned no content", { query: args.query });
+                Logger.warn(req, `Perplexity returned no content. ${JSON.stringify({ query: args.query })}`);
                 return ["Error: Perplexity returned an unexpected response.", metadata];
             }
 
@@ -90,11 +90,12 @@ You should respond using only plain text with no markdown or code blocks.
             const content = result.choices[0].message.content;
 
             const response = `${content}\n\nSources:\n${citations}`;
-            Logger.debug(req, "PerplexitySearch response", { response });
+            Logger.debug(req, `PerplexitySearch response. ${JSON.stringify({ response })}`);
 
             return [response, metadata];
-        } catch {
-            Logger.error(req, "Perplexity callback error", { query: args.query });
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, `Perplexity callback error. ${JSON.stringify({ query: args.query, error: error.message })}`, error);
             return ["An Unhandled Error occured while attempting to use Perplexity.", metadata];
         }
     }

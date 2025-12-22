@@ -43,18 +43,18 @@ export class WolframAlpha extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "WolframAlpha callback", { input: args.input });
+        Logger.info(req, `WolframAlpha callback. ${JSON.stringify({ input: args.input })}`);
         if (!args.input) {
             return ["wolfram_alpha, input not provided", metadata];
         }
 
         try {
             const response = await BaseTool.fetchTextData(`https://www.wolframalpha.com/api/v1/llm-api?appid=${Config.WOLFRAM_ALPHA_APP_ID}&maxchars=4096&input=${encodeURI(args.input)}`);
-            Logger.debug(req, "WolframAlpha callback", { input: args.input, response_length: response.length });
+            Logger.debug(req, `WolframAlpha callback. ${JSON.stringify({ input: args.input, response_length: response.length })}`);
             return [`wolfram_alpha, input '${args.input}', returned the following response: ${response}`, metadata];
         } catch (err) {
             const error = err as Error;
-            Logger.error(req, "WolframAlpha callback error", { input: args.input, err: error.message });
+            Logger.error(req, `WolframAlpha callback error. ${JSON.stringify({ input: args.input, err: error.message })}`, error);
             return [`wolfram_alpha, input '${args.input}', encountered an error while fetching results`, metadata];
         }
     }

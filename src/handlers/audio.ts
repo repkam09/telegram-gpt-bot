@@ -21,7 +21,7 @@ export async function handleAudioMessage(user: HennosUser, path: string): Promis
 
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error(user, "Error processing audio file: ", error.message, error.stack);
+        Logger.error(user, "Error processing audio file: ", error);
         return {
             __type: "error",
             payload: "Sorry, I was unable to process your audio."

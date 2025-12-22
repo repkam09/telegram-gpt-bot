@@ -21,7 +21,7 @@ export async function handleVoiceMessage(user: HennosUser, path: string): Promis
 
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error(user, "Error processing voice message: ", error.message, error.stack);
+        Logger.error(user, `Error processing voice message: ${error.message}`, error);
         return {
             __type: "error",
             payload: "Sorry, I was unable to process your voice message."

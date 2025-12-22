@@ -32,7 +32,7 @@ export class AcknowledgeWithoutResponse extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "AcknowledgeWithoutResponse callback", { reason: args.reason });
+        Logger.info(req, `AcknowledgeWithoutResponse callback: ${args.reason}`);
         return ["acknowledge_without_response", metadata, { __type: "empty" }];
     }
 }

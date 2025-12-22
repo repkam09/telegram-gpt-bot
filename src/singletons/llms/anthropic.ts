@@ -297,7 +297,8 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                 payload: result
             };
         } catch (err: unknown) {
-            Logger.info(req, "Anthropic Completion Error: ", err);
+            const error = err as Error;
+            Logger.error(req, `Anthropic Completion Error: ${error.message}`, error);
             throw err;
         }
     }

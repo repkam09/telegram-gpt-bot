@@ -17,9 +17,9 @@ export class LifeforceBroadcast {
     public static async init(): Promise<void> {
         const healthy = await this.health();
         if (healthy) {
-            Logger.info("LifeforceBroadcast: Successfully connected to Lifeforce service");
+            Logger.info(undefined, "LifeforceBroadcast: Successfully connected to Lifeforce service");
         } else {
-            Logger.error("LifeforceBroadcast: Failed to connect to Lifeforce service");
+            Logger.error(undefined, "LifeforceBroadcast: Failed to connect to Lifeforce service");
             throw new Error("Lifeforce service is not healthy");
         }
     }
@@ -34,15 +34,16 @@ export class LifeforceBroadcast {
             });
 
             return response.ok;
-        } catch (error) {
-            Logger.error("LifeforceBroadcast: Health check failed", error);
+        } catch (error: unknown) {
+            const err = error as Error;
+            Logger.error(undefined, `LifeforceBroadcast: Health check failed: ${err.message}`);
             return false;
         }
     }
 
     public static async broadcast(input: BroadcastInput): Promise<void> {
         if (input.type !== "user-message" && input.type !== "agent-message") {
-            Logger.debug("LifeforceBroadcast: Unsupported input type for broadcasting:", input.type);
+            Logger.debug(undefined, `LifeforceBroadcast: Unsupported input type for broadcasting: ${input.type}`);
             return;
         }
 
@@ -67,9 +68,9 @@ export class LifeforceBroadcast {
 
         if (!response.ok) {
             const errorText = await response.text();
-            Logger.error(`LifeforceBroadcast: Failed to broadcast message. Status: ${response.status}, Response: ${errorText}`);
+            Logger.error(undefined, `LifeforceBroadcast: Failed to broadcast message. Status: ${response.status}, Response: ${errorText}`);
         } else {
-            Logger.debug("LifeforceBroadcast: Successfully broadcasted message.");
+            Logger.debug(undefined, "LifeforceBroadcast: Successfully broadcasted message.");
         }
     }
 }

@@ -56,7 +56,7 @@ export class CreateArtifact extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "CreateArtifact callback", { filename: args.filename, contentLength: args.content?.length });
+        Logger.info(req, `CreateArtifact callback. filename=${args.filename}, contentLength=${args.content?.length}`);
 
         // Basic validation
         if (!args.filename || !args.content) {
@@ -85,8 +85,9 @@ export class CreateArtifact extends BaseTool {
         const artifactDir = path.join(Config.LOCAL_STORAGE(req), "artifacts");
         try {
             await fs.mkdir(artifactDir, { recursive: true });
-        } catch (err) {
-            Logger.warn(req, "CreateArtifact: unable to ensure artifact directory", err);
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, "CreateArtifact: unable to ensure artifact directory. Error: " + error.message, error);
         }
 
         let targetPath = path.join(artifactDir, filename);
@@ -101,7 +102,7 @@ export class CreateArtifact extends BaseTool {
             await fs.writeFile(targetPath, args.content, { encoding: "utf-8" });
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "CreateArtifact write error", error);
+            Logger.error(req, "CreateArtifact write error. Error: " + error.message, error);
             return [
                 `create_artifact error: failed to write file '${filename}'. ${error.message}`,
                 metadata

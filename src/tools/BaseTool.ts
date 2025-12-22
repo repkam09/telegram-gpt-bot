@@ -36,7 +36,7 @@ export abstract class BaseTool {
     }
 
     public static async postJSONData<T = any>(url: string, body: unknown, headers?: Record<string, string>): Promise<T> {
-        Logger.debug(undefined, "postJSONData", { url, body, headers });
+        Logger.debug(undefined, `postJSONData: ${JSON.stringify({ url, body, headers })}`);
         const result = await axios({
             data: body,
             headers: {
@@ -64,17 +64,17 @@ export abstract class BaseTool {
                 }
 
                 if (stderr) {
-                    Logger.debug(undefined, "stderr", stderr);
+                    Logger.debug(undefined, "stderr: " + stderr);
                 }
 
-                Logger.debug(undefined, "stdout", stdout);
+                Logger.debug(undefined, "stdout: " + stdout);
                 return resolve(stdout);
             });
         });
     }
 
     private static fetchAxios<T>(url: string, responseType: "text" | "json" | "arraybuffer", headers?: Record<string, string>): Promise<{ data: T }> {
-        Logger.debug(undefined, "fetchAxios", { url, responseType, headers });
+        Logger.debug(undefined, `fetchAxios url=${url} responseType=${responseType} headers=${JSON.stringify(headers)}`);
         return axios<T>({
             headers: {
                 ...headers,

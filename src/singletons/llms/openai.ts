@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { Config, HennosModelConfig } from "../config";
-import OpenAI, { OpenAIError } from "openai";
+import OpenAI from "openai";
 import { HennosConsumer, HennosGroup, HennosUser } from "../consumer";
 import { ToolCall } from "ollama";
 import { Logger } from "../logger";
@@ -221,12 +221,8 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
 
             throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Tool Calls");
         } catch (err: unknown) {
-            Logger.error(req, "OpenAI Completion Error: ", err);
-
-            if (err instanceof OpenAIError) {
-                Logger.error(req, "OpenAI Error Response: ", err.message);
-            }
-
+            const error = err as Error;
+            Logger.error(req, "OpenAI Completion Error: ", error);
             throw err;
         }
     }
@@ -248,10 +244,11 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
             }
 
             const flagged = response.results[0].flagged;
-            Logger.info(req, "OpenAI Moderation Success, Result: ", flagged ? "Blocked" : "Allowed", "Input:", input);
+            Logger.info(req, `OpenAI Moderation Success, Result: ${flagged ? "Blocked" : "Allowed"}, Input: ${input}`);
             return flagged;
         } catch (err: unknown) {
-            Logger.error(req, "OpenAI Moderation Error: ", err);
+            const error = err as Error;
+            Logger.error(req, "OpenAI Moderation Error: ", error);
             return false;
         }
     }
@@ -270,7 +267,8 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 payload: transcription.text
             };
         } catch (err: unknown) {
-            Logger.error(req, "OpenAI Transcription Error: ", err);
+            const error = err as Error;
+            Logger.error(req, "OpenAI Transcription Error: ", error);
             throw err;
         }
     }
@@ -299,7 +297,8 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
                 payload: buffer
             };
         } catch (err: unknown) {
-            Logger.error(user, "OpenAI Speech Error: ", err);
+            const error = err as Error;
+            Logger.error(user, "OpenAI Speech Error: ", error);
             throw err;
         }
     }

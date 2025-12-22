@@ -38,7 +38,7 @@ export class SendImageFromURL extends BaseTool {
         }
 
         const url = String(args.url).trim();
-        Logger.info(req, "SendImageFromURL callback", { url });
+        Logger.info(req, `SendImageFromURL callback. ${JSON.stringify({ url })}`);
 
         if (!/^https?:\/\//i.test(url)) {
             return ["send_image_from_url error: URL must start with http or https", metadata];

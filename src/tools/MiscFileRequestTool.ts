@@ -43,7 +43,7 @@ export class EbookRequest extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "ebook_request", { args });
+        Logger.info(req, `ebook_request. ${JSON.stringify({ args })}`);
         if (!args.ebookTitle) {
             return ["ebook_request failed, ebookTitle must be provided", metadata];
         }
@@ -52,14 +52,15 @@ export class EbookRequest extends BaseTool {
             return ["ebook_request failed, ebookAuthor must be provided", metadata];
         }
 
-        Logger.debug(req, "ebook_request", { ebookTitle: args.ebookTitle, ebookAuthor: args.ebookAuthor });
+        Logger.debug(req, `ebook_request. ${JSON.stringify({ ebookTitle: args.ebookTitle, ebookAuthor: args.ebookAuthor })}`);
 
         try {
             const message = `New ebook request:\n\nTitle: ${args.ebookTitle}\nAuthor: ${args.ebookAuthor}\nRequested by: ${req.displayName})`;
             TelegramBotInstance.sendAdminMessage(message);
             return ["ebook_request: Request submitted successfully", metadata];
-        } catch (error) {
-            Logger.error(req, `ebook_request error: ${error}`);
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, `ebook_request error: ${error.message}`, error);
             return ["ebook_request failed", metadata];
         }
     }
@@ -104,7 +105,7 @@ export class AudiobookRequest extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "audiobook_request", { args });
+        Logger.info(req, `audiobook_request. ${JSON.stringify({ args })}`);
         if (!args.audiobookTitle) {
             return ["audiobook_request failed, audiobookTitle must be provided", metadata];
         }
@@ -113,14 +114,15 @@ export class AudiobookRequest extends BaseTool {
             return ["audiobook_request failed, audiobookAuthor must be provided", metadata];
         }
 
-        Logger.debug(req, "audiobook_request", { audiobookTitle: args.audiobookTitle, audiobookAuthor: args.audiobookAuthor });
+        Logger.debug(req, `audiobook_request. ${JSON.stringify({ audiobookTitle: args.audiobookTitle, audiobookAuthor: args.audiobookAuthor })}`);
 
         try {
             const message = `New audiobook request:\n\nTitle: ${args.audiobookTitle}\nAuthor: ${args.audiobookAuthor}\nRequested by: ${req.displayName})`;
             TelegramBotInstance.sendAdminMessage(message);
             return ["audiobook_request: Request submitted successfully", metadata];
-        } catch (error) {
-            Logger.error(req, `audiobook_request error: ${error}`);
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, `audiobook_request error: ${error.message}`, error);
             return ["audiobook_request failed", metadata];
         }
     }

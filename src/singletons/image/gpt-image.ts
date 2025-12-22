@@ -8,7 +8,7 @@ export class GPTImageProvider {
     public static status: boolean = true;
 
     static async generateImage(req: HennosConsumer, prompt: string): Promise<Buffer> {
-        Logger.info(req, "GPTImageProvider generateImage", { prompt });
+        Logger.info(req, `GPTImageProvider generateImage. Prompt: ${prompt}`);
         const instance = HennosOpenAISingleton.instance();
         const openai = instance.client as OpenAI;
 
@@ -21,12 +21,12 @@ export class GPTImageProvider {
         });
 
         if (!result.data || result.data.length === 0) {
-            Logger.error(req, "GPTImageProvider generateImage error", { prompt });
+            Logger.error(req, `GPTImageProvider generateImage error. Prompt: ${prompt}`);
             throw new Error("Failed to generate image, no data returned");
         }
 
         if (!result.data[0].b64_json) {
-            Logger.error(req, "GPTImageProvider generateImage error", { prompt });
+            Logger.error(req, `GPTImageProvider generateImage error. Prompt: ${prompt}`);
             throw new Error("Failed to generate image, no base64 data returned");
         }
 

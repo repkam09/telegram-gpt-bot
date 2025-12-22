@@ -46,7 +46,7 @@ export class BraveSearch extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "Brave callback", { query: args.query, resource: args.resource });
+        Logger.info(req, `Brave callback, query=${args.query}, resource=${args.resource}`);
         if (!args.query) {
             return ["brave_search, query not provided", metadata];
         }
@@ -59,8 +59,9 @@ export class BraveSearch extends BaseTool {
         try {
             const body = await BraveSearch.searchResults({ query: args.query, resource: resource });
             return [`brave_search, query '${args.query}', returned the following results: ${JSON.stringify(body)}`, metadata];
-        } catch {
-            Logger.error(req, "BraveSearch callback error", { query: args.query });
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(req, `BraveSearch callback error, query=${args.query}`, error);
             return [`brave_search, query '${args.query}', encountered an error while fetching results`, metadata];
         }
     }

@@ -16,7 +16,8 @@ export async function handleVoiceSettingsCallback(user: HennosUser, queryId: str
         });
         bot.sendMessage(user.chatId, "Configuration saved. Future audio messages will use the " + name + " voice.");
     }).catch((err: unknown) => {
-        Logger.error(user, "Error while updating voice settings", err);
+        const error = err as Error;
+        Logger.error(user, `Error while updating voice settings: ${error.message}`, error);
         bot.answerCallbackQuery(queryId, {
             text: "There was an error while updating your voice settings"
         });
@@ -77,6 +78,7 @@ export async function handleReadCommand(req: HennosUser, text: string) {
         TelegramBotInstance.setTelegramIndicator(req, "upload_voice");
         return handleHennosResponse(req, response, {});
     } catch (err) {
-        Logger.error(req, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
+        const error = err as Error;
+        Logger.error(req, `handleTelegramVoiceMessage unable to process LLM response into speech. ${error.message}`, error);
     }
 }

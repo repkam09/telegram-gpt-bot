@@ -29,7 +29,7 @@ export class DiscordBotInstance {
             // Setting up workflow callback handler
             InternalCallbackHandler.registerHandler("discord", async (workflow: object, type: BroadcastType, message: string) => {
                 if (type !== "message") {
-                    Logger.error("Unsupported broadcast type for DiscordBotInstance:", type);
+                    Logger.error(undefined, `Unsupported broadcast type for DiscordBotInstance: ${type}`);
                     return;
                 }
 

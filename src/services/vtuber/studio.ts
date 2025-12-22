@@ -6,7 +6,7 @@ import { ApiClient, IApiClientOptions } from "vtubestudio";
 
 export class VTubeStudioInstance {
     static async setAuthToken(authenticationToken: string) {
-        Logger.info("Storing VTube Studio auth token: " + authenticationToken);
+        Logger.info(undefined, "Storing VTube Studio auth token: " + authenticationToken);
         // store the authentication token in a file
         const storagePath = Config.LOCAL_STORAGE(undefined);
         await fs.writeFile(`${storagePath}vtubestudio_token.txt`, authenticationToken, {
@@ -15,15 +15,15 @@ export class VTubeStudioInstance {
     }
 
     static async getAuthToken() {
-        Logger.info("Retrieving VTube Studio auth token");
+        Logger.info(undefined, "Retrieving VTube Studio auth token");
         // retrieve the stored authentication token
         const storagePath = Config.LOCAL_STORAGE(undefined);
         try {
             const token = await fs.readFile(`${storagePath}/vtubestudio_token.txt`, "utf-8");
-            Logger.info("Retrieved VTube Studio auth token: " + token);
+            Logger.info(undefined, "Retrieved VTube Studio auth token: " + token);
             return token;
-        } catch (error) {
-            Logger.error("Failed to retrieve VTube Studio auth token:", error);
+        } catch (error: unknown) {
+            Logger.error(undefined, "Failed to retrieve VTube Studio auth token:", error as Error);
             return null;
         }
     }
@@ -44,15 +44,14 @@ export class VTubeStudioInstance {
         apiClient.on("connect", async () => {
             const stats = await apiClient.statistics();
 
-            Logger.info(`Connected to VTube Studio v${stats.vTubeStudioVersion}`);
+            Logger.info(undefined, `Connected to VTube Studio v${stats.vTubeStudioVersion}`);
 
             const { availableModels } = await apiClient.availableModels();
 
-            Logger.info(`Available models: ${availableModels.map(m => m.modelName).join(", ")}`);
-
+            Logger.info(undefined, `Available models: ${availableModels.map(m => m.modelName).join(", ")}`);
             await apiClient.events.modelLoaded.subscribe((data) => {
                 if (data.modelLoaded) {
-                    Logger.info("Model loaded event: " + data.modelID);
+                    Logger.info(undefined, "Model loaded event: " + data.modelID);
                 }
             }, {});
         });

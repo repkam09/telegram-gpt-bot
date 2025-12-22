@@ -16,7 +16,8 @@ export async function handleLLMProviderSettingsCallback(user: HennosUser, queryI
         Logger.trace(user, `update_provider: ${provider}`);
         bot.sendMessage(user.chatId, "Future messages will be powered by " + provider + ".");
     }).catch((err: unknown) => {
-        Logger.error(user, "Error while updating AI provider settings", err);
+        const error = err as Error;
+        Logger.error(user, `Error while updating AI provider settings: ${error.message}`, error);
         bot.answerCallbackQuery(queryId, {
             text: "There was an error while updating your AI provider settings"
         });

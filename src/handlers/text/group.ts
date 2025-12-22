@@ -53,7 +53,7 @@ async function handleLimitedGroupMessage(user: HennosUser, group: HennosGroup, c
         return response;
     } catch (err) {
         const error = err as Error;
-        Logger.error(group, `Error processing chat completion: ${error.message}`, error.stack);
+        Logger.error(group, `Error processing chat completion: ${error.message}`, error);
         return {
             __type: "error",
             payload: "I'm sorry, I was unable to process your request. Please try again later."
@@ -90,7 +90,7 @@ async function handleWhitelistedGroupMessage(user: HennosUser, group: HennosGrou
         return response;
     } catch (err) {
         const error = err as Error;
-        Logger.error(group, `Error processing chat completion: ${error.message}`, error.stack);
+        Logger.error(group, `Error processing chat completion: ${error.message}`, error);
         return {
             __type: "error",
             payload: "I'm sorry, I was unable to process your request. Please try again later."

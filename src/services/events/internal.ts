@@ -23,9 +23,10 @@ export class InternalCallbackHandler {
                     handler(workflowObj, type, message);
                 }
             }
-        } catch (e) {
+        } catch (e: unknown) {
             // Ignore parsing errors, this is normal if the workflow is not an internal one
-            Logger.debug("InternalCallbackHandler: Failed to parse workflow ID", e);
+            const error = e as Error;
+            Logger.debug(undefined, `InternalCallbackHandler: Failed to parse workflow ID: ${error.message}`);
         }
     }
 }

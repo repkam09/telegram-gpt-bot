@@ -35,7 +35,7 @@ export class PythonSandbox extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "PythonSandbox callback", { source: args.source });
+        Logger.info(req, `PythonSandbox callback. ${JSON.stringify({ source: args.source })}`);
         try {
             const result = await BaseTool.postJSONData<PythonSandboxResult>(`http://${Config.TERRARIUM_HOST}:${Config.TERRARIUM_PORT}/`, {
                 code: args.source
@@ -44,8 +44,8 @@ export class PythonSandbox extends BaseTool {
             Logger.debug(req, `PythonSandbox, results: ${JSON.stringify(result)}`);
             return [`PythonSandbox: ${JSON.stringify(result)}`, metadata];
         } catch (err: unknown) {
-            Logger.error(req, `PythonSandbox error: ${err}`);
             const error = err as Error;
+            Logger.error(req, `PythonSandbox error: ${error.message}`, error);
             return [`PythonSandbox unable to execute. Error: ${error.message}`, metadata];
         }
     }

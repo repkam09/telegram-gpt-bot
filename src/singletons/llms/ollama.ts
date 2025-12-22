@@ -158,7 +158,8 @@ class HennosOllamaProvider extends HennosBaseProvider {
                 payload: response.message.content
             };
         } catch (err: unknown) {
-            Logger.info(req, "Ollama Completion Error: ", err);
+            const error = err as Error;
+             Logger.error(req, `Ollama Completion Error: ${error.message}`, error); 
             throw err;
         }
     }

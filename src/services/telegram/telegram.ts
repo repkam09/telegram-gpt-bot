@@ -43,7 +43,7 @@ export class TelegramBotInstance {
 
             TelegramBotInstance._instance.on("polling_error", (err: unknown) => {
                 const error = err as TelegramError;
-                Logger.warn(undefined, "Telegram Polling error: ", error.name, error.code, error.message);
+                Logger.warn(undefined, `Telegram Polling error - ${error.name} ${error.code} ${error.message}`);
             });
         }
 
@@ -84,7 +84,7 @@ export class TelegramBotInstance {
         try {
             await bot.sendPhoto(req.chatId, fs.createReadStream(path), options, { contentType, filename });
         } catch (err: unknown) {
-            Logger.error(req, "TelegramBotInstance sendImageWrapper error", err);
+            Logger.error(req, "TelegramBotInstance sendImageWrapper error", err as Error);
             throw err;
         }
     }
@@ -102,7 +102,7 @@ export class TelegramBotInstance {
         try {
             await bot.sendVideo(req.chatId, fs.createReadStream(path), {}, { contentType: "video/mp4", filename });
         } catch (err: unknown) {
-            Logger.error(req, "TelegramBotInstance sendVideoWrapper error", err);
+            Logger.error(req, "TelegramBotInstance sendVideoWrapper error", err as Error);
             throw err;
         }
     }
@@ -122,7 +122,7 @@ export class TelegramBotInstance {
         try {
             await bot.sendDocument(req.chatId, fs.createReadStream(filePath), options, { filename, contentType });
         } catch (err: unknown) {
-            Logger.error(req, "TelegramBotInstance sendDocumentWrapper error", err);
+            Logger.error(req, "TelegramBotInstance sendDocumentWrapper error", err as Error);
             throw err;
         }
     }
@@ -189,7 +189,7 @@ export class TelegramBotInstance {
             Logger.debug(req, `Set reaction on Telegram message ${msg.message_id}`);
         }).catch((err: unknown) => {
             const error = err as Error;
-            Logger.error(req, `Error while setting reaction on Telegram message ${msg.message_id}: `, error.message);
+            Logger.error(req, `Error while setting reaction on Telegram message ${msg.message_id}:  ${error.message}`, error);
         });
     }
 
@@ -447,8 +447,8 @@ async function handleTelegramVoiceMessage(user: HennosUser, msg: TelegramBot.Mes
             const response2 = await HennosOpenAISingleton.instance().speech(user, response1.payload);
             TelegramBotInstance.setTelegramIndicator(user, "upload_voice");
             await handleHennosResponse(user, response2, {});
-        } catch (err) {
-            Logger.error(user, "handleTelegramVoiceMessage unable to process LLM response into speech.", err);
+        } catch (err: unknown) {
+            Logger.error(user, "handleTelegramVoiceMessage unable to process LLM response into speech.", err as Error);
         }
     }
 
@@ -508,7 +508,7 @@ export async function handleHennosResponse(req: HennosConsumer, response: Hennos
                 await TelegramBotInstance.sendVoiceMemoWrapper(req, Buffer.from(response.payload));
             } catch (err) {
                 const error = err as Error;
-                Logger.warn(req, "Unable to send voice memo.", error.message);
+                Logger.warn(req, `Unable to send voice memo. ${error.message}`);
             }
         }
     }
@@ -525,7 +525,7 @@ async function downloadTelegramFile(fileId: string, path: string): Promise<strin
     try {
         const telegramFileInfo = await bot.getFile(fileId);
         if (telegramFileInfo.file_path) {
-            Logger.debug(undefined, "Downloading file from Telegram: ", telegramFileInfo.file_id, telegramFileInfo.file_path, telegramFileInfo.file_size);
+            Logger.debug(undefined, `Downloading file from Telegram - ${telegramFileInfo.file_id}, ${telegramFileInfo.file_path}, ${telegramFileInfo.file_size}`);
         }
 
         const file = await bot.downloadFile(fileId, path);
@@ -533,7 +533,7 @@ async function downloadTelegramFile(fileId: string, path: string): Promise<strin
         return file;
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error(undefined, "Error downloading file from Telegram: ", error.message, error.stack);
+        Logger.error(undefined, `Error downloading file from Telegram: ${error.message}`, error);
     }
     return null;
 }
@@ -552,8 +552,8 @@ async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Mes
             const response2 = await HennosOpenAISingleton.instance().speech(user, response1.payload);
             TelegramBotInstance.setTelegramIndicator(user, "upload_voice");
             await handleHennosResponse(user, response2, {});
-        } catch (err) {
-            Logger.error(user, "handleTelegramAudioMessage unable to process LLM response into speech.", err);
+        } catch (err: unknown) {
+            Logger.error(user, "handleTelegramAudioMessage unable to process LLM response into speech.", err as Error);
         }
     }
 
@@ -563,7 +563,7 @@ async function handleTelegramAudioMessage(user: HennosUser, msg: TelegramBot.Mes
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleTelegramContactMessage(user: HennosUser, msg: TelegramBot.Message & { contact: TelegramBot.Contact }) {
     TelegramBotInstance.setTelegramIndicator(user, "typing");
-    Logger.debug(user, "contact", msg.contact);
+    Logger.debug(user, `contact: ${JSON.stringify(msg.contact)}`);
     return TelegramBotInstance.sendMessageWrapper(user, "Sorry, contacts are not supported at this time.");
 }
 
@@ -623,9 +623,9 @@ async function handleTelegramStickerMessage(msg: TelegramBot.Message & { sticker
         }
 
         await TelegramBotInstance.instance().sendPhoto(chatId, fs.createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
-    } catch (err) {
+    } catch (err: unknown) {
         const user = await HennosUser.async(msg.from.id, msg.from.first_name, msg.from.last_name, msg.from.username);
-        Logger.error(user, err);
+        Logger.error(user, "Unable to send sticker as photo", err as Error);
     }
 }
 
@@ -688,17 +688,17 @@ function hasGroupPrefix(entities: TelegramBot.MessageEntity[], text: string) {
         // The substring here is the @mention, specifically with the @ sign.
         const substring = text.substring(mention.offset, mention.offset + mention.length);
         if (substring === `@${Config.TELEGRAM_GROUP_PREFIX}`) {
-            Logger.debug(undefined, "hasGroupPrefix", { result: true });
+            Logger.debug(undefined, "hasGroupPrefix: true");
             return true;
         }
     }
 
-    Logger.debug(undefined, "hasGroupPrefix", { result: false });
+    Logger.debug(undefined, "hasGroupPrefix: false");
     return false;
 }
 
 export function replaceTelegramBotName(text: string, replace: string, flags: string): string {
     const result = text.replace(new RegExp(`@?${Config.TELEGRAM_GROUP_PREFIX}`, flags), replace).trim();
-    Logger.debug(undefined, "replaceTelegramBotName", { text, replace, result });
+    Logger.debug(undefined, `replaceTelegramBotName: text=${text}, replace=${replace}, result=${result}`);
     return result;
 }

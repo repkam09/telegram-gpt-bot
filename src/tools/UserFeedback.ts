@@ -33,7 +33,7 @@ export class UserFeedback extends BaseTool {
     }
 
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, "UserFeedback callback", { feedback: args.feedback });
+        Logger.info(req, `UserFeedback callback. ${JSON.stringify({ feedback: args.feedback })}`);
         if (!args.feedback) {
             return ["user_feedback, feedback not provided", metadata];
         }
@@ -45,7 +45,7 @@ export class UserFeedback extends BaseTool {
             return ["user_feedback, sent successfully!", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "UserFeedback unable send feedback", { feedback: args.feedback, error: error.message });
+            Logger.error(req, `UserFeedback unable send feedback. ${JSON.stringify({ feedback: args.feedback, error: error.message })}`, error);
             return ["user_feedback, unable to send feedback", metadata];
         }
     }
