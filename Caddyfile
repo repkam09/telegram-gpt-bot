@@ -1,0 +1,35 @@
+{
+	storage file_system {
+		root /etc/caddy
+	}
+
+	email {env.CADDY_USER_EMAIL}
+	acme_dns porkbun {
+		api_key {env.PORKBUN_API_KEY}
+		api_secret_key {env.PORKBUN_API_SECRET_KEY}
+	}
+	admin :2019
+}
+
+*.hennos.app {
+	encode zstd gzip
+
+	@api host bot.hennos.app
+	handle @api {
+		reverse_proxy {
+			to localhost:16001
+			transport http
+		}
+	}
+
+	handle {
+		abort
+	}
+}
+
+localhost {
+	encode zstd gzip
+	header Content-Type text/plain
+	templates
+	respond "Caddy is running!"
+}
