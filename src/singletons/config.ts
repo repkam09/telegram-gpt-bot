@@ -495,6 +495,10 @@ export class Config {
     }
 
     static get TELEGRAM_BOT_WEBHOOK_ENABLED(): boolean {
+        if (Config.TELEGRAM_ENABLED === false) {
+            return false;
+        }
+        
         if (Config.TELEGRAM_BOT_WEBHOOK_HOST === false) {
             return false;
         }
