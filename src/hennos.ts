@@ -9,6 +9,7 @@ import { HennosTemporalWorker } from "./services/temporal/worker";
 import { DiscordBotInstance } from "./services/discord/discord";
 import { VTubeStudioInstance } from "./services/vtuber/studio";
 import { LifeforceBroadcast } from "./services/events/lifeforce";
+import { WebhookSingleton } from "./singletons/webhook";
 
 async function start() {
     Logger.info(undefined, "Starting Hennos bot...");
@@ -50,6 +51,12 @@ async function start() {
         Logger.warn(undefined, "VTube Studio is disabled, set VTUBE_STUDIO_ENABLED=true to enable it");
     }
 
+    if (Config.TELEGRAM_BOT_WEBHOOK_ENABLED) {
+        init.push(WebhookSingleton.init());
+    } else {
+        Logger.warn(undefined, "Webhook is disabled, set TELEGRAM_BOT_WEBHOOK_HOST and TELEGRAM_BOT_WEBHOOK_PORT to enable it");
+    }
+    
     init.push(LifeforceBroadcast.init());
 
     await Promise.all(init);

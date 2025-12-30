@@ -494,6 +494,40 @@ export class Config {
         return process.env.TELEGRAM_GROUP_CONTEXT === "true";
     }
 
+    static get TELEGRAM_BOT_WEBHOOK_ENABLED(): boolean {
+        if (Config.TELEGRAM_BOT_WEBHOOK_HOST === false) {
+            return false;
+        }
+
+        if (Config.TELEGRAM_BOT_WEBHOOK_PORT === false) {
+            return false;
+        }
+
+        return true;
+    }
+
+    static get TELEGRAM_BOT_WEBHOOK_HOST(): string | false {
+        if (!process.env.TELEGRAM_BOT_WEBHOOK_HOST) {
+            return false;
+        }
+
+        return process.env.TELEGRAM_BOT_WEBHOOK_HOST;
+    }
+
+    static get TELEGRAM_BOT_WEBHOOK_PORT(): number | false {
+        if (!process.env.TELEGRAM_BOT_WEBHOOK_PORT) {
+            return false;
+        }
+
+        const port = parseInt(process.env.TELEGRAM_BOT_WEBHOOK_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid TELEGRAM_BOT_WEBHOOK_PORT value");
+        }
+
+        return port;
+    }
+
     static get TELEGRAM_BOT_ADMIN(): number {
         if (!process.env.TELEGRAM_BOT_ADMIN) {
             return -1;

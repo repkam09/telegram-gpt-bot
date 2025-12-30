@@ -36,14 +36,22 @@ const PendingChatTimerMap = new Map<number, NodeJS.Timeout>();
 
 export class TelegramBotInstance {
     static _instance: TelegramBot;
+    static _errors: number = 0;
 
     static instance(): TelegramBot {
         if (!TelegramBotInstance._instance) {
-            TelegramBotInstance._instance = new TelegramBot(Config.TELEGRAM_BOT_KEY, { polling: true, });
+            TelegramBotInstance._instance = new TelegramBot(Config.TELEGRAM_BOT_KEY);
 
             TelegramBotInstance._instance.on("polling_error", (err: unknown) => {
                 const error = err as TelegramError;
                 Logger.warn(undefined, `Telegram Polling error - ${error.name} ${error.code} ${error.message}`);
+                TelegramBotInstance._errors++;
+
+                // If we have more than 10 errors, exit the process to allow a restart
+                if (TelegramBotInstance._errors > 10) {
+                    Logger.error(undefined, "Too many Telegram polling errors, exiting process to allow restart.");
+                    process.exit(1);
+                }
             });
         }
 
@@ -195,6 +203,15 @@ export class TelegramBotInstance {
 
     static async init() {
         const bot = TelegramBotInstance.instance();
+
+        if (Config.TELEGRAM_BOT_WEBHOOK_ENABLED) {
+            Logger.info(undefined, `Setting Telegram Webhook to ${Config.TELEGRAM_BOT_WEBHOOK_HOST}/bot${Config.TELEGRAM_BOT_KEY}`);
+
+            // This is the external URL that Telegram will use to send updates to our webhook.
+            bot.setWebHook(`https://${Config.TELEGRAM_BOT_WEBHOOK_HOST}/bot${Config.TELEGRAM_BOT_KEY}`);
+        } else {
+            Logger.info(undefined, "Starting Telegram Bot in Polling mode");
+        }
 
         bot.on("text", async (msg) => {
             if (!msg.from || !msg.text) {
