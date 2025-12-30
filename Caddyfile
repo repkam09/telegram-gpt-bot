@@ -17,7 +17,7 @@
 	@api host bot.hennos.app
 	handle @api {
 		reverse_proxy {
-			to localhost:16001
+			to bot.tail.hennos.app:16001
 			transport http
 		}
 	}
