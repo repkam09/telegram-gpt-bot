@@ -18,7 +18,7 @@ export class WebhookSingleton {
 
 
     static async init() {
-        Logger.info("Starting Telegram Webhook Endpoints");
+        Logger.info(undefined, "Starting Telegram Webhook Endpoints - Start");
 
         const app = WebhookSingleton.instance();
         app.get("/healthz", (req: Request, res: Response) => {
@@ -40,6 +40,7 @@ export class WebhookSingleton {
             Logger.info(undefined, `Express server is listening on ${Config.TELEGRAM_BOT_WEBHOOK_PORT}`);
         });
 
+        Logger.info(undefined, "Starting Telegram Webhook Endpoints - Done");
         return app;
     }
 
