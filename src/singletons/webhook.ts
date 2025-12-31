@@ -18,6 +18,8 @@ export class WebhookSingleton {
 
 
     static async init() {
+        Logger.info("Starting Telegram Webhook Endpoints");
+
         const app = WebhookSingleton.instance();
         app.get("/healthz", (req: Request, res: Response) => {
             res.status(200).send("OK");
@@ -28,6 +30,10 @@ export class WebhookSingleton {
             Logger.debug(undefined, `Telegram Webhook: ${JSON.stringify(req.body)}`);
             bot.processUpdate(req.body);
             res.sendStatus(200);
+        });
+
+        app.get(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
+            res.status(200).send("OK");
         });
 
         app.listen(Config.TELEGRAM_BOT_WEBHOOK_PORT, () => {
