@@ -251,13 +251,13 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                         throw new Error("Expected Assistant Message to Contain Content");
                     }
 
-                    last_message.content = last_message.content.concat(response.content);
+                    last_message.content = last_message.content.concat(trimTextResponses(response.content));
                     return this.completionWithRecursiveToolCalls(req, system, prompt, depth + 1, false);
                 } else {
                     Logger.info(req, "Anthropic Completion Success, Reached Max Tokens, Adding Assistant Message");
                     prompt.push({
                         role: "assistant",
-                        content: response.content
+                        content: trimTextResponses(response.content)
                     });
                     return this.completionWithRecursiveToolCalls(req, system, prompt, depth + 1, false);
                 }
@@ -275,7 +275,7 @@ class HennosAnthropicProvider extends HennosBaseProvider {
                 }
 
                 // Append the response to the last message
-                last_message.content = last_message.content.concat(response.content);
+                last_message.content = last_message.content.concat(trimTextResponses(response.content));
 
                 // Clean the content and convert it to a string
                 const text_blocks = last_message.content.filter((content) => content.type === "text") as TextBlock[];
@@ -336,6 +336,15 @@ function convertToolCallResponse(tools: Anthropic.Messages.ToolUseBlock[]): [Too
                 }
             }, tool];
         }
+    });
+}
+
+function trimTextResponses(blocks: Anthropic.Messages.ContentBlockParam[]): Anthropic.Messages.ContentBlockParam[] {
+    return blocks.map((content) => {
+        if (content.type === "text") {
+            content.text = content.text.trim();
+        }
+        return content;
     });
 }
 
