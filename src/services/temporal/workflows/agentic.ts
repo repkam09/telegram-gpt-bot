@@ -1,6 +1,7 @@
 import {
     condition,
     continueAsNew,
+    defineQuery,
     defineSignal,
     proxyActivities,
     setHandler,
@@ -64,14 +65,18 @@ export type AgentWorkflowInput = {
     };
 };
 
+export const agentWorkflowQueryContext = defineQuery<string[]>("agentWorkflowQueryContext");
+
 export const agentWorkflowMessageSignal = defineSignal<[string, string]>(
     "agentWorkflowMessage",
 );
 
 export const agentWorkflowExitSignal = defineSignal("agentWorkflowExit");
+export const agentWorkflowContinueAsNew = defineSignal("agentWorkflowContinueAsNew");
+export const agentWorkflowClearContext = defineSignal("agentWorkflowClearContext");
 
 export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
-    const context: string[] = input.continueAsNew
+    let context: string[] = input.continueAsNew
         ? input.continueAsNew.context
         : [];
 
@@ -82,6 +87,8 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
     let userRequestedExit = input.continueAsNew
         ? input.continueAsNew.userRequestedExit
         : false;
+
+    let userRequestedContinueAsNew = false;
 
     setHandler(agentWorkflowMessageSignal, (message: string, date: string) => {
         pending.push({
@@ -94,14 +101,40 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         userRequestedExit = true;
     });
 
+    setHandler(agentWorkflowContinueAsNew, () => {
+        userRequestedContinueAsNew = true;
+    });
+
+    setHandler(agentWorkflowClearContext, () => {
+        context = [];
+    });
+
+    setHandler(agentWorkflowQueryContext, () => {
+        return context;
+    });
+
     // Wait for the first message to arrive
-    await condition(() => pending.length > 0 || userRequestedExit);
+    await condition(() => pending.length > 0 || userRequestedExit || userRequestedContinueAsNew);
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
         if (userRequestedExit) {
             return;
         }
+
+        if (userRequestedContinueAsNew) {
+            const compactContext = await compact(input.user, context);
+            return continueAsNew<typeof agentWorkflow>({
+                user: input.user,
+                aggressiveContinueAsNew: input.aggressiveContinueAsNew,
+                continueAsNew: {
+                    context: compactContext.context,
+                    pending,
+                    userRequestedExit
+                },
+            });
+        }
+
         // grab all the pending messages and put them into context
         while (pending.length > 0) {
             const entry = pending.shift()!;
@@ -130,9 +163,11 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
             context.push(`<answer>\n${agentThought.answer}\n</answer>`);
 
-            if (input.aggressiveContinueAsNew) {
-                const compactContext = await compact(input.user, context);
+            const tokenCount = await tokens(input.user, context);
+            const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
 
+            if (workflowInfo().continueAsNewSuggested || passedTokenLimit || input.aggressiveContinueAsNew) {
+                const compactContext = await compact(input.user, context);
                 return continueAsNew<typeof agentWorkflow>({
                     user: input.user,
                     aggressiveContinueAsNew: input.aggressiveContinueAsNew,
@@ -142,10 +177,10 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                         userRequestedExit
                     },
                 });
-            } else {
-                // wait for new messages or exit signal
-                await condition(() => pending.length > 0 || userRequestedExit);
             }
+
+            // wait for new messages or exit signal
+            await condition(() => pending.length > 0 || userRequestedExit || userRequestedContinueAsNew);
         }
 
         if (agentThought.__type === "action") {
@@ -168,22 +203,6 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
             context.push(
                 `<observation>\n${agentObservation.observations}\n</observation>`,
             );
-
-            const tokenCount = await tokens(input.user, context);
-            const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
-
-            if (workflowInfo().continueAsNewSuggested || passedTokenLimit) {
-                const compactContext = await compact(input.user, context);
-                return continueAsNew<typeof agentWorkflow>({
-                    user: input.user,
-                    aggressiveContinueAsNew: input.aggressiveContinueAsNew,
-                    continueAsNew: {
-                        context: compactContext.context,
-                        pending,
-                        userRequestedExit
-                    },
-                });
-            }
         }
     }
 }

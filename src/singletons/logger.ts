@@ -9,20 +9,23 @@ export class Logger {
     private static instance: string = randomUUID();
 
     public static get logger() {
-        if (Config.AXIOM_API_KEY && Config.AXIOM_DATASET) {
-            return pino(
-                {
-                    level: Config.HENNOS_VERBOSE_LOGGING ? "debug" : "info",
-                    transport: {
-                        target: "@axiomhq/pino",
-                        options: {
-                            dataset: Config.AXIOM_DATASET,
-                            token: Config.AXIOM_API_KEY,
-                        },
-                    }
-                },
-            );
+        if (!Config.HENNOS_DEVELOPMENT_MODE) {
+            if (Config.AXIOM_API_KEY && Config.AXIOM_DATASET) {
+                return pino(
+                    {
+                        level: Config.HENNOS_VERBOSE_LOGGING ? "debug" : "info",
+                        transport: {
+                            target: "@axiomhq/pino",
+                            options: {
+                                dataset: Config.AXIOM_DATASET,
+                                token: Config.AXIOM_API_KEY,
+                            },
+                        }
+                    },
+                );
+            }
         }
+
 
         // Fallback to console logging
         return pino({
@@ -37,7 +40,7 @@ export class Logger {
                     errorLikeObjectKeys: ["err", "error", "cause", "reason"],
                     sync: true
                 },
-            },            
+            },
         });
     }
 

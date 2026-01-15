@@ -20,6 +20,8 @@ import { handleLLMProviderSettingsCallback } from "./commands/handleLLMProviderS
 import { HennosOpenAISingleton } from "../../singletons/llms/openai";
 import { HennosResponse } from "../../types";
 import { handleAudioMessage } from "../../handlers/audio";
+import { BroadcastType, InternalCallbackHandler } from "../events/internal";
+import { signalAgenticWorkflowMessage } from "../temporal/helpers";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -40,6 +42,7 @@ export class TelegramBotInstance {
 
     static instance(): TelegramBot {
         if (!TelegramBotInstance._instance) {
+            Logger.info(undefined, "Initializing Telegram Bot Instance");
             TelegramBotInstance._instance = new TelegramBot(Config.TELEGRAM_BOT_KEY);
 
             TelegramBotInstance._instance.on("polling_error", (err: unknown) => {
@@ -67,13 +70,17 @@ export class TelegramBotInstance {
             throw new Error("Message content does not have a length property");
         }
 
-        if (content.length < 4096) {
+        if (content.length < 4000) {
+            Logger.debug(req, `Sending Telegram message of length ${content.length}`);
             return TelegramBotInstance.sendTelegramMessageWithRetry(req, content, options);
         }
 
-        const chunks = chunkSubstr(content, 4096);
+
+        const chunks = chunkSubstr(content, 4000);
+        Logger.debug(req, `Message length ${content.length} exceeds 4000 characters, splitting into ${chunks.length} chunks.`);
         for (let i = 0; i < chunks.length; i++) {
-            return TelegramBotInstance.sendTelegramMessageWithRetry(req, chunks[i], options);
+            Logger.debug(req, `Sending chunk ${i + 1} of ${chunks.length}, length ${chunks[i].length}`);
+            await TelegramBotInstance.sendTelegramMessageWithRetry(req, chunks[i], options);
         }
     }
 
@@ -211,7 +218,30 @@ export class TelegramBotInstance {
             bot.setWebHook(`https://${Config.TELEGRAM_BOT_WEBHOOK_HOST}/bot${Config.TELEGRAM_BOT_KEY}`);
         } else {
             Logger.info(undefined, "Starting Telegram Bot in Polling mode");
+            bot.deleteWebHook();
+            bot.startPolling();
         }
+
+        InternalCallbackHandler.registerHandler("telegram", async (workflow: object, type: BroadcastType, message: string) => {
+            if (type !== "message") {
+                Logger.error(undefined, `Unsupported broadcast type for TelegramBot: ${type}`);
+                return;
+            }
+
+            const workflowObj = workflow as { userId: string, channelId: string };
+            Logger.info(
+                undefined,
+                `Received workflow callback for Telegram user ${workflowObj.userId} in channel ${workflowObj.channelId}, type: ${type}`
+            );
+
+            const user = await HennosUser.exists(Number(workflowObj.userId));
+            if (!user) {
+                Logger.error(undefined, `Unable to find Telegram user for workflow callback: ${workflowObj.userId}`);
+                return;
+            }
+
+            return TelegramBotInstance.sendMessageWrapper(user, message);
+        });
 
         bot.on("text", async (msg) => {
             if (!msg.from || !msg.text) {
@@ -415,6 +445,12 @@ async function handleTelegramGroupMessage(user: HennosUser, group: HennosGroup, 
 }
 
 async function handleTelegramPrivateMessage(user: HennosUser, msg: MessageWithText) {
+    if (user.isAdmin()) {
+        TelegramBotInstance.setTelegramIndicator(user, "typing");
+        const cleaned = replaceTelegramBotName(msg.text, "Hennos", "ig");
+        return signalAgenticWorkflowMessage(user, "telegram", cleaned);
+    }
+
     // Reset the time between messages timer
     clearTimeout(PendingChatTimerMap.get(user.chatId));
 

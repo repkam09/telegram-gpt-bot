@@ -1,3 +1,4 @@
+import { ApplicationFailure, log } from "@temporalio/activity";
 import { HennosUserFromWorkflowUser } from "../../../singletons/consumer";
 import { countTokens } from "../../../singletons/data/context";
 import { Database } from "../../../singletons/data/sqlite";
@@ -56,8 +57,8 @@ export async function thought(
     try {
         JSON.parse(response.payload);
     } catch (e) {
-        console.error(`Failed to parse agent result JSON: ${(e as Error).message}\nResponse payload: ${response.payload}`);
-        throw e;
+        log.error(`Failed to parse agent result JSON: ${(e as Error).message}\nResponse payload: ${response.payload}`);
+        throw ApplicationFailure.retryable(`Failed to parse agent result JSON: ${(e as Error).message}`);
     }
 
     const parsed = JSON.parse(response.payload);
@@ -71,7 +72,7 @@ export async function thought(
     }
 
     if (!Object.prototype.hasOwnProperty.call(parsed, "__type")) {
-        throw new Error("Parsed agent result does not have a valid __type");
+        throw ApplicationFailure.retryable("Parsed agent result does not have a valid __type");
     }
 
     return parsed as AgentResult;

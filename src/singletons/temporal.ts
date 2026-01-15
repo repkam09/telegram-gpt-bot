@@ -8,7 +8,6 @@ export async function createTemporalClient() {
     return client;
 }
 
-
 export function createDefaultUser(userId: string, displayName: string): HennosWorkflowUser {
     return {
         userId: {

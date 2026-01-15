@@ -104,15 +104,18 @@ export class HennosOpenAIProvider extends HennosBaseProvider {
         return `OpenAI GPT model ${this.model.MODEL}`;
     }
 
-    public async invoke(req: HennosConsumer, messages: HennosTextMessage[]): Promise<HennosStringResponse> {
+    public async invoke(req: HennosConsumer, messages: HennosTextMessage[], schema?: boolean): Promise<HennosStringResponse> {
         Logger.info(req, `OpenAI Invoke Start (${this.model.MODEL})`);
         const prompt = convertHennosMessages(messages);
 
         const response = await this.client.chat.completions.create({
             model: this.model.MODEL,
             messages: prompt,
-            safety_identifier: `${req.chatId}`
+            safety_identifier: `${req.chatId}`,
+            response_format: schema ? { type: "json_object" } : undefined
         });
+
+        Logger.debug(req, `OpenAI Invoke Response: ${JSON.stringify(response)}`);
 
         Logger.info(req, `OpenAI Invoke Success, Usage: ${calculateUsage(response.usage)}`);
         if (!response.choices && !response.choices[0]) {
