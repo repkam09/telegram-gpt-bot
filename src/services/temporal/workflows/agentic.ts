@@ -41,7 +41,7 @@ const { thought } = proxyActivities<typeof activities>({
     },
 });
 
-const { compact, observation } = proxyActivities<typeof activities>({
+const { compact, observation, restore } = proxyActivities<typeof activities>({
     startToCloseTimeout: "1 minute",
     retry: {
         backoffCoefficient: 1,
@@ -112,6 +112,18 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
     setHandler(agentWorkflowQueryContext, () => {
         return context;
     });
+
+    // Only the very first time, see if we can import history from the database
+    if (!input.continueAsNew) {
+        try {
+            const restoredMessages = await restore(input.user);
+            for (const msg of restoredMessages) {
+                context.push(msg);
+            }
+        } catch {
+            // ignore errors during restore
+        }
+    }
 
     // Wait for the first message to arrive
     await condition(() => pending.length > 0 || userRequestedExit || userRequestedContinueAsNew);

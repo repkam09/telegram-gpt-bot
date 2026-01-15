@@ -180,6 +180,43 @@ export async function compact(
     };
 }
 
+export async function restore(userDetails: HennosWorkflowUser): Promise<string[]> {
+    try {
+        const db = Database.instance();
+        const chatId = Number(userDetails.userId.value);
+        const result = await db.messages.findMany({
+            where: {
+                chatId: chatId,
+                type: "text"
+            },
+            select: {
+                role: true,
+                content: true,
+                datetime: true
+            },
+            orderBy: {
+                id: "desc"
+            },
+            take: 25
+        });
+
+        return result.reduceRight((accumulator: string[], entry) => {
+            if (entry.role === "user") {
+                accumulator.push(`<user_message date="${entry.datetime.toISOString()}">\n${entry.content}\n</user_message>`);
+            }
+
+            if (entry.role === "assistant") {
+                accumulator.push(`<answer>\n${entry.content}\n</answer>`);
+            }
+
+            return accumulator;
+        }, [] as string[]);
+    } catch (err: unknown) {
+        log.error(`Failed to restore messages for workflow user ${userDetails.userId.value}: ${(err as Error).message}`);
+        return [];
+    }
+}
+
 export type BroadcastInput = BroadcastUsageInput | BroadcastUserInput | BroadcastAgentInput;
 
 type BroadcastUserInput = {
