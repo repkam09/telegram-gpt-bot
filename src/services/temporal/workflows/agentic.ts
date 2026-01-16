@@ -129,6 +129,23 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         return context;
     });
 
+    const continueCondition = async () => {
+        return condition(() => pending.length > 0 || userRequestedExit || userRequestedContinueAsNew);
+    };
+
+    const compactAndContinueAsNew = async () => {
+        const compactContext = await compact(input.user, context);
+        return continueAsNew<typeof agentWorkflow>({
+            user: input.user,
+            aggressiveContinueAsNew: input.aggressiveContinueAsNew,
+            continueAsNew: {
+                context: compactContext.context,
+                pending,
+                userRequestedExit
+            },
+        });
+    };
+
     // Only the very first time, see if we can import history from the database
     if (!input.continueAsNew) {
         try {
@@ -142,7 +159,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
     }
 
     // Wait for the first message to arrive
-    await condition(() => pending.length > 0 || userRequestedExit || userRequestedContinueAsNew);
+    await continueCondition();
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -151,16 +168,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         }
 
         if (userRequestedContinueAsNew) {
-            const compactContext = await compact(input.user, context);
-            return continueAsNew<typeof agentWorkflow>({
-                user: input.user,
-                aggressiveContinueAsNew: input.aggressiveContinueAsNew,
-                continueAsNew: {
-                    context: compactContext.context,
-                    pending,
-                    userRequestedExit
-                },
-            });
+            return compactAndContinueAsNew();
         }
 
         // grab all the pending messages and put them into context
@@ -195,20 +203,11 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
             const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
 
             if (workflowInfo().continueAsNewSuggested || passedTokenLimit || input.aggressiveContinueAsNew) {
-                const compactContext = await compact(input.user, context);
-                return continueAsNew<typeof agentWorkflow>({
-                    user: input.user,
-                    aggressiveContinueAsNew: input.aggressiveContinueAsNew,
-                    continueAsNew: {
-                        context: compactContext.context,
-                        pending,
-                        userRequestedExit
-                    },
-                });
+                return compactAndContinueAsNew();
             }
 
             // wait for new messages or exit signal
-            await condition(() => pending.length > 0 || userRequestedExit || userRequestedContinueAsNew);
+            await continueCondition();
         }
 
         if (agentThought.__type === "action") {
