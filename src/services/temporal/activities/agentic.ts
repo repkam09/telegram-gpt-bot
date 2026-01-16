@@ -152,7 +152,7 @@ export async function observation(
 
     const response = await model.invoke(req, [
         { role: "user", content: promptTemplate, type: "text" },
-    ]);
+    ], true);
     return {
         observations: response.payload,
     };
