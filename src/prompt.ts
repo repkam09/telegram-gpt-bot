@@ -29,7 +29,7 @@ export function minimalBasePrompt(botName: string): HennosTextMessage[] {
         },
         {
             role: "system",
-            content: "You should respond in concise paragraphs, separated by two newlines, to maintain readability and clarity.",
+            content: "You should respond in concise paragraphs, separated by two newlines, to maintain readability and clarity. You should use minimal Markdown formatting only for things like lists and code blocks.",
             type: "text"
         },
         {
