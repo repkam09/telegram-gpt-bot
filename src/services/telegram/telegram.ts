@@ -21,7 +21,7 @@ import { HennosOpenAISingleton } from "../../singletons/llms/openai";
 import { HennosResponse } from "../../types";
 import { handleAudioMessage } from "../../handlers/audio";
 import { BroadcastType, InternalCallbackHandler } from "../events/internal";
-import { signalAgenticWorkflowMessage } from "../temporal/helpers";
+import { signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/helpers";
 
 type InputCallbackFunction = (msg: TelegramBot.Message) => Promise<void> | void
 type MessageWithText = TelegramBot.Message & { text: string }
@@ -300,11 +300,17 @@ export class TelegramBotInstance {
                     if (msg.forward_from) {
                         const forward = await HennosUser.async(msg.forward_from.id, msg.forward_from.first_name, msg.forward_from.last_name, msg.forward_from.username);
                         Logger.trace(user, `text_forwarded: ${forward.toString()}`);
+                        if (user.isAdmin()) {
+                            return signalAgenticWorkflowExternalContext(user, "telegram", `Forwarded Message: ${msg.text}`, forward.displayName);
+                        }
                         return user.updateUserChatContext(user, `Forwarded message from '${msg.forward_from.first_name}': ${msg.text}}`);
                     }
 
                     if (msg.forward_sender_name) {
                         Logger.trace(user, `text_forwarded: ${msg.forward_sender_name}`);
+                        if (user.isAdmin()) {
+                            return signalAgenticWorkflowExternalContext(user, "telegram", `Forwarded Message: ${msg.text}`, msg.forward_sender_name);
+                        }
                         return user.updateUserChatContext(user, `Forwarded message from '${msg.forward_sender_name}': ${msg.text}}`);
                     }
 
@@ -312,11 +318,18 @@ export class TelegramBotInstance {
                     if (msg.forward_origin && msg.forward_origin.chat) {
                         // @ts-expect-error - See Above
                         Logger.trace(user, `text_forwarded: ${msg.forward_origin.chat.title}`);
+                        if (user.isAdmin()) {
+                            // @ts-expect-error - See Above
+                            return signalAgenticWorkflowExternalContext(user, "telegram", `Forwarded Message: ${msg.text}`, msg.forward_origin.chat.title);
+                        }
                         // @ts-expect-error - See Above
                         return user.updateUserChatContext(user, `Forwarded message from '${msg.forward_origin.chat.title}': ${msg.text}}`);
                     }
 
                     Logger.trace(user, "text_forwarded");
+                    if (user.isAdmin()) {
+                        return signalAgenticWorkflowExternalContext(user, "telegram", `Forwarded Message: ${msg.text}`, "undefined");
+                    }
                     return user.updateUserChatContext(user, `Forwarded message: ${msg.text}}`);
                 }
 
@@ -569,6 +582,11 @@ export async function handleHennosResponse(req: HennosConsumer, response: Hennos
 
 async function handleTelegramLocationMessage(user: HennosUser, msg: TelegramBot.Message & { location: TelegramBot.Location }) {
     TelegramBotInstance.setTelegramIndicator(user, "find_location");
+
+    if (user.isAdmin()) {
+        return signalAgenticWorkflowExternalContext(user, "telegram", `User Sent Location Pin: lat=${msg.location.latitude}, lon=${msg.location.longitude}`, user.displayName);
+    }
+
     await user.updateLocation(msg.location.latitude, msg.location.longitude);
     return TelegramBotInstance.sendMessageWrapper(user, "Location information updated.");
 }

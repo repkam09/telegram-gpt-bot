@@ -71,6 +71,14 @@ export const agentWorkflowMessageSignal = defineSignal<[string, string]>(
     "agentWorkflowMessage",
 );
 
+export const agentWorkflowExternalContextSignal = defineSignal<[string, string, string]>(
+    "agentWorkflowExternalContext",
+);
+
+export const agentWorkflowExternalArtifactSignal = defineSignal<[string, string, string, string]>(
+    "agentWorkflowExternalArtifact",
+);
+
 export const agentWorkflowExitSignal = defineSignal("agentWorkflowExit");
 export const agentWorkflowContinueAsNew = defineSignal("agentWorkflowContinueAsNew");
 export const agentWorkflowClearContext = defineSignal("agentWorkflowClearContext");
@@ -95,6 +103,14 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
             message,
             date,
         });
+    });
+
+    setHandler(agentWorkflowExternalContextSignal, (content: string, author: string, date: string) => {
+        context.push(`<external_context date="${date}" author="${author}">\n${content}\n</external_context>`);
+    });
+
+    setHandler(agentWorkflowExternalArtifactSignal, (ref: string, description: string, mimetype: string, date: string) => {
+        context.push(`<external_artifact date="${date}" mimetype="${mimetype}" id="${ref}">\n<description>\n${description}\n</description>\n</external_artifact>`);
     });
 
     setHandler(agentWorkflowExitSignal, () => {

@@ -17,6 +17,7 @@ import { CreateArtifact } from "./CreateArtifact";
 import { SendImageFromURL } from "./SendImageFromURL";
 import { BraveSearch } from "./BraveSearch";
 import { AudiobookRequest, EbookRequest } from "./MiscFileRequestTool";
+import { HennosRetrieveArtifact } from "./HennosExternalArtifacts";
 
 const PUBLIC_TOOLS = [
     SearXNGSearch,
@@ -51,6 +52,7 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 const ADMIN_TOOLS = [
     HomeAssistantEntitiesTool,
     HomeAssistantStatesTool,
+    HennosRetrieveArtifact
 ];
 
 export function availableTools(req: HennosConsumer): Tool[] | undefined {
@@ -95,6 +97,7 @@ export function availableToolsAsString(req: HennosConsumer): string {
     if (!tools) {
         return "null";
     }
+
     return tools.map((tool) => `<tool><name>${tool.function.name}</name><description>${tool.function.description}</description><parameters>${JSON.stringify(tool.function.parameters)}</parameters></tool>`).join("\n");
 }
 
