@@ -12,26 +12,13 @@ export type HennosModelConfig = {
     CTX: number
 }
 
-export type HennosEmbeddingModelConfig = {
-    MODEL: any
-    CTX: number
-}
-
 export class Config {
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
             return false;
         }
 
-        if (process.env.HENNOS_DEVELOPMENT_MODE !== "true") {
-            return false;
-        }
-
-        if (Config.TELEGRAM_BOT_ADMIN === -1) {
-            throw new Error("Missing TELEGRAM_BOT_ADMIN for HENNOS_DEVELOPMENT_MODE");
-        }
-
-        return true;
+        return process.env.HENNOS_DEVELOPMENT_MODE === "true";
     }
 
     static get HENNOS_VERBOSE_LOGGING(): boolean {
@@ -42,111 +29,14 @@ export class Config {
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
-    static get TELEGRAM_ENABLED(): boolean {
-        if (!process.env.TELEGRAM_ENABLED) {
-            return false;
-        }
-
-        return process.env.TELEGRAM_ENABLED === "true";
-    }
-
-    static get DISCORD_ENABLED(): boolean {
-        if (!process.env.DISCORD_ENABLED) {
-            return false;
-        }
-
-        return process.env.DISCORD_ENABLED === "true";
-    }
-
-    static get DISCORD_BOT_TOKEN(): string {
-        if (!process.env.DISCORD_BOT_TOKEN) {
-            throw new Error("Missing DISCORD_BOT_TOKEN");
-        }
-
-        return process.env.DISCORD_BOT_TOKEN;
-    }
-
-    static get VTUBE_STUDIO_ENABLED(): boolean {
-        if (!process.env.VTUBE_STUDIO_ENABLED) {
-            return false;
-        }
-
-        return process.env.VTUBE_STUDIO_ENABLED === "true";
-    }
-
-    static get VTUBE_STUDIO_PORT(): number {
-        if (!process.env.VTUBE_STUDIO_PORT) {
-            return 8001;
-        }
-
-        const port = parseInt(process.env.VTUBE_STUDIO_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid VTUBE_STUDIO_PORT value");
-        }
-
-        return port;
-    }
-
-    static get VTUBE_STUDIO_HOST(): string {
-        if (!process.env.VTUBE_STUDIO_HOST) {
-            return "localhost";
-        }
-
-        return process.env.VTUBE_STUDIO_HOST;
-    }
-
-    static get WEBHOOK_ENABLED(): boolean {
-        if (!process.env.WEBHOOK_ENABLED) {
-            return false;
-        }
-
-        return process.env.WEBHOOK_ENABLED === "true";
-    }
-
-    static get WEBHOOK_PORT(): number {
-        if (!process.env.WEBHOOK_PORT) {
-            return 3000;
-        }
-
-        const port = parseInt(process.env.WEBHOOK_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid WEBHOOK_PORT value");
-        }
-
-        return port;
-    }
-
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
-                MODEL: "qwen2.5:14b",
+                MODEL: "repkam09/hennos-oss:latest",
                 CTX: 16000,
             };
         }
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
-    }
-
-    static get OLLAMA_LLM_EMBED(): HennosEmbeddingModelConfig {
-        if (!process.env.OLLAMA_LLM_EMBED) {
-            return {
-                MODEL: "nomic-embed-text:latest",
-                CTX: 8192,
-            };
-        }
-
-        const parts = process.env.OLLAMA_LLM_EMBED.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OLLAMA_LLM_EMBED");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
     }
 
     static get OLLAMA_HOST(): string {
@@ -207,27 +97,6 @@ export class Config {
         };
     }
 
-    static get OPENAI_LLM_EMBED(): HennosEmbeddingModelConfig {
-        if (!process.env.OPENAI_LLM_EMBED) {
-            return {
-                MODEL: "text-embedding-3-small",
-                CTX: 8191
-            };
-        }
-
-        const parts = process.env.OPENAI_LLM_EMBED.split(",");
-        const ctx = parseInt(parts[1]);
-
-        if (Number.isNaN(ctx)) {
-            throw new Error("Invalid context length value for OPENAI_LLM_EMBED");
-        }
-
-        return {
-            MODEL: parts[0],
-            CTX: ctx
-        };
-    }
-
     static get ANTHROPIC_API_KEY(): string {
         if (!process.env.ANTHROPIC_API_KEY) {
             throw new Error("Missing ANTHROPIC_API_KEY");
@@ -247,33 +116,6 @@ export class Config {
         return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
     }
 
-    static get AWS_BEDROCK_LLM(): HennosModelConfig {
-        if (!process.env.AWS_BEDROCK_LLM) {
-            return {
-                MODEL: "amazon.nova-micro-v1:0",
-                CTX: 16000
-            };
-        }
-
-        return parseHennosModelString(process.env.AWS_BEDROCK_LLM, "AWS_BEDROCK_LLM");
-    }
-
-    static get AWS_BEARER_TOKEN_BEDROCK(): string {
-        if (!process.env.AWS_BEARER_TOKEN_BEDROCK) {
-            throw new Error("Missing AWS_BEARER_TOKEN_BEDROCK");
-        }
-
-        return process.env.AWS_BEARER_TOKEN_BEDROCK;
-    }
-
-    static get AWS_BEDROCK_REGION(): string {
-        if (!process.env.AWS_BEDROCK_REGION) {
-            return "us-east-1";
-        }
-
-        return process.env.AWS_BEDROCK_REGION;
-    }
-
     static get OLLAMA_PORT(): number {
         if (!process.env.OLLAMA_PORT) {
             return 11434;
@@ -283,36 +125,6 @@ export class Config {
 
         if (Number.isNaN(port)) {
             throw new Error("Invalid OLLAMA_PORT value");
-        }
-
-        return port;
-    }
-
-    static get QDRANT_ENABLED(): boolean {
-        if (!process.env.QDRANT_ENABLED) {
-            return false;
-        }
-
-        return process.env.QDRANT_ENABLED === "true";
-    }
-
-    static get QDRANT_HOST(): string {
-        if (!process.env.QDRANT_HOST) {
-            return "localhost";
-        }
-
-        return process.env.QDRANT_HOST;
-    }
-
-    static get QDRANT_PORT(): number {
-        if (!process.env.QDRANT_PORT) {
-            return 6333;
-        }
-
-        const port = parseInt(process.env.QDRANT_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid QDRANT_PORT value");
         }
 
         return port;
@@ -346,36 +158,6 @@ export class Config {
         }
 
         return port;
-    }
-
-    static get TELEGRAM_BOT_KEY(): string {
-        if (!process.env.TELEGRAM_BOT_KEY) {
-            throw new Error("Missing TELEGRAM_BOT_KEY");
-        }
-
-        return process.env.TELEGRAM_BOT_KEY;
-    }
-
-    static get HENNOS_BOT_NAME(): string {
-        if (!process.env.HENNOS_BOT_NAME) {
-            return "Hennos";
-        }
-
-        return process.env.HENNOS_BOT_NAME;
-    }
-
-    static get HENNOS_TOOL_DEPTH(): number {
-        if (!process.env.HENNOS_TOOL_DEPTH) {
-            return 8;
-        }
-
-        const depth = parseInt(process.env.HENNOS_TOOL_DEPTH);
-
-        if (Number.isNaN(depth)) {
-            throw new Error("Invalid HENNOS_TOOL_DEPTH value");
-        }
-
-        return depth;
     }
 
     static get OPEN_WEATHER_API(): string | false {
@@ -434,22 +216,6 @@ export class Config {
         return process.env.JELLYFIN_BASE_URL;
     }
 
-    static get HOME_ASSISTANT_BASE_URL(): string | false {
-        if (!process.env.HOME_ASSISTANT_BASE_URL) {
-            return false;
-        }
-
-        return process.env.HOME_ASSISTANT_BASE_URL;
-    }
-
-    static get HOME_ASSISTANT_API_KEY(): string | false {
-        if (!process.env.HOME_ASSISTANT_API_KEY) {
-            return false;
-        }
-
-        return process.env.HOME_ASSISTANT_API_KEY;
-    }
-
     static get PUPPETEER_HEADLESS(): boolean {
         if (!process.env.PUPPETEER_HEADLESS) {
             return true;
@@ -468,89 +234,6 @@ export class Config {
         }
 
         return "networkidle2";
-    }
-
-    static get TELEGRAM_GROUP_PREFIX(): string {
-        if (!process.env.TELEGRAM_GROUP_PREFIX) {
-            throw new Error("Missing TELEGRAM_GROUP_PREFIX");
-        }
-
-        if (process.env.TELEGRAM_GROUP_PREFIX === "") {
-            throw new Error("Invalid TELEGRAM_GROUP_PREFIX");
-        }
-
-        if (process.env.TELEGRAM_GROUP_PREFIX.startsWith("@")) {
-            throw new Error("Invalid TELEGRAM_GROUP_PREFIX");
-        }
-
-        return process.env.TELEGRAM_GROUP_PREFIX;
-    }
-
-    static get TELEGRAM_GROUP_CONTEXT(): boolean {
-        if (!process.env.TELEGRAM_GROUP_CONTEXT) {
-            return false;
-        }
-
-        return process.env.TELEGRAM_GROUP_CONTEXT === "true";
-    }
-
-    static get TELEGRAM_BOT_WEBHOOK_ENABLED(): boolean {
-        if (Config.TELEGRAM_ENABLED === false) {
-            return false;
-        }
-        
-        if (Config.TELEGRAM_BOT_WEBHOOK_HOST === false) {
-            return false;
-        }
-
-        if (Config.TELEGRAM_BOT_WEBHOOK_PORT === false) {
-            return false;
-        }
-
-        return true;
-    }
-
-    static get TELEGRAM_BOT_WEBHOOK_HOST(): string | false {
-        if (!process.env.TELEGRAM_BOT_WEBHOOK_HOST) {
-            return false;
-        }
-
-        return process.env.TELEGRAM_BOT_WEBHOOK_HOST;
-    }
-
-    static get TELEGRAM_BOT_WEBHOOK_PORT(): number | false {
-        if (!process.env.TELEGRAM_BOT_WEBHOOK_PORT) {
-            return false;
-        }
-
-        const port = parseInt(process.env.TELEGRAM_BOT_WEBHOOK_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid TELEGRAM_BOT_WEBHOOK_PORT value");
-        }
-
-        return port;
-    }
-
-    static get TELEGRAM_BOT_ADMIN(): number {
-        if (!process.env.TELEGRAM_BOT_ADMIN) {
-            return -1;
-        }
-
-        const adminId = parseInt(process.env.TELEGRAM_BOT_ADMIN);
-        if (Number.isNaN(adminId)) {
-            throw new Error("Invalid TELEGRAM_BOT_ADMIN");
-        }
-
-        return adminId;
-    }
-
-    static get TEMPORAL_ENABLED(): boolean {
-        if (!process.env.TEMPORAL_ENABLED) {
-            return false;
-        }
-
-        return process.env.TEMPORAL_ENABLED === "true";
     }
 
     static get TEMPORAL_HOST(): string {
@@ -607,27 +290,6 @@ export class Config {
         return process.env.LIFEFORCE_BASE_URL;
     }
 
-    static LOCAL_STORAGE(req?: { chatId: number }): string {
-        if (!process.env.LOCAL_STORAGE) {
-            return os.tmpdir();
-        }
-
-        const cwd = path.join(__dirname, "../", "../");
-        if (req) {
-            const dir = path.join(cwd, process.env.LOCAL_STORAGE, String(req.chatId));
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir);
-            }
-
-            return dir;
-        }
-
-        const dir = path.join(cwd, process.env.LOCAL_STORAGE);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir);
-        }
-        return dir;
-    }
 
     static get PERPLEXITY_API_KEY(): string | false {
         if (!process.env.PERPLEXITY_API_KEY) {
@@ -659,6 +321,28 @@ export class Config {
         }
 
         return process.env.AXIOM_DATASET;
+    }
+
+    static LOCAL_STORAGE(req?: { chatId: number }): string {
+        if (!process.env.LOCAL_STORAGE) {
+            return os.tmpdir();
+        }
+
+        const cwd = path.join(__dirname, "../", "../");
+        if (req) {
+            const dir = path.join(cwd, process.env.LOCAL_STORAGE, String(req.chatId));
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir);
+            }
+
+            return dir;
+        }
+
+        const dir = path.join(cwd, process.env.LOCAL_STORAGE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
+        return dir;
     }
 }
 
