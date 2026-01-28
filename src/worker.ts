@@ -2,7 +2,7 @@ import { Config } from "./singletons/config";
 import { Logger } from "./singletons/logger";
 import { DefaultLogger, makeTelemetryFilterString, NativeConnection, Runtime, Worker } from "@temporalio/worker";
 import * as activities from "./temporal/activities";
-import "./temporal/workflows"
+import "./temporal/workflows";
 
 export class HennosTemporalWorker {
     static async init() {
