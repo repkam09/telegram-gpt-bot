@@ -1,6 +1,5 @@
-import { workflowInfo } from "@temporalio/workflow";
-import { HennosOpenAISingleton } from "../../../singletons/openai";
-
+import { resolveModelProvider } from "../../../provider";
+import { Context } from "@temporalio/activity";
 
 export type CompactionInput = {
     context: string[],
@@ -12,9 +11,8 @@ export type CompactionResult = {
 
 export async function compact(input: CompactionInput
 ): Promise<CompactionResult> {
-    const workflowId = workflowInfo().workflowId;
-    const model = HennosOpenAISingleton.mini();
-
+    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const model = resolveModelProvider("low");
     const compactTemplate = compactPromptTemplate({
         contextHistory: input.context.join("\n"),
     });

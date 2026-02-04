@@ -1,5 +1,5 @@
-import { workflowInfo } from "@temporalio/workflow";
-import { HennosOpenAISingleton } from "../../../singletons/openai";
+import { resolveModelProvider } from "../../../provider";
+import { Context } from "@temporalio/activity";
 
 export type ObservationInput = {
     context: string[],
@@ -12,9 +12,8 @@ export type ObservationResult = {
 
 export async function observation(input: ObservationInput
 ): Promise<ObservationResult> {
-    const workflowId = workflowInfo().workflowId;
-    const model = HennosOpenAISingleton.mini();
-
+    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const model = resolveModelProvider("low");
     const promptTemplate = observationPromptTemplate({
         previousSteps: input.context.join("\n"),
         actionResult: input.actionResult,

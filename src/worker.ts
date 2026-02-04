@@ -55,14 +55,13 @@ Runtime.install({
                 break;
 
             default:
-                Logger.logger.debug(log);
                 break;
         }
     }),
     // Telemetry options control how logs are exported out of Rust Core.
     telemetryOptions: {
         logging: {
-            filter: makeTelemetryFilterString({ core: Config.HENNOS_VERBOSE_LOGGING ? "DEBUG" : "WARN" }),
+            filter: makeTelemetryFilterString({ core: "ERROR" }),
         },
     },
 });

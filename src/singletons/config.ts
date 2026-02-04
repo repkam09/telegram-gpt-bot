@@ -55,6 +55,38 @@ export class Config {
         };
     }
 
+    static get OLLAMA_LLM(): HennosModelConfig {
+        if (!process.env.OLLAMA_LLM) {
+            return {
+                MODEL: "qwen2.5:14b",
+                CTX: 16000,
+            };
+        }
+        return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
+    }
+
+    static get OLLAMA_HOST(): string {
+        if (!process.env.OLLAMA_HOST) {
+            return "localhost";
+        }
+
+        return process.env.OLLAMA_HOST;
+    }
+
+    static get OLLAMA_PORT(): number {
+        if (!process.env.OLLAMA_PORT) {
+            return 11434;
+        }
+
+        const port = parseInt(process.env.OLLAMA_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid OLLAMA_PORT value");
+        }
+
+        return port;
+    }
+
     static get TERRARIUM_ENABLED(): boolean {
         if (!process.env.TERRARIUM_ENABLED) {
             return false;

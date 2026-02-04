@@ -1,6 +1,6 @@
-import { workflowInfo } from "@temporalio/workflow";
 import { Logger } from "../../../singletons/logger";
 import { encoding_for_model } from "tiktoken";
+import { Context } from "@temporalio/activity";
 
 export async function tokens(
     context: string[],
@@ -8,7 +8,8 @@ export async function tokens(
     tokenCount: number;
     tokenLimit: number;
 }> {
-    const workflowId = workflowInfo().workflowId;
+        const workflowId = Context.current().info.workflowExecution.workflowId;
+    
     Logger.debug(workflowId, `Counting tokens for ${context.length} messages`);
 
     const result = await getChatContextTokenCount(context);

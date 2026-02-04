@@ -1,7 +1,6 @@
-import { ApplicationFailure, log } from "@temporalio/activity";
-import { HennosOpenAISingleton } from "../../../singletons/openai";
+import { ApplicationFailure, log, Context } from "@temporalio/activity";
 import { availableToolsAsString } from "../../../tools/tools";
-import { workflowInfo } from "@temporalio/workflow";
+import { resolveModelProvider } from "../../../provider";
 
 export type ThoughtInput = {
     context: string[];
@@ -20,7 +19,7 @@ export type ThoughtResult = {
 
 export async function thought(input: ThoughtInput,
 ): Promise<ThoughtResult> {
-    const workflowId = workflowInfo().workflowId;
+    const workflowId = Context.current().info.workflowExecution.workflowId;
 
     const promptTemplate = thoughtPromptTemplate({
         currentDate: new Date().toISOString().split("T")[0],
@@ -28,16 +27,16 @@ export async function thought(input: ThoughtInput,
         availableActions: availableToolsAsString(workflowId),
     });
 
-    const model = HennosOpenAISingleton.instance();
-
+    const model = resolveModelProvider("high");
     const response = await model.invoke(workflowId, [
         { role: "user", content: promptTemplate, type: "text" },
     ], true);
 
     try {
+        log.debug(`Parsing agent result JSON:\nResponse payload: ${response.payload}`);
         JSON.parse(response.payload);
     } catch (e) {
-        log.error(`Failed to parse agent result JSON: ${(e as Error).message}\nResponse payload: ${response.payload}`);
+        log.error(`Failed to parse agent result JSON: ${(e as Error).message}`);
         throw ApplicationFailure.retryable(`Failed to parse agent result JSON: ${(e as Error).message}`);
     }
 
@@ -52,6 +51,7 @@ export async function thought(input: ThoughtInput,
     }
 
     if (!Object.prototype.hasOwnProperty.call(parsed, "__type")) {
+        log.debug("Parsed agent result does not have a valid __type property.");
         throw ApplicationFailure.retryable("Parsed agent result does not have a valid __type");
     }
 

@@ -10,6 +10,5 @@ async function start() {
     await HennosTemporalWorker.init();
 }
 
-
 // Kick off the async function
 start();

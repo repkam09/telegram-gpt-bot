@@ -1,12 +1,12 @@
-import { workflowInfo } from "@temporalio/workflow";
 import { processToolCalls } from "../../../tools/tools";
 import { ToolCallResponse } from "../../../tools/BaseTool";
+import { Context } from "@temporalio/activity";
 
 export async function action(
     toolName: string,
     input: unknown,
 ): Promise<string> {
-    const workflowId = workflowInfo().workflowId;
+    const workflowId = Context.current().info.workflowExecution.workflowId;
     const toolCall = {
         function: {
             name: toolName,

@@ -51,6 +51,11 @@ export class LifeforceWebhook {
             }
         };
 
+        if (Config.HENNOS_DEVELOPMENT_MODE) {
+            console.log("LifeforceWebhook Broadcast Payload:", JSON.stringify(payload, null, 2));
+            return;
+        }
+
         // Send a POST request to the Lifeforce endpoint
         const response = await fetch(`${Config.LIFEFORCE_BASE_URL}/api/internal/hennos/callback`, {
             method: "POST",
