@@ -3,9 +3,6 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import axios from "axios";
 import { Config } from "../singletons/config";
-import { TelegramBotInstance } from "../services/telegram/telegram";
-import { HennosConsumer, HennosGroup } from "../singletons/consumer";
-import { ValidLLMProvider } from "../types";
 
 export class MetaBugReport extends BaseTool {
     public static isEnabled(): boolean {
@@ -45,8 +42,8 @@ export class MetaBugReport extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `MetaBugReport callback. ${JSON.stringify({ title: args.title, report: args.report })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `MetaBugReport callback. ${JSON.stringify({ title: args.title, report: args.report })}`);
         if (!args.title) {
             return ["bug_report, title not provided", metadata];
         }
@@ -56,18 +53,18 @@ export class MetaBugReport extends BaseTool {
         }
 
         try {
-            const url = await createGitHubIssue(req, args.title, args.report);
+            const url = await createGitHubIssue(workflowId, args.title, args.report);
             return [`bug_report: ${url}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `MetaBugReport unable to create bug report. ${JSON.stringify({ title: args.title, report: args.report, error: error.message })}`);
+            Logger.error(workflowId, `MetaBugReport unable to create bug report. ${JSON.stringify({ title: args.title, report: args.report, error: error.message })}`);
             return ["bug_report, unable to create but report", metadata];
         }
     }
 }
 
-async function createGitHubIssue(req: HennosConsumer, title: string, report: string): Promise<string> {
-    Logger.debug(req, `createGitHubIssue. ${JSON.stringify({ title, report })}`);
+async function createGitHubIssue(workflowId: string, title: string, report: string): Promise<string> {
+    Logger.debug(workflowId, `createGitHubIssue. ${JSON.stringify({ title, report })}`);
 
     const response = await axios.post("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
         title: title,
@@ -122,8 +119,8 @@ export class MetaFeatureRequest extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `MetaFeatureRequest callback. ${JSON.stringify({ title: args.title, request: args.request })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `MetaFeatureRequest callback. ${JSON.stringify({ title: args.title, request: args.request })}`);
         if (!args.title) {
             return ["feature_request, title not provided", metadata];
         }
@@ -133,18 +130,18 @@ export class MetaFeatureRequest extends BaseTool {
         }
 
         try {
-            const url = await createGitHubFeatureRequest(req, args.title, args.request);
+            const url = await createGitHubFeatureRequest(workflowId, args.title, args.request);
             return [`feature_request: ${url}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `MetaFeatureRequest unable to create feature request. ${JSON.stringify({ title: args.title, request: args.request, error: error.message })}`);
+            Logger.error(workflowId, `MetaFeatureRequest unable to create feature request. ${JSON.stringify({ title: args.title, request: args.request, error: error.message })}`);
             return ["feature_request, unable to create feature request", metadata];
         }
     }
 }
 
-async function createGitHubFeatureRequest(req: HennosConsumer, title: string, request: string): Promise<string> {
-    Logger.debug(req, `createGitHubIssue. ${JSON.stringify({ title, request })}`);
+async function createGitHubFeatureRequest(workflowId: string, title: string, request: string): Promise<string> {
+    Logger.debug(workflowId, `createGitHubIssue. ${JSON.stringify({ title, request })}`);
 
     const response = await axios.post("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
         title,
@@ -190,8 +187,8 @@ export class MetaFeedbackTool extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `MetaFeedbackTool callback. ${JSON.stringify({ message: args.message })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `MetaFeedbackTool callback. ${JSON.stringify({ message: args.message })}`);
 
         if (!args.message) {
             return ["hennos_feedback: message not provided", metadata];
@@ -199,175 +196,15 @@ export class MetaFeedbackTool extends BaseTool {
 
         try {
             // Format the feedback message with user information
-            const formattedMessage = `📬 Feedback from ${req.displayName} (ID: ${req.chatId}):\n\n${args.message}`;
-            await TelegramBotInstance.sendAdminMessage(formattedMessage);
+            //const formattedMessage = `📬 Feedback from ${workflowId}:\n\n${args.message}`;
+            // await TelegramBotInstance.sendAdminMessage(formattedMessage);
+            //@TODO: Send the message to the admin somehow.
 
             return ["Your feedback has been sent to the creator. Thank you for your input!", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `MetaFeedbackTool unable to send feedback. Error: ${args.message}`, error);
+            Logger.error(workflowId, `MetaFeedbackTool unable to send feedback. Error: ${args.message}`, error);
             return ["Unable to send your feedback. Please try again later.", metadata];
-        }
-    }
-}
-
-export class MetaSetUserPreferredName extends BaseTool {
-    public static isEnabled(): boolean {
-        return true;
-    }
-
-    public static definition(): Tool {
-        return {
-            type: "function",
-            function: {
-                name: "set_user_preferred_name",
-                description: [
-                    "Use this tool to set a preferred name for the user.",
-                    "If a user asks to be called something else, you can use this tool to update their preferred name within the system.",
-                    "This tool provides the same functionality that exists in the user '/settings' menu for setting a preferred name."
-                ].join(" "),
-                parameters: {
-                    type: "object",
-                    properties: {
-                        preferredName: {
-                            type: "string",
-                            description: "The preferred name to be set for the user."
-                        },
-                    },
-                    required: ["preferredName"],
-                }
-            }
-        };
-    }
-
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `SetUserPreferredName callback. ${JSON.stringify({ preferredName: args.preferredName })}`);
-        if (!args.preferredName) {
-            return ["set_user_preferred_name, preferredName not provided", metadata];
-        }
-
-        try {
-            if (req instanceof HennosGroup) {
-                return ["set_user_preferred_name, this feature is not available for groups", metadata];
-            }
-
-            await req.setPreferredName(args.preferredName);
-            return ["set_user_preferred_name: success", metadata];
-        } catch (err: unknown) {
-            const error = err as Error;
-            Logger.error(req, `SetUserPreferredName unable to set preferred name. ${JSON.stringify({ preferredName: args.preferredName, error: error.message })}`, error);
-            return ["set_user_preferred_name, unable to set preferred name", metadata];
-        }
-    }
-}
-
-export class MetaSetBotPreferredName extends BaseTool {
-    public static isEnabled(): boolean {
-        return true;
-    }
-
-    public static definition(): Tool {
-        return {
-            type: "function",
-            function: {
-                name: "set_bot_preferred_name",
-                description: [
-                    "Use this tool to set a preferred name for yourself. By default you are 'Hennos'.",
-                    "If the user wants to give you a different name, you can use this tool to update their settings within the system.",
-                    "This tool provides the same functionality that exists in the user '/settings' menu for setting a preferred bot name."
-                ].join(" "),
-                parameters: {
-                    type: "object",
-                    properties: {
-                        preferredName: {
-                            type: "string",
-                            description: "The preferred name to be set for the bot."
-                        },
-                    },
-                    required: ["preferredName"],
-                }
-            }
-        };
-    }
-
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `SetBotPreferredName callback. ${JSON.stringify({ preferredName: args.preferredName })}`);
-        if (!args.preferredName) {
-            return ["set_bot_preferred_name, preferredName not provided", metadata];
-        }
-
-        try {
-            if (req instanceof HennosGroup) {
-                return ["set_bot_preferred_name, this feature is not available for groups", metadata];
-            }
-
-            await req.setPreferredBotName(args.preferredName);
-            return ["set_bot_preferred_name: success", metadata];
-        } catch (err: unknown) {
-            const error = err as Error;
-            Logger.error(req, `SetBotPreferredName unable to set preferred name. ${JSON.stringify({ preferredName: args.preferredName, error: error.message })}`, error);
-            return ["set_bot_preferred_name, unable to set preferred name", metadata];
-        }
-    }
-}
-
-
-export class MetaSetLLMProvider extends BaseTool {
-    public static isEnabled(): boolean {
-        return true;
-    }
-
-    public static definition(): Tool {
-        return {
-            type: "function",
-            function: {
-                name: "set_llm_provider",
-                description: [
-                    "Use this tool to change the LLM provider that powers Hennos.",
-                    "If the user asks to use a different LLM provider, you can use this tool to update their settings within the system.",
-                    "This tool provides the same functionality that exists in the user '/settings' menu for setting a preferred LLM provider."
-                ].join(" "),
-                parameters: {
-                    type: "object",
-                    properties: {
-                        provider: {
-                            type: "string",
-                            enum: [
-                                "openai",
-                                "anthropic",
-                                "ollama",
-                                "bedrock"
-                            ],
-                            description: "The LLM provider to use for future messages."
-                        },
-                    },
-                    required: ["provider"],
-                }
-            }
-        };
-    }
-
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `MetaSetLLMProvider callback. ${JSON.stringify({ provider: args.provider })}`);
-        if (!args.provider) {
-            return ["set_llm_provider, provider not provided", metadata];
-        }
-
-        if (!["openai", "anthropic", "ollama", "bedrock"].includes(args.provider)) {
-            return ["set_llm_provider, invalid provider specified", metadata];
-        }
-
-        try {
-            if (req instanceof HennosGroup) {
-                return ["set_llm_provider, this feature is not available for groups", metadata];
-            }
-
-            await req.setPreferredProvider(args.provider as ValidLLMProvider);
-            return ["set_llm_provider: success", metadata];
-        } catch (err: unknown) {
-            const error = err as Error;
-            Logger.error(req, `MetaSetLLMProvider unable to set provider. ${JSON.stringify({ provider: args.provider, error: error.message })}`, error);
-            return ["set_llm_provider, unable to set provider", metadata];
         }
     }
 }

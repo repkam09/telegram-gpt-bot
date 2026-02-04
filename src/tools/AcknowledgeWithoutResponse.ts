@@ -1,7 +1,6 @@
 import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosConsumer } from "../singletons/consumer";
 
 export class AcknowledgeWithoutResponse extends BaseTool {
     public static isEnabled(): boolean {
@@ -31,8 +30,8 @@ export class AcknowledgeWithoutResponse extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `AcknowledgeWithoutResponse callback: ${args.reason}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `AcknowledgeWithoutResponse callback: ${args.reason}`);
         return ["acknowledge_without_response", metadata, { __type: "empty" }];
     }
 }

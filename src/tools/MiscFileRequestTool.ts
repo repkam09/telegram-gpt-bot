@@ -2,8 +2,6 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/consumer";
-import { TelegramBotInstance } from "../services/telegram/telegram";
 
 export class EbookRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -42,8 +40,8 @@ export class EbookRequest extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `ebook_request. ${JSON.stringify({ args })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `ebook_request. ${JSON.stringify({ args })}`);
         if (!args.ebookTitle) {
             return ["ebook_request failed, ebookTitle must be provided", metadata];
         }
@@ -52,15 +50,15 @@ export class EbookRequest extends BaseTool {
             return ["ebook_request failed, ebookAuthor must be provided", metadata];
         }
 
-        Logger.debug(req, `ebook_request. ${JSON.stringify({ ebookTitle: args.ebookTitle, ebookAuthor: args.ebookAuthor })}`);
+        Logger.debug(workflowId, `ebook_request. ${JSON.stringify({ ebookTitle: args.ebookTitle, ebookAuthor: args.ebookAuthor })}`);
 
         try {
-            const message = `New ebook request:\n\nTitle: ${args.ebookTitle}\nAuthor: ${args.ebookAuthor}\nRequested by: ${req.displayName})`;
-            TelegramBotInstance.sendAdminMessage(message);
+            // const message = `New ebook request:\n\nTitle: ${args.ebookTitle}\nAuthor: ${args.ebookAuthor}\nRequested by: ${workflowId})`;
+            // @TODO: Message the admin somehow for this request.
             return ["ebook_request: Request submitted successfully", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `ebook_request error: ${error.message}`, error);
+            Logger.error(workflowId, `ebook_request error: ${error.message}`, error);
             return ["ebook_request failed", metadata];
         }
     }
@@ -104,8 +102,8 @@ export class AudiobookRequest extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `audiobook_request. ${JSON.stringify({ args })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `audiobook_request. ${JSON.stringify({ args })}`);
         if (!args.audiobookTitle) {
             return ["audiobook_request failed, audiobookTitle must be provided", metadata];
         }
@@ -114,15 +112,15 @@ export class AudiobookRequest extends BaseTool {
             return ["audiobook_request failed, audiobookAuthor must be provided", metadata];
         }
 
-        Logger.debug(req, `audiobook_request. ${JSON.stringify({ audiobookTitle: args.audiobookTitle, audiobookAuthor: args.audiobookAuthor })}`);
+        Logger.debug(workflowId, `audiobook_request. ${JSON.stringify({ audiobookTitle: args.audiobookTitle, audiobookAuthor: args.audiobookAuthor })}`);
 
         try {
-            const message = `New audiobook request:\n\nTitle: ${args.audiobookTitle}\nAuthor: ${args.audiobookAuthor}\nRequested by: ${req.displayName})`;
-            TelegramBotInstance.sendAdminMessage(message);
+            // const message = `New audiobook request:\n\nTitle: ${args.audiobookTitle}\nAuthor: ${args.audiobookAuthor}\nRequested by: ${workflowId})`;
+            // @TODO: Message the admin somehow for this request.
             return ["audiobook_request: Request submitted successfully", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `audiobook_request error: ${error.message}`, error);
+            Logger.error(workflowId, `audiobook_request error: ${error.message}`, error);
             return ["audiobook_request failed", metadata];
         }
     }

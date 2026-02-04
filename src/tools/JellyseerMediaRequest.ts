@@ -2,8 +2,6 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
-import { HennosConsumer } from "../singletons/consumer";
-import { TelegramBotInstance } from "../services/telegram/telegram";
 
 export class JellyseerMediaRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -46,8 +44,8 @@ export class JellyseerMediaRequest extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `jellyseer_media_request. ${JSON.stringify({ args })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `jellyseer_media_request. ${JSON.stringify({ args })}`);
         if (!args.mediaType) {
             return ["jellyseer_media_request failed, mediaType must be provided", metadata];
         }
@@ -73,12 +71,12 @@ export class JellyseerMediaRequest extends BaseTool {
             }
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `jellyseer_media_request error: ${error.message}`, error);
+            Logger.error(workflowId, `jellyseer_media_request error: ${error.message}`, error);
             return ["jellyseer_media_request failed, unable to fetch media info", metadata];
         }
 
 
-        Logger.debug(req, `jellyseer_media_request. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId })}`);
+        Logger.debug(workflowId, `jellyseer_media_request. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId })}`);
         try {
             const results = await BaseTool.postJSONData<JellyseerSearchResults>(`${Config.JELLYSEER_BASE_URL}/api/v1/request`, {
                 "mediaType": args.mediaType,
@@ -88,13 +86,14 @@ export class JellyseerMediaRequest extends BaseTool {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             });
 
-            Logger.debug(req, `jellyseer_media_request. ${JSON.stringify(results)}`);
+            Logger.debug(workflowId, `jellyseer_media_request. ${JSON.stringify(results)}`);
 
-            await TelegramBotInstance.sendAdminMessage(`${req.displayName} has requested ${args.mediaType} with id ${args.mediaId}`);
+            // @TOOD: Figure out how to notify the admin of the request.
+            Logger.info(workflowId, `${workflowId} has requested ${args.mediaType} with id ${args.mediaId}`);
             return ["jellyseer_media_request, success", metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `jellyseer_media_request error: ${error.message}`, error);
+            Logger.error(workflowId, `jellyseer_media_request error: ${error.message}`, error);
             return ["jellyseer_media_request failed", metadata];
         }
     }
@@ -140,8 +139,8 @@ export class JellyseerMediaSearch extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `jellyseer_media_search. ${JSON.stringify({ args })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `jellyseer_media_search. ${JSON.stringify({ args })}`);
         if (!args.mediaType) {
             return ["jellyseer_media_search failed, mediaType must be provided", metadata];
         }
@@ -154,7 +153,7 @@ export class JellyseerMediaSearch extends BaseTool {
             return ["jellyseer_media_search failed, title must be provided", metadata];
         }
 
-        Logger.debug(req, `jellyseer_media_search. ${JSON.stringify({ mediaType: args.mediaType, title: args.title })}`);
+        Logger.debug(workflowId, `jellyseer_media_search. ${JSON.stringify({ mediaType: args.mediaType, title: args.title })}`);
 
         const urlEncodedTitle = encodeURIComponent(args.title);
         try {
@@ -178,12 +177,12 @@ export class JellyseerMediaSearch extends BaseTool {
                 available: result.mediaInfo ? true : false
             })).filter((result) => result.mediaType === args.mediaType);
 
-            Logger.debug(req, `jellyseer_media_search: ${JSON.stringify(data)}`);
+            Logger.debug(workflowId, `jellyseer_media_search: ${JSON.stringify(data)}`);
 
             return [`jellyseer_media_search: ${JSON.stringify(data)}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `jellyseer_media_search error: ${error.message}`, error);
+            Logger.error(workflowId, `jellyseer_media_search error: ${error.message}`, error);
             return [`jellyseer_media_search unable to fetch results for ${args.title}`, metadata];
         }
     }

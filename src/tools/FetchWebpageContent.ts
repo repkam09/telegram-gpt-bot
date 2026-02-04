@@ -1,17 +1,11 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
 import puppeteer from "puppeteer";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
-import { HTMLReader } from "llamaindex";
 import { AxiosError } from "axios";
 
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { handleDocument } from "../handlers/document";
-import { HennosConsumer, HennosUser } from "../singletons/consumer";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
 
@@ -48,62 +42,38 @@ export class FetchWebpageContent extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         if (!args.url) {
             return ["fetch_webpage_content error, required parameter 'url' not provided", metadata];
         }
 
-        Logger.info(req, `fetch_webpage_content, url=${args.url}, query=${args.query}`);
+        Logger.info(workflowId, `fetch_webpage_content, url=${args.url}, query=${args.query}`);
         try {
-            const html = await fetchPageContent(req, args.url);
-
+            const html = await fetchPageContent(workflowId, args.url);
 
             // If the HTML is smaller than 32000 tokens (~128k characters), we can just return the whole thing
             if (!args.query && html.length < 128000) {
                 return [`fetch_webpage_content, url: ${args.url}, page_content: ${html}`, metadata];
             }
 
-            const filePath = path.join(Config.LOCAL_STORAGE(req), "/", `${Date.now().toString()}.html`);
-
-            await fs.writeFile(filePath, html, { encoding: "utf-8" });
-
-            const query = args.query ? args.query : "Could you provide a summary of this webpage content?";
-            const result = await handleDocument(req as HennosUser, filePath, args.url, new HTMLReader(), query);
-            return [`fetch_webpage_content, url: ${args.url}, result: ${result}`, metadata];
+            // Return a truncated version of the content
+            return [`fetch_webpage_content, url: ${args.url}, page_content: ${html.slice(0, 128000)}... [truncated]`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
             if (err instanceof AxiosError) {
-                Logger.error(req, `fetch_webpage_content error. url=${args.url} status=${err.response?.status} statusText=${err.response?.statusText}`, error);
+                Logger.error(workflowId, `fetch_webpage_content error. url=${args.url} status=${err.response?.status} statusText=${err.response?.statusText}`, error);
                 return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}', HTTP Status: ${err.response?.status}, Status Text: ${err.response?.statusText}`, metadata];
             }
 
-            Logger.error(req, `fetch_webpage_content error url=${args.url} error=${error.message}`, error);
+            Logger.error(workflowId, `fetch_webpage_content error url=${args.url} error=${error.message}`, error);
             return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}'`, metadata];
         }
     }
 }
 
-export async function fetchPageContent(req: HennosConsumer, url: string): Promise<string> {
-    // Non-experimental path: basic fetch (original behavior)
-    if (!req.experimental) {
-        Logger.trace(req, `fetchPageContent fetchTextData: ${url}`);
-        const raw = await BaseTool.fetchTextData(url);
-        // Attempt a light-weight reader extraction with jsdom if HTML
-        if (/<!DOCTYPE html>|<html[\s>]/i.test(raw)) {
-            try {
-                const extracted = extractReadable(raw, url);
-                if (extracted) return extracted;
-            } catch (err: unknown) {
-                const e = err as Error;
-                Logger.debug(req, `reader-lite extraction failed. Error: ${e.message}`);
-            }
-        }
-        return raw;
-    }
-
-    // Experimental path: use puppeteer for fully rendered DOM then Readability.
+export async function fetchPageContent(workflowId: string, url: string): Promise<string> {
     try {
-        Logger.trace(req, `fetchPageContent puppeteer: ${url}`);
+        Logger.trace(workflowId, `fetchPageContent puppeteer: ${url}`);
         const browser = await puppeteer.launch({
             args: ["--no-sandbox", "--disable-setuid-sandbox"],
             headless: Config.PUPPETEER_HEADLESS
@@ -128,7 +98,7 @@ export async function fetchPageContent(req: HennosConsumer, url: string): Promis
             article = extractReadable(html, url);
         } catch (err: unknown) {
             const e = err as Error;
-            Logger.debug(req, `readability extraction failed. Error: ${e.message}`);
+            Logger.debug(workflowId, `readability extraction failed. Error: ${e.message}`);
         }
 
         await page.close();
@@ -137,7 +107,7 @@ export async function fetchPageContent(req: HennosConsumer, url: string): Promis
         return article || html;
     } catch (err: unknown) {
         const error = err as Error;
-        Logger.error(req, `fetchPageContent error url=${url} error=${error.message}`, error);
+        Logger.error(workflowId, `fetchPageContent error url=${url} error=${error.message}`, error);
         try {
             const fallback = await BaseTool.fetchTextData(url);
             const extracted = extractReadable(fallback, url) || fallback;

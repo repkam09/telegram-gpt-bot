@@ -1,7 +1,6 @@
 import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosConsumer } from "../singletons/consumer";
 import { Config } from "../singletons/config";
 
 export class SearXNGSearch extends BaseTool {
@@ -36,8 +35,8 @@ export class SearXNGSearch extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `SearXNGSearch callback. ${JSON.stringify({ query: args.query })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `SearXNGSearch callback. ${JSON.stringify({ query: args.query })}`);
         if (!args.query) {
             return ["searxng_web_search, query not provided", metadata];
         }
@@ -48,7 +47,7 @@ export class SearXNGSearch extends BaseTool {
                 return [`searxng_web_search, query '${args.query}', returned no results`, metadata];
             }
 
-            Logger.debug(req, `SearXNGSearch callback. ${JSON.stringify({ query: args.query, result_length: json.results.length })}`);
+            Logger.debug(workflowId, `SearXNGSearch callback. ${JSON.stringify({ query: args.query, result_length: json.results.length })}`);
 
             const limited = json.results.slice(0, 8);
             const cleaned = limited.map((result) => ({
@@ -61,7 +60,7 @@ export class SearXNGSearch extends BaseTool {
             return [`searxng_web_search, query '${args.query}', returned the following results: ${JSON.stringify(cleaned)}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `SearXNGSearch callback error. ${JSON.stringify({ query: args.query, error: error.message })}`, error);
+            Logger.error(workflowId, `SearXNGSearch callback error. ${JSON.stringify({ query: args.query, error: error.message })}`, error);
             return [`searxng_web_search, query '${args.query}', encountered an error while fetching results`, metadata];
         }
     }

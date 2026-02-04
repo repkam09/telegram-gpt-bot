@@ -29,54 +29,12 @@ export class Config {
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
-    static get OLLAMA_LLM(): HennosModelConfig {
-        if (!process.env.OLLAMA_LLM) {
-            return {
-                MODEL: "repkam09/hennos-oss:latest",
-                CTX: 16000,
-            };
-        }
-        return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
-    }
-
-    static get OLLAMA_HOST(): string {
-        if (!process.env.OLLAMA_HOST) {
-            return "localhost";
-        }
-
-        return process.env.OLLAMA_HOST;
-    }
-
     static get OPENAI_API_KEY(): string {
         if (!process.env.OPENAI_API_KEY) {
             throw new Error("Missing OPENAI_API_KEY");
         }
 
         return process.env.OPENAI_API_KEY;
-    }
-
-    static get GOOGLE_API_KEY(): string {
-        if (!process.env.GOOGLE_API_KEY) {
-            throw new Error("Missing GOOGLE_API_KEY");
-        }
-
-        return process.env.GOOGLE_API_KEY;
-    }
-
-    static get GOOGLE_IMAGE_MODEL(): string {
-        if (!process.env.GOOGLE_IMAGE_MODEL) {
-            return "gemini-3-pro-image-preview";
-        }
-
-        return process.env.GOOGLE_IMAGE_MODEL;
-    }
-
-    static get OPENAI_IMAGE_MODEL(): string {
-        if (!process.env.OPENAI_IMAGE_MODEL) {
-            return "gpt-image-1";
-        }
-
-        return process.env.OPENAI_IMAGE_MODEL;
     }
 
     static get OPENAI_LLM(): HennosModelConfig {
@@ -95,39 +53,6 @@ export class Config {
             MODEL: "gpt-5-nano",
             CTX: 16000,
         };
-    }
-
-    static get ANTHROPIC_API_KEY(): string {
-        if (!process.env.ANTHROPIC_API_KEY) {
-            throw new Error("Missing ANTHROPIC_API_KEY");
-        }
-
-        return process.env.ANTHROPIC_API_KEY;
-    }
-
-    static get ANTHROPIC_LLM(): HennosModelConfig {
-        if (!process.env.ANTHROPIC_LLM) {
-            return {
-                MODEL: "claude-3-haiku-20240307",
-                CTX: 16000
-            };
-        }
-
-        return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
-    }
-
-    static get OLLAMA_PORT(): number {
-        if (!process.env.OLLAMA_PORT) {
-            return 11434;
-        }
-
-        const port = parseInt(process.env.OLLAMA_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid OLLAMA_PORT value");
-        }
-
-        return port;
     }
 
     static get TERRARIUM_ENABLED(): boolean {
@@ -323,14 +248,14 @@ export class Config {
         return process.env.AXIOM_DATASET;
     }
 
-    static LOCAL_STORAGE(req?: { chatId: number }): string {
+    static LOCAL_STORAGE(workflowId: string): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();
         }
 
         const cwd = path.join(__dirname, "../", "../");
-        if (req) {
-            const dir = path.join(cwd, process.env.LOCAL_STORAGE, String(req.chatId));
+        if (workflowId) {
+            const dir = path.join(cwd, process.env.LOCAL_STORAGE, workflowId);
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir);
             }

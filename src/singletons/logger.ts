@@ -44,10 +44,10 @@ export class Logger {
         });
     }
 
-    static info(req: { toString: () => string } | undefined, message?: string): void {
-        if (req) {
+    static info(workflowId: string | undefined, message?: string): void {
+        if (workflowId) {
             Logger.logger.info({
-                consumer: req.toString(),
+                consumer: workflowId,
                 instance: Logger.instance,
             }, message);
         } else {
@@ -58,10 +58,10 @@ export class Logger {
         }
     }
 
-    static warn(req: { toString: () => string } | undefined, message?: string): void {
-        if (req) {
+    static warn(workflowId: string | undefined, message?: string): void {
+        if (workflowId) {
             Logger.logger.warn({
-                consumer: req.toString(),
+                consumer: workflowId,
                 instance: Logger.instance,
             }, message);
         } else {
@@ -72,10 +72,10 @@ export class Logger {
         }
     }
 
-    static error(req: { toString: () => string } | undefined, message?: string, error?: Error): void {
-        if (req) {
+    static error(workflowId: string | undefined, message?: string, error?: Error): void {
+        if (workflowId) {
             Logger.logger.error({
-                consumer: req.toString(),
+                consumer: workflowId,
                 instance: Logger.instance,
                 message: error ? error.message : undefined,
                 stack: error ? error.stack : undefined,
@@ -90,11 +90,11 @@ export class Logger {
         }
     }
 
-    static debug(req: { toString: () => string } | undefined, message?: string): void {
+    static debug(workflowId: string | undefined, message?: string): void {
         if (Config.HENNOS_VERBOSE_LOGGING) {
-            if (req) {
+            if (workflowId) {
                 Logger.logger.debug({
-                    consumer: req.toString(),
+                    consumer: workflowId,
                     instance: Logger.instance,
                 }, message);
             } else {
@@ -106,9 +106,9 @@ export class Logger {
         }
     }
 
-    static trace(user: { toString: () => string }, context: string) {
+    static trace(workflowId: string | undefined, context: string) {
         Logger.logger.trace({
-            consumer: user.toString(),
+            consumer: workflowId,
             context: context,
             instance: Logger.instance,
         });

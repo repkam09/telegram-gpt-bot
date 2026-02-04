@@ -6,7 +6,6 @@ import { Tool, ToolCall } from "ollama";
 import { exec } from "child_process";
 import { Logger } from "../singletons/logger";
 import { HennosResponse } from "../types";
-import { HennosConsumer } from "../singletons/consumer";
 
 export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;
@@ -21,7 +20,7 @@ export abstract class BaseTool {
         throw new Error("Implemented by Subclass");
     }
 
-    public static async callback(_req: HennosConsumer, _args: ToolCallFunctionArgs, _metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+    public static async callback(_workflowId: string, _args: ToolCallFunctionArgs, _metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         throw new Error("Implemented by Subclass");
     }
 

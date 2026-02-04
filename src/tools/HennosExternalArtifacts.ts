@@ -1,7 +1,6 @@
 import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosConsumer } from "../singletons/consumer";
 
 export class HennosRetrieveArtifact extends BaseTool {
     public static isEnabled(): boolean {
@@ -32,12 +31,12 @@ export class HennosRetrieveArtifact extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         if (!args.artifact_id) {
             return ["hennos_retrieve_artifact error, required parameter 'artifact_id' not provided", metadata];
         }
 
-        Logger.info(req, `hennos_retrieve_artifact. ${JSON.stringify({ artifact_id: args.artifact_id })}`);
+        Logger.info(workflowId, `hennos_retrieve_artifact. ${JSON.stringify({ artifact_id: args.artifact_id })}`);
 
         return ["hennos_retrieve_artifact, unable to fetch artifact. This tool is coming soon and not yet implemented.", metadata];
     }
