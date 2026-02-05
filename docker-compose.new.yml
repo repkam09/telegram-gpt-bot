@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  temporal-worker:
+    build:
+      context: .
+      dockerfile: packages/worker/Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - TEMPORAL_SERVER_URL=${TEMPORAL_SERVER_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - temporal
+      - postgresql
+
+  telegram-client:
+    build:
+      context: .
+      dockerfile: packages/telegram-client/Dockerfile
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TEMPORAL_SERVER_URL=${TEMPORAL_SERVER_URL}
+      - WORKER_SERVICE_URL=http://temporal-worker:3000
+    depends_on:
+      - temporal-worker
+
+  # Future services
+  discord-client:
+    build:
+      context: .
+      dockerfile: packages/discord-client/Dockerfile
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - TEMPORAL_SERVER_URL=${TEMPORAL_SERVER_URL}
+    depends_on:
+      - temporal-worker
+
+  # Infrastructure
+  temporal:
+    image: temporalio/auto-setup:latest
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postgresql
+    depends_on:
+      - postgresql
+    ports:
+      - "7233:7233"
+
+  postgresql:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

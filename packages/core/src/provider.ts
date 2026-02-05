@@ -5,7 +5,7 @@ import { HennosStringResponse } from "./types";
 
 type ModelProvider = "openai" | "ollama";
 
-const provider: ModelProvider = "ollama";
+const provider: ModelProvider = "openai";
 
 type InvokableModelProvider = {
     invoke(workflowId: string, messages: unknown[], schema?: boolean): Promise<HennosStringResponse>;
