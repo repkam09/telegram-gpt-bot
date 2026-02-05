@@ -22,7 +22,7 @@ export function parseWorkflowId(workflowId: string): { platform: string;[key: st
     return JSON.parse(decoded);
 }
 
-const { persistUserMessage, persistAgentMessage, tokens } = proxyActivities<typeof activities>({
+const { action, persistUserMessage, persistAgentMessage, tokens } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
         backoffCoefficient: 1,
@@ -31,7 +31,7 @@ const { persistUserMessage, persistAgentMessage, tokens } = proxyActivities<type
     },
 });
 
-const { thought, action } = proxyActivities<typeof activities>({
+const { thought } = proxyActivities<typeof activities>({
     startToCloseTimeout: "5 minutes",
     retry: {
         backoffCoefficient: 1,
@@ -41,7 +41,7 @@ const { thought, action } = proxyActivities<typeof activities>({
 });
 
 const { compact, observation } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "3 minute",
+    startToCloseTimeout: "1 minute",
     retry: {
         backoffCoefficient: 1,
         initialInterval: "3 seconds",
