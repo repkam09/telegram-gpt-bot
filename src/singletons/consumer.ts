@@ -7,7 +7,6 @@ import { HennosOpenAISingleton } from "./llms/openai";
 import { HennosAnthropicSingleton } from "./llms/anthropic";
 import { Logger } from "./logger";
 import { PrismaClient } from "@prisma/client";
-import { OpenAI, OpenAIEmbedding, ServiceContext, serviceContextFromDefaults, SimpleNodeParser } from "llamaindex";
 import { loadHennosImage } from "../handlers/photos";
 import { HennosBedrockSingleton } from "./llms/bedrock";
 import { HennosWorkflowUser } from "../services/temporal/common/types";
@@ -74,24 +73,6 @@ export class HennosUser {
 
     public toString(): string {
         return `${this.displayName} ${String(this.chatId)}`;
-    }
-
-    public getServiceContext(): ServiceContext {
-        return serviceContextFromDefaults({
-            llm: new OpenAI({
-                model: Config.OPENAI_MINI_LLM.MODEL,
-                apiKey: Config.OPENAI_API_KEY,
-                temperature: 1
-            }),
-            embedModel: new OpenAIEmbedding({
-                model: Config.OPENAI_LLM_EMBED.MODEL,
-                apiKey: Config.OPENAI_API_KEY
-            }),
-            nodeParser: new SimpleNodeParser({
-                chunkSize: 2048,
-                chunkOverlap: 256
-            })
-        });
     }
 
     public allowFunctionCalling(): boolean {
@@ -550,24 +531,6 @@ export class HennosGroup {
 
     public toString(): string {
         return `${this.displayName} ${String(this.chatId)}`;
-    }
-
-    public getServiceContext(): ServiceContext {
-        return serviceContextFromDefaults({
-            llm: new OpenAI({
-                model: Config.OPENAI_MINI_LLM.MODEL,
-                apiKey: Config.OPENAI_API_KEY,
-                temperature: 1
-            }),
-            embedModel: new OpenAIEmbedding({
-                model: Config.OPENAI_LLM_EMBED.MODEL,
-                apiKey: Config.OPENAI_API_KEY
-            }),
-            nodeParser: new SimpleNodeParser({
-                chunkSize: 2048,
-                chunkOverlap: 256
-            })
-        });
     }
 
     public allowFunctionCalling(): boolean {

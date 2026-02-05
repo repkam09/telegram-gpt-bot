@@ -5,7 +5,7 @@ import puppeteer from "puppeteer";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
-import { HTMLReader } from "llamaindex";
+import { HTMLReader } from "@llamaindex/readers/html";
 import { AxiosError } from "axios";
 
 import { Logger } from "../singletons/logger";

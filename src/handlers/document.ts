@@ -1,13 +1,36 @@
 import {
     BaseReader,
-    FILE_EXT_TO_READER,
-    ResponseSynthesizer,
+    getResponseSynthesizer,
+    SentenceSplitter,
+    Settings,
     SummaryIndex,
     SummaryRetrieverMode,
 } from "llamaindex";
+import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 import { Logger } from "../singletons/logger";
 import { HennosUser } from "../singletons/consumer";
 import { HennosConsumer, HennosGroup } from "../singletons/consumer";
+import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
+import { Config } from "../singletons/config";
+
+Settings.embedModel = new OpenAIEmbedding({
+    model: Config.OPENAI_LLM_EMBED.MODEL,
+    apiKey: Config.OPENAI_API_KEY
+});
+
+Settings.llm = new OpenAI({
+    model: Config.OPENAI_MINI_LLM.MODEL,
+    apiKey: Config.OPENAI_API_KEY,
+    temperature: 1
+});
+
+Settings.chunkOverlap = 256;
+Settings.chunkSize = 2048;
+
+Settings.nodeParser = new SentenceSplitter({
+    chunkOverlap: 256,
+    chunkSize: 2048,
+});
 
 export async function handleDocumentMessage(req: HennosConsumer, path: string, file_ext: string, uuid: string): Promise<string> {
     if (req instanceof HennosGroup) {
@@ -33,18 +56,13 @@ export async function handleDocument(req: HennosConsumer, path: string, uuid: st
     Logger.info(req, `Processing document at path: ${path} with UUID: ${uuid}.`);
 
     const documents = await reader.loadData(path);
-    const serviceContext = req.getServiceContext();
 
     Logger.debug(req, `Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
-    const index = await SummaryIndex.fromDocuments(documents, {
-        serviceContext
-    });
+    const index = await SummaryIndex.fromDocuments(documents);
 
     Logger.debug(req, `Created a summary index from ${documents.length} documents at path: ${path} with UUID: ${uuid}.`);
     const queryEngine = index.asQueryEngine({
-        responseSynthesizer: new ResponseSynthesizer({
-            serviceContext
-        }),
+        responseSynthesizer: getResponseSynthesizer("compact"),
         retriever: index.asRetriever({
             mode: SummaryRetrieverMode.DEFAULT,
         })
