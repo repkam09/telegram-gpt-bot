@@ -1,7 +1,16 @@
-export type HennosTextMessage = {
-    type: "text";
-    role: "user" | "assistant" | "system";
-    content: string;
+export type HennosAgenticResponse = HennosStringResponse | HennosActionResponse | HennosEmptyResponse | HennosInternalThoughtResponse;
+
+export type HennosActionResponse = {
+    __type: "action";
+    payload: {
+        name: string;
+        input: Record<string, string>;
+    };
+}
+
+export type HennosInternalThoughtResponse = {
+    __type: "internal_thought";
+    payload: string;
 }
 
 export type HennosStringResponse = {
@@ -12,5 +21,3 @@ export type HennosStringResponse = {
 export type HennosEmptyResponse = {
     __type: "empty";
 }
-
-export type HennosResponse = HennosStringResponse | HennosEmptyResponse;

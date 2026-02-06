@@ -22,6 +22,11 @@ export async function observation(input: ObservationInput
     const response = await model.invoke(workflowId, [
         { role: "user", content: promptTemplate, type: "text" },
     ]);
+
+    if (response.__type !== "string") {
+        throw new Error("Unexpected response type from model during observation: " + response.__type);
+    }
+
     return {
         observations: response.payload,
     };

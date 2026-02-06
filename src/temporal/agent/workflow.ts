@@ -161,17 +161,19 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
             const agentThought = await thought({ context });
 
-            context.push(`<thought>\n${agentThought.thought}\n</thought>`);
+            if (agentThought.__type === "internal_thought") {
+                context.push(`<thought>\n${agentThought.payload}\n</thought>`);
+            }
 
-            if (agentThought.__type === "answer") {
+            if (agentThought.__type === "string") {
                 await persistAgentMessage({
                     workflowId: workflowInfo().workflowId,
                     name: "assistant",
                     type: "agent-message",
-                    message: agentThought.answer!,
+                    message: agentThought.payload,
                 });
 
-                context.push(`<answer>\n${agentThought.answer}\n</answer>`);
+                context.push(`<answer>\n${agentThought.payload}\n</answer>`);
 
                 const tokenCount = await tokens(context);
                 const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
@@ -184,14 +186,19 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                 await continueCondition();
             }
 
+            if (agentThought.__type == "empty") {
+                await continueCondition();
+            }
+
+
             if (agentThought.__type === "action") {
                 context.push(
-                    `<action><reason>\n${agentThought.action!.reason}\n</reason><name>${agentThought.action!.name}</name><input>${JSON.stringify(agentThought.action!.input)}</input></action>`,
+                    `<action><name>${agentThought.payload.name}</name><input>${JSON.stringify(agentThought.payload.input)}</input></action>`,
                 );
 
                 const actionResult = await action(
-                    agentThought.action!.name,
-                    agentThought.action!.input,
+                    agentThought.payload.name,
+                    agentThought.payload.input,
                 );
 
                 const agentObservation = await observation(

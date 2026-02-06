@@ -6,7 +6,6 @@ import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
 import { MetaBugReport, MetaFeatureRequest, MetaFeedbackTool } from "./HennosMetaTools";
 import { WolframAlpha } from "./WolframAlpha";
-import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
 import { PythonSandbox } from "./PythonSandbox";
 import { PerplexitySearch } from "./PerplexitySearch";
@@ -25,7 +24,6 @@ const PUBLIC_TOOLS = [
     OpenWeatherMapLookupTool,
     WolframAlpha,
     PythonSandbox,
-    AcknowledgeWithoutResponse,
     CreateArtifact,
     BraveSearch,
     JellyseerMediaRequest,

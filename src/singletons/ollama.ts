@@ -1,8 +1,8 @@
 import { Config } from "./config";
 import { Message, Ollama } from "ollama";
 import { Logger } from "./logger";
-import { HennosStringResponse, HennosTextMessage } from "../types";
 import { HennosOpenAISingleton } from "./openai";
+import { HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosOllamaProvider | null = null;
@@ -23,18 +23,18 @@ export class HennosOllamaProvider {
         });
     }
 
-    public async invoke(workflowId: string, messages: HennosTextMessage[], schema?: boolean): Promise<HennosStringResponse> {
+    public async invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
         Logger.info(workflowId, `Ollama Invoke Start (${Config.OLLAMA_LLM.MODEL})`);
         const prompt = convertHennosMessages(messages);
-        return this._invoke(workflowId, prompt, schema);
+        return this._invoke(workflowId, prompt, tools);
     }
 
-    private async _invoke(workflowId: string, prompt: Message[], schema?: boolean): Promise<HennosStringResponse> {
+    private async _invoke(workflowId: string, prompt: Message[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
         const response = await this.client.chat({
             stream: false,
             model: Config.OLLAMA_LLM.MODEL,
             messages: prompt,
-            format: schema ? "json" : undefined
+            tools: tools
         });
 
         Logger.info(workflowId, `Ollama Invoke Success, Usage: ${response.eval_count}`);
@@ -51,6 +51,19 @@ export class HennosOllamaProvider {
             };
         }
 
+        if (response.message.tool_calls && response.message.tool_calls.length > 0) {
+            Logger.info(workflowId, "Ollama Completion Success, Resulted in Tool Call");
+            const toolCall = response.message.tool_calls[0];
+            return {
+                __type: "tool",
+                payload: {
+                    uuid: toolCall.function.name,
+                    name: toolCall.function.name,
+                    input: toolCall.function.arguments ? JSON.stringify(toolCall.function.arguments) : ""
+                }
+            };
+        }
+
         Logger.info(workflowId, "Ollama Completion Success, Resulted in Text Completion");
         return {
             __type: "string",
@@ -64,7 +77,7 @@ export class HennosOllamaProvider {
     }
 }
 
-function convertHennosMessages(messages: HennosTextMessage[]): Message[] {
+function convertHennosMessages(messages: HennosMessage[]): Message[] {
     return messages.reduce((acc, val) => {
         if (val.type === "text") {
             acc.push({

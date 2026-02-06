@@ -21,6 +21,10 @@ export async function compact(input: CompactionInput
         { role: "user", content: compactTemplate, type: "text" },
     ]);
 
+    if (response.__type !== "string") {
+        throw new Error("Unexpected response type from model during compaction: " + response.__type);
+    }
+
     // Return the latest 3 context entries along with the new compacted context
     return {
         context: [response.payload, ...input.context.slice(-3)],

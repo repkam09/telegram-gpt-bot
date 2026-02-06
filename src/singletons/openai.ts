@@ -1,11 +1,8 @@
 import { Config, HennosModelConfig } from "./config";
 import OpenAI from "openai";
 import { Logger } from "./logger";
-import { ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from "openai/resources";
-import { HennosStringResponse, HennosTextMessage } from "../types";
-
-type MessageRoles = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"]
-
+import { ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionTool, ChatCompletionUserMessageParam } from "openai/resources";
+import { HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 
 export class HennosOpenAISingleton {
     private static _instance: HennosOpenAIProvider | null = null;
@@ -41,18 +38,21 @@ export class HennosOpenAIProvider {
         this.moderationModel = "omni-moderation-latest";
     }
 
-    public async invoke(workflowId: string, messages: HennosTextMessage[], schema?: boolean): Promise<HennosStringResponse> {
+    public async invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
         Logger.info(workflowId, `OpenAI Invoke Start (${this.model.MODEL})`);
+        const converted = tools ? convertHennosTools(tools) : undefined;
         const prompt = convertHennosMessages(messages);
-        return this._invoke(workflowId, prompt, schema);
+
+        return this._invoke(workflowId, prompt, converted);
     }
 
-    private async _invoke(workflowId: string, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], schema?: boolean): Promise<HennosStringResponse> {
+    private async _invoke(workflowId: string, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], tools?: ChatCompletionTool[]): Promise<HennosInvokeResponse> {
         const response = await this.client.chat.completions.create({
             model: this.model.MODEL,
             messages: prompt,
             safety_identifier: `${workflowId}`,
-            response_format: schema ? { type: "json_object" } : undefined
+            tool_choice: tools ? "auto" : undefined,
+            tools: tools
         });
 
         Logger.info(workflowId, `OpenAI Invoke Success, Usage: ${calculateUsage(response.usage)}`);
@@ -60,29 +60,58 @@ export class HennosOpenAIProvider {
             throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
         }
 
-        if (!response.choices[0].message.tool_calls && !response.choices[0].message.content) {
-            throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Properties");
-        }
-
-        // If this is a normal response with no tool calling, return the content
-        if (response.choices[0].message.content) {
-            if (response.choices[0].finish_reason === "length") {
-                Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Length Limit");
-                prompt.push({
-                    role: "assistant",
-                    content: response.choices[0].message.content
-                });
-                return this._invoke(workflowId, prompt, schema);
+        const choice = response.choices[0];
+        if (choice.finish_reason === "stop") {
+            if (!choice.message.content) {
+                throw new Error("Invalid OpenAI Response Shape, Missing Expected Content on Stop Finish Reason");
             }
 
-            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Text Completion");
+            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Stop Finish Reason");
             return {
                 __type: "string",
-                payload: response.choices[0].message.content
+                payload: choice.message.content
             };
         }
 
-        throw new Error("Invalid OpenAI Response Shape, Missing Expected Message Content");
+        if (choice.finish_reason === "content_filter") {
+            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Content Filter Trigger");
+            return {
+                __type: "string",
+                payload: "Content Filter Triggered. The model refused to generate a response based on the input provided."
+            };
+        }
+
+        if (choice.finish_reason === "length") {
+            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Length Limit");
+            prompt.push({
+                role: "assistant",
+                content: choice.message.content ? choice.message.content : ""
+            });
+            return this._invoke(workflowId, prompt, tools);
+        }
+
+        if (choice.finish_reason === "tool_calls") {
+            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Tool Call");
+            if (!choice.message.tool_calls || choice.message.tool_calls.length !== 1) {
+                throw new Error("Invalid OpenAI Response Shape, Missing Expected Tool Calls on Tool Calls Finish Reason");
+            }
+
+            const toolCall = choice.message.tool_calls[0];
+            if (toolCall.type === "custom") {
+                throw new Error("OpenAI Invoke Failed, Custom Tool Calls are not supported in Hennos at this time");
+            }
+
+            return {
+                __type: "tool",
+                payload: {
+                    uuid: toolCall.id,
+                    name: toolCall.function.name,
+                    input: toolCall.function.arguments
+                }
+            };
+        }
+
+        throw new Error(`OpenAI Invoke Failed, Unhandled Finish Reason: ${choice.finish_reason}`);
     }
 
     public async moderation(workflowId: string, input: string): Promise<boolean> {
@@ -120,14 +149,33 @@ function calculateUsage(usage: OpenAI.Completions.CompletionUsage | undefined): 
     return `Input: ${usage.prompt_tokens} tokens, Output: ${usage.completion_tokens}`;
 }
 
-export function convertHennosMessages(messages: HennosTextMessage[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+type ChatCompletionRole = ChatCompletionUserMessageParam["role"] | ChatCompletionAssistantMessageParam["role"] | ChatCompletionSystemMessageParam["role"];
+
+export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     return messages.reduce((acc, val) => {
         if (val.type === "text" && val.content && val.content.length > 0) {
             acc.push({
-                role: val.role as MessageRoles,
+                role: val.role satisfies ChatCompletionRole,
                 content: val.content
             });
         }
         return acc;
     }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
+}
+
+export function convertHennosTools(tools: HennosTool[]): ChatCompletionTool[] {
+    return tools.map(tool => {
+        if (!tool.function || !tool.function.name) {
+            throw new Error(`Invalid Tool Shape for OpenAI, Missing Function or Function Name, Tool: ${JSON.stringify(tool)}`);
+        }
+
+        return {
+            type: "function",
+            function: {
+                name: tool.function.name,
+                description: tool.function.description,
+                parameters: tool.function.parameters
+            }
+        };
+    });
 }
