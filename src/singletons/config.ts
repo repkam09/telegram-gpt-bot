@@ -58,7 +58,7 @@ export class Config {
 
     static get OPENAI_TRANSCRIPTION_MODEL(): string {
         if (!process.env.OPENAI_TRANSCRIPTION_MODEL) {
-            return "gpt-4o-mini-transcribe";
+            return "whisper-1";
         }
 
         return process.env.OPENAI_TRANSCRIPTION_MODEL;
