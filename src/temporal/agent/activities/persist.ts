@@ -1,7 +1,5 @@
 import { Database } from "../../../database";
-import { LifeforceWebhook } from "../../../webhook";
-
-export type BroadcastInput = BroadcastUserInput | BroadcastAgentInput;
+import { AgentResponseHandler } from "../interface";
 
 type BroadcastUserInput = {
     type: "user-message"
@@ -24,7 +22,7 @@ export async function persistUserMessage(input: BroadcastUserInput) {
 export async function persistAgentMessage(input: BroadcastAgentInput) {
     await Promise.all([
         updateWorkflowMessageDatabase(input),
-        LifeforceWebhook.broadcast(input)
+        AgentResponseHandler.handle(input.workflowId, input.message)
     ]);
 }
 

@@ -4,6 +4,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
+import { AgentResponseHandler } from "../temporal/agent/interface";
 
 /**
  * CreateArtifact allows the model to create a text-based file artifact (code, HTML, Markdown, JSON, etc.)
@@ -19,6 +20,10 @@ export class CreateArtifact extends BaseTool {
         ".ts", ".tsx", ".jsx", ".json", ".yml", ".yaml", ".xml", ".csv", ".py", ".sh",
         ".bash", ".zsh", ".sql", ".ini", ".cfg", ".conf", ".toml", ".env"
     ]);
+
+    public static isEnabled(): boolean {
+        return true;
+    }
 
     public static definition(): Tool {
         return {
@@ -109,10 +114,7 @@ export class CreateArtifact extends BaseTool {
 
         let sent = false;
         try {
-            // await TelegramBotInstance.sendDocumentWrapper(req, targetPath, {
-            //     caption: args.description ? args.description.slice(0, 900) : `Artifact: ${path.basename(targetPath)}`
-            // });
-            //@TODO: Implement file sending logic appropriate to your application context.
+            await AgentResponseHandler.handleArtifact(workflowId, targetPath, args.description);
             sent = true;
         } catch (err: unknown) {
             const error = err as Error;

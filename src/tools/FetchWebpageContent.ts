@@ -1,13 +1,43 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import puppeteer from "puppeteer";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
 import { AxiosError } from "axios";
-
+import { HTMLReader } from "@llamaindex/readers/html";
+import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
+import {
+    BaseReader,
+    getResponseSynthesizer,
+    SentenceSplitter,
+    Settings,
+    SummaryIndex,
+    SummaryRetrieverMode,
+} from "llamaindex";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
+Settings.embedModel = new OpenAIEmbedding({
+    model: Config.OPENAI_LLM_EMBED.MODEL,
+    apiKey: Config.OPENAI_API_KEY
+});
+
+Settings.llm = new OpenAI({
+    model: Config.OPENAI_MINI_LLM.MODEL,
+    apiKey: Config.OPENAI_API_KEY,
+    temperature: 1
+});
+
+Settings.chunkOverlap = 256;
+Settings.chunkSize = 2048;
+
+Settings.nodeParser = new SentenceSplitter({
+    chunkOverlap: 256,
+    chunkSize: 2048,
+});
 
 export class FetchWebpageContent extends BaseTool {
     public static isEnabled(): boolean {
@@ -56,8 +86,13 @@ export class FetchWebpageContent extends BaseTool {
                 return [`fetch_webpage_content, url: ${args.url}, page_content: ${html}`, metadata];
             }
 
-            // Return a truncated version of the content
-            return [`fetch_webpage_content, url: ${args.url}, page_content: ${html.slice(0, 128000)}... [truncated]`, metadata];
+            const filePath = path.join(Config.LOCAL_STORAGE(workflowId), "/", `${Date.now().toString()}.html`);
+
+            await fs.writeFile(filePath, html, { encoding: "utf-8" });
+
+            const query = args.query ? args.query : "Could you provide a summary of this webpage content?";
+            const result = await handleDocument(workflowId, filePath, args.url, new HTMLReader(), query);
+            return [`fetch_webpage_content, url: ${args.url}, result: ${result}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
             if (err instanceof AxiosError) {
@@ -131,4 +166,32 @@ function extractReadable(html: string, url: string): string | undefined {
     // Basic sanity: require some length
     if (text.split(/\s+/).length < 50) return undefined; // too short, maybe extraction failed
     return text;
+}
+
+export async function handleDocument(workflowId: string, path: string, uuid: string, reader: BaseReader, prompt?: string): Promise<string> {
+    Logger.info(workflowId, `Processing document at path: ${path} with UUID: ${uuid}.`);
+
+    const documents = await reader.loadData(path);
+
+    Logger.debug(workflowId, `Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
+    const index = await SummaryIndex.fromDocuments(documents);
+
+    Logger.debug(workflowId, `Created a summary index from ${documents.length} documents at path: ${path} with UUID: ${uuid}.`);
+    const queryEngine = index.asQueryEngine({
+        responseSynthesizer: getResponseSynthesizer("tree_summarize"),
+        retriever: index.asRetriever({
+            mode: SummaryRetrieverMode.DEFAULT,
+        })
+    });
+
+    Logger.debug(workflowId, `Created a query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
+    const response = await queryEngine.query({
+        query: prompt ? prompt : "Can you provide a summary of this document?"
+    });
+
+    Logger.debug(workflowId, `Queried the query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
+    const summary = response.toString();
+
+    Logger.info(workflowId, `Completed processing document at path: ${path} with UUID: ${uuid}.`);
+    return summary;
 }

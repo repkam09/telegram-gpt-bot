@@ -1,4 +1,5 @@
 import {
+    ActivityFailure,
     condition,
     continueAsNew,
     defineQuery,
@@ -9,20 +10,7 @@ import {
 } from "@temporalio/workflow";
 import type * as activities from "./activities";
 
-export function createWorkflowId(platform: string, data: object): string {
-    const payload = JSON.stringify({
-        platform,
-        ...data,
-    });
-    return Buffer.from(payload).toString("base64");
-}
-
-export function parseWorkflowId(workflowId: string): { platform: string;[key: string]: unknown } {
-    const decoded = Buffer.from(workflowId, "base64").toString("utf-8");
-    return JSON.parse(decoded);
-}
-
-const { action, persistUserMessage, persistAgentMessage, tokens } = proxyActivities<typeof activities>({
+const { persistUserMessage, persistAgentMessage, tokens } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
         backoffCoefficient: 1,
@@ -31,7 +19,7 @@ const { action, persistUserMessage, persistAgentMessage, tokens } = proxyActivit
     },
 });
 
-const { thought } = proxyActivities<typeof activities>({
+const { thought, action } = proxyActivities<typeof activities>({
     startToCloseTimeout: "5 minutes",
     retry: {
         backoffCoefficient: 1,
@@ -154,70 +142,81 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-        if (userRequestedExit) {
-            return;
-        }
+        try {
+            if (userRequestedExit) {
+                return;
+            }
 
-        if (userRequestedContinueAsNew) {
-            return compactAndContinueAsNew();
-        }
-
-        // grab all the pending messages and put them into context
-        while (pending.length > 0) {
-            const entry = pending.shift()!;
-
-            await persistUserMessage({
-                workflowId: workflowInfo().workflowId,
-                name: entry.author,
-                type: "user-message",
-                message: entry.message,
-            });
-
-            context.push(`<user_message date="${entry.date}" author="${entry.author}">\n${entry.message}\n</user_message>`);
-        }
-
-        const agentThought = await thought({ context });
-
-        context.push(`<thought>\n${agentThought.thought}\n</thought>`);
-
-        if (agentThought.__type === "answer") {
-            await persistAgentMessage({
-                workflowId: workflowInfo().workflowId,
-                name: "assistant",
-                type: "agent-message",
-                message: agentThought.answer!,
-            });
-
-            context.push(`<answer>\n${agentThought.answer}\n</answer>`);
-
-            const tokenCount = await tokens(context);
-            const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
-
-            if (workflowInfo().continueAsNewSuggested || passedTokenLimit) {
+            if (userRequestedContinueAsNew) {
                 return compactAndContinueAsNew();
             }
 
-            // wait for new messages or exit signal
-            await continueCondition();
-        }
+            // grab all the pending messages and put them into context
+            while (pending.length > 0) {
+                const entry = pending.shift()!;
 
-        if (agentThought.__type === "action") {
-            context.push(
-                `<action><reason>\n${agentThought.action!.reason}\n</reason><name>${agentThought.action!.name}</name><input>${JSON.stringify(agentThought.action!.input)}</input></action>`,
-            );
+                await persistUserMessage({
+                    workflowId: workflowInfo().workflowId,
+                    name: entry.author,
+                    type: "user-message",
+                    message: entry.message,
+                });
 
-            const actionResult = await action(
-                agentThought.action!.name,
-                agentThought.action!.input,
-            );
+                context.push(`<user_message date="${entry.date}" author="${entry.author}">\n${entry.message}\n</user_message>`);
+            }
 
-            const agentObservation = await observation(
-                { context, actionResult },
-            );
+            const agentThought = await thought({ context });
 
-            context.push(
-                `<observation>\n${agentObservation.observations}\n</observation>`,
-            );
+            context.push(`<thought>\n${agentThought.thought}\n</thought>`);
+
+            if (agentThought.__type === "answer") {
+                await persistAgentMessage({
+                    workflowId: workflowInfo().workflowId,
+                    name: "assistant",
+                    type: "agent-message",
+                    message: agentThought.answer!,
+                });
+
+                context.push(`<answer>\n${agentThought.answer}\n</answer>`);
+
+                const tokenCount = await tokens(context);
+                const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
+
+                if (workflowInfo().continueAsNewSuggested || passedTokenLimit) {
+                    return compactAndContinueAsNew();
+                }
+
+                // wait for new messages or exit signal
+                await continueCondition();
+            }
+
+            if (agentThought.__type === "action") {
+                context.push(
+                    `<action><reason>\n${agentThought.action!.reason}\n</reason><name>${agentThought.action!.name}</name><input>${JSON.stringify(agentThought.action!.input)}</input></action>`,
+                );
+
+                const actionResult = await action(
+                    agentThought.action!.name,
+                    agentThought.action!.input,
+                );
+
+                const agentObservation = await observation(
+                    { context, actionResult },
+                );
+
+                context.push(
+                    `<observation>\n${agentObservation.observations}\n</observation>`,
+                );
+            }
+        } catch (error: unknown) {
+            if (error instanceof ActivityFailure) {
+                const activityError = error.cause;
+                context.push(
+                    `<error>\nTemporal ActivityFailure: ${activityError?.message}\n</error>`,
+                );
+            } else {
+                context.push(`<error>\nUnknown Error: ${(error as Error).message}\n</error>`);
+            }
         }
     }
 }

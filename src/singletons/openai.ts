@@ -39,7 +39,6 @@ export class HennosOpenAIProvider {
 
         this.model = model;
         this.moderationModel = "omni-moderation-latest";
-
     }
 
     public async invoke(workflowId: string, messages: HennosTextMessage[], schema?: boolean): Promise<HennosStringResponse> {

@@ -3,6 +3,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import axios from "axios";
 import { Config } from "../singletons/config";
+import { signalAgenticWorkflowAdminMessage } from "../temporal/agent/interface";
 
 export class MetaBugReport extends BaseTool {
     public static isEnabled(): boolean {
@@ -195,10 +196,8 @@ export class MetaFeedbackTool extends BaseTool {
         }
 
         try {
-            // Format the feedback message with user information
-            //const formattedMessage = `📬 Feedback from ${workflowId}:\n\n${args.message}`;
-            // await TelegramBotInstance.sendAdminMessage(formattedMessage);
-            //@TODO: Send the message to the admin somehow.
+            const formattedMessage = `📬 Feedback from ${workflowId}:\n\n${args.message}`;
+            await signalAgenticWorkflowAdminMessage(workflowId, `<hennos_feedback>\n${formattedMessage}\n</hennos_feedback>`);
 
             return ["Your feedback has been sent to the creator. Thank you for your input!", metadata];
         } catch (err: unknown) {

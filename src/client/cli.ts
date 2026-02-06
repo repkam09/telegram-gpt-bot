@@ -2,6 +2,7 @@ import readline from "node:readline/promises";
 import { Config } from "../singletons/config";
 import { createTemporalClient } from "../singletons/temporal";
 import { agentWorkflow, agentWorkflowMessageSignal } from "../temporal/workflows";
+import { AgentResponseHandler, createWorkflowId } from "../temporal/agent/interface";
 
 export class CommandLineInstance {
     static async run(): Promise<void> {
@@ -9,6 +10,10 @@ export class CommandLineInstance {
             console.error("CommandLineInstance can only be used in development mode.");
             throw new Error("CommandLineInstance should not be used in production mode.");
         }
+
+        AgentResponseHandler.registerListener("cli", async (message: string) => {
+            console.log(`Agent Response: ${message}`);
+        });
 
         const rl = readline.createInterface({
             input: process.stdin,
@@ -37,7 +42,7 @@ async function signalWithStartAgentWorkflow(input: string): Promise<void> {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
         taskQueue: Config.TEMPORAL_TASK_QUEUE,
-        workflowId: "agent-workflow-cli",
+        workflowId: createWorkflowId("cli", "cli"),
         args: [{}],
         signal: agentWorkflowMessageSignal,
         signalArgs: [input, "User", new Date().toISOString()],

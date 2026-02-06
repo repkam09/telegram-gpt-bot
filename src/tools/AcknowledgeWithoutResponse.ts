@@ -4,7 +4,7 @@ import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } fr
 
 export class AcknowledgeWithoutResponse extends BaseTool {
     public static isEnabled(): boolean {
-        return true;
+        return false;
     }
 
     public static definition(): Tool {

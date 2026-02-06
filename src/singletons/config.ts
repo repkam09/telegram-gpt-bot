@@ -29,6 +29,14 @@ export class Config {
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
+    static get HENNOS_LLM_PROVIDER(): string {
+        if (!process.env.HENNOS_LLM_PROVIDER) {
+            return "openai";
+        }
+
+        return process.env.HENNOS_LLM_PROVIDER;
+    }
+
     static get OPENAI_API_KEY(): string {
         if (!process.env.OPENAI_API_KEY) {
             throw new Error("Missing OPENAI_API_KEY");
@@ -48,6 +56,18 @@ export class Config {
         return parseHennosModelString(process.env.OPENAI_LLM, "OPENAI_LLM");
     }
 
+    static get OPENAI_LLM_EMBED(): { MODEL: string } {
+        if (!process.env.OPENAI_LLM_EMBED) {
+            return {
+                MODEL: "text-embedding-3-small"
+            };
+        }
+
+        return {
+            MODEL: process.env.OPENAI_LLM_EMBED,
+        };
+    }
+
     static get OPENAI_MINI_LLM(): HennosModelConfig {
         return {
             MODEL: "gpt-5-nano",
@@ -63,6 +83,25 @@ export class Config {
             };
         }
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
+    }
+
+    static get ANTHROPIC_API_KEY(): string {
+        if (!process.env.ANTHROPIC_API_KEY) {
+            throw new Error("Missing ANTHROPIC_API_KEY");
+        }
+
+        return process.env.ANTHROPIC_API_KEY;
+    }
+
+    static get ANTHROPIC_LLM(): HennosModelConfig {
+        if (!process.env.ANTHROPIC_LLM) {
+            return {
+                MODEL: "claude-3-haiku-20240307",
+                CTX: 16000
+            };
+        }
+
+        return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
     }
 
     static get OLLAMA_HOST(): string {
@@ -115,6 +154,22 @@ export class Config {
         }
 
         return port;
+    }
+
+    static get TELEGRAM_BOT_KEY(): string {
+        if (!process.env.TELEGRAM_BOT_KEY) {
+            throw new Error("Missing TELEGRAM_BOT_KEY");
+        }
+
+        return process.env.TELEGRAM_BOT_KEY;
+    }
+
+    static get TELEGRAM_BOT_ADMIN(): string | false {
+        if (!process.env.TELEGRAM_BOT_ADMIN) {
+            return false;
+        }
+
+        return process.env.TELEGRAM_BOT_ADMIN;
     }
 
     static get OPEN_WEATHER_API(): string | false {

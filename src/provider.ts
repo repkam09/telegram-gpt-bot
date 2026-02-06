@@ -1,11 +1,7 @@
+import { Config } from "./singletons/config";
 import { HennosOllamaSingleton } from "./singletons/ollama";
 import { HennosOpenAISingleton } from "./singletons/openai";
 import { HennosStringResponse } from "./types";
-
-
-type ModelProvider = "openai" | "ollama";
-
-const provider: ModelProvider = "ollama";
 
 type InvokableModelProvider = {
     invoke(workflowId: string, messages: unknown[], schema?: boolean): Promise<HennosStringResponse>;
@@ -13,7 +9,7 @@ type InvokableModelProvider = {
 }
 
 export function resolveModelProvider(level: "high" | "low"): InvokableModelProvider {
-    switch (provider) {
+    switch (Config.HENNOS_LLM_PROVIDER) {
         case "openai": {
             if (level === "high") {
                 return HennosOpenAISingleton.instance();
@@ -26,7 +22,7 @@ export function resolveModelProvider(level: "high" | "low"): InvokableModelProvi
         }
 
         default: {
-            throw new Error(`Unsupported model provider: ${provider}`);
+            throw new Error(`Unsupported model provider: ${Config.HENNOS_LLM_PROVIDER}`);
         }
     }
 }

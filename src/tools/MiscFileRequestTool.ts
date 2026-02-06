@@ -2,6 +2,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
+import { signalAgenticWorkflowAdminMessage } from "../temporal/agent/interface";
 
 export class EbookRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -53,8 +54,8 @@ export class EbookRequest extends BaseTool {
         Logger.debug(workflowId, `ebook_request. ${JSON.stringify({ ebookTitle: args.ebookTitle, ebookAuthor: args.ebookAuthor })}`);
 
         try {
-            // const message = `New ebook request:\n\nTitle: ${args.ebookTitle}\nAuthor: ${args.ebookAuthor}\nRequested by: ${workflowId})`;
-            // @TODO: Message the admin somehow for this request.
+            const formattedMessage = `New ebook request:\n\nTitle: ${args.ebookTitle}\nAuthor: ${args.ebookAuthor}\nRequested by: ${workflowId})`;
+            await signalAgenticWorkflowAdminMessage(workflowId, `<ebook_request>\n${formattedMessage}\n</ebook_request>`);
             return ["ebook_request: Request submitted successfully", metadata];
         } catch (err: unknown) {
             const error = err as Error;
@@ -115,8 +116,8 @@ export class AudiobookRequest extends BaseTool {
         Logger.debug(workflowId, `audiobook_request. ${JSON.stringify({ audiobookTitle: args.audiobookTitle, audiobookAuthor: args.audiobookAuthor })}`);
 
         try {
-            // const message = `New audiobook request:\n\nTitle: ${args.audiobookTitle}\nAuthor: ${args.audiobookAuthor}\nRequested by: ${workflowId})`;
-            // @TODO: Message the admin somehow for this request.
+            const formattedMessage = `New audiobook request:\n\nTitle: ${args.audiobookTitle}\nAuthor: ${args.audiobookAuthor}\nRequested by: ${workflowId})`;
+            await signalAgenticWorkflowAdminMessage(workflowId, `<audiobook_request>\n${formattedMessage}\n</audiobook_request>`);
             return ["audiobook_request: Request submitted successfully", metadata];
         } catch (err: unknown) {
             const error = err as Error;

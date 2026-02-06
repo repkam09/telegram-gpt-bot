@@ -1,6 +1,6 @@
 import { Config } from "./singletons/config";
 import { Logger } from "./singletons/logger";
-import type { BroadcastInput } from "./temporal/agent/activities/persist";
+import { AgentResponseHandler, createWorkflowId } from "./temporal/agent/interface";
 
 // Type defined in the Lifeforce project
 type BroadcastPayload = {
@@ -22,6 +22,43 @@ export class LifeforceWebhook {
             Logger.error(undefined, "LifeforceWebhook: Failed to connect to Lifeforce service");
             throw new Error("Lifeforce service is not healthy");
         }
+
+
+        // Register handler for workflow responses
+        AgentResponseHandler.registerListener("webhook", async (message: string, chatId: string) => {
+            const payload: BroadcastPayload = {
+                workflowId: createWorkflowId("webhook", chatId),
+                name: "assistant",
+                message: {
+                    __type: "assistant-msg",
+                    value: message
+                }
+            };
+
+            if (Config.HENNOS_DEVELOPMENT_MODE) {
+                console.log("LifeforceWebhook Broadcast Payload:", JSON.stringify(payload, null, 2));
+                return;
+            }
+
+            // Send a POST request to the Lifeforce endpoint
+            const response = await fetch(`${Config.LIFEFORCE_BASE_URL}/api/internal/hennos/callback`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${Config.LIFEFORCE_AUTH_TOKEN}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                Logger.error(undefined, `LifeforceWebhook: Failed to broadcast message. Status: ${response.status}, Response: ${errorText}`);
+            } else {
+                Logger.debug(undefined, "LifeforceWebhook: Successfully broadcasted message.");
+            }
+
+
+        });
     }
 
     public static async health(): Promise<boolean> {
@@ -38,39 +75,6 @@ export class LifeforceWebhook {
             const err = error as Error;
             Logger.error(undefined, `LifeforceWebhook: Health check failed: ${err.message}`);
             return false;
-        }
-    }
-
-    public static async broadcast(input: BroadcastInput): Promise<void> {
-        const payload: BroadcastPayload = {
-            workflowId: input.workflowId,
-            name: input.name,
-            message: {
-                __type: input.type === "user-message" ? "user-msg" : "assistant-msg",
-                value: input.message
-            }
-        };
-
-        if (Config.HENNOS_DEVELOPMENT_MODE) {
-            console.log("LifeforceWebhook Broadcast Payload:", JSON.stringify(payload, null, 2));
-            return;
-        }
-
-        // Send a POST request to the Lifeforce endpoint
-        const response = await fetch(`${Config.LIFEFORCE_BASE_URL}/api/internal/hennos/callback`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${Config.LIFEFORCE_AUTH_TOKEN}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            Logger.error(undefined, `LifeforceWebhook: Failed to broadcast message. Status: ${response.status}, Response: ${errorText}`);
-        } else {
-            Logger.debug(undefined, "LifeforceWebhook: Successfully broadcasted message.");
         }
     }
 }

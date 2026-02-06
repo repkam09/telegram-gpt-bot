@@ -8,11 +8,10 @@ export async function tokens(
     tokenCount: number;
     tokenLimit: number;
 }> {
-        const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution.workflowId;
     
-    Logger.debug(workflowId, `Counting tokens for ${context.length} messages`);
-
     const result = await getChatContextTokenCount(context);
+    Logger.debug(workflowId, `Counting tokens for ${context.length} messages, tokenCount: ${result}, tokenLimit: 16000`);
     return {
         tokenCount: result,
         tokenLimit: 16000,
