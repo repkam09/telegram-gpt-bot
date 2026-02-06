@@ -47,7 +47,6 @@ export type AgentWorkflowInput = {
     continueAsNew?: {
         context: string[];
         pending: PendingMessage[];
-        activeAuthor: string | null;
         userRequestedExit: boolean;
     };
 };
@@ -84,10 +83,6 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         : false;
 
     let userRequestedContinueAsNew = false;
-
-    const activeAuthor: string | null = input.continueAsNew
-        ? input.continueAsNew.activeAuthor
-        : null;
 
     setHandler(agentWorkflowMessageSignal, (message: string, author: string, date: string) => {
         pending.push({
@@ -131,7 +126,6 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
             continueAsNew: {
                 context: compactContext.context,
                 pending,
-                activeAuthor,
                 userRequestedExit
             },
         });

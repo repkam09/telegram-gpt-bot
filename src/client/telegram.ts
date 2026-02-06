@@ -51,6 +51,8 @@ export class TelegramInstance {
         bot.on("photo", TelegramInstance.handlePhotoMessage);
         bot.on("document", TelegramInstance.handleDocumentMessage);
         bot.on("voice", TelegramInstance.handleVoiceMessage);
+        bot.on("edited_message_caption", TelegramInstance.handleEditCaptionMessage);
+        bot.on("edited_message_text", TelegramInstance.handleEditTextMessage);
 
         bot.on("polling_error", (error: Error) => {
             Logger.error(undefined, `Telegram polling error: ${error.message}`, error);
@@ -283,6 +285,30 @@ export class TelegramInstance {
         }
 
         return signalAgenticWorkflowMessage(workflowId, author, msg.text);
+    }
+
+    private static async handleEditTextMessage(msg: TelegramBot.Message): Promise<void> {
+        if (!msg.from || !msg.text) {
+            return;
+        }
+
+        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const payload = `<edited_message><edited_date>${new Date().toISOString()}</edited_date><new_text>${msg.text}</new_text></edited_message>`;
+        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
+    }
+
+    private static async handleEditCaptionMessage(msg: TelegramBot.Message): Promise<void> {
+        if (!msg.from || !msg.caption) {
+            return;
+        }
+
+        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const payload = `<edited_caption><edited_date>${new Date().toISOString()}</edited_date><new_caption>${msg.caption}</new_caption></edited_caption>`;
+        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
+    }
+
+    private static async handleUnimplemented(event: string, msg: TelegramBot.Message): Promise<void> {
+        Logger.debug(undefined, `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
     }
 }
 
