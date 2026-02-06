@@ -56,6 +56,22 @@ export class Config {
         return parseHennosModelString(process.env.OPENAI_LLM, "OPENAI_LLM");
     }
 
+    static get OPENAI_TRANSCRIPTION_MODEL(): string {
+        if (!process.env.OPENAI_TRANSCRIPTION_MODEL) {
+            return "gpt-4o-mini-transcribe";
+        }
+
+        return process.env.OPENAI_TRANSCRIPTION_MODEL;
+    }
+
+    static get OPENAI_TEXT_TO_SPEECH_MODEL(): string {
+        if (!process.env.OPENAI_TEXT_TO_SPEECH_MODEL) {
+            return "gpt-4o-mini-tts";
+        }
+
+        return process.env.OPENAI_TEXT_TO_SPEECH_MODEL;
+    }
+
     static get OPENAI_LLM_EMBED(): { MODEL: string } {
         if (!process.env.OPENAI_LLM_EMBED) {
             return {

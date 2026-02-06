@@ -5,6 +5,7 @@ import { Logger } from "../singletons/logger";
 import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 import path from "node:path";
+import { generateTranscription } from "../singletons/transcription";
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
@@ -15,9 +16,12 @@ export class TelegramInstance {
             throw new Error("TELEGRAM_BOT_KEY is required to run TelegramInstance.");
         }
 
+        Logger.info(undefined, "Starting Hennos Telegram Integration...");
+
         const bot = new TelegramBot(Config.TELEGRAM_BOT_KEY, { polling: true });
         TelegramInstance._instance = bot;
 
+        Logger.debug(undefined, "Telegram bot initialized and polling started.");
         AgentResponseHandler.registerListener("telegram", async (message: string, chatId: string) => {
             try {
                 await TelegramInstance.sendMessageWrapper(chatId, message);
@@ -38,6 +42,8 @@ export class TelegramInstance {
             }
         });
 
+        Logger.debug(undefined, "Registered AgentResponseHandler listeners for Telegram.");
+
         bot.on("text", TelegramInstance.handleTextMessage);
         bot.on("location", TelegramInstance.handleLocationMessage);
         bot.on("contact", TelegramInstance.handleContactMessage);
@@ -45,6 +51,12 @@ export class TelegramInstance {
         bot.on("photo", TelegramInstance.handlePhotoMessage);
         bot.on("document", TelegramInstance.handleDocumentMessage);
         bot.on("voice", TelegramInstance.handleVoiceMessage);
+
+        bot.on("polling_error", (error: Error) => {
+            Logger.error(undefined, `Telegram polling error: ${error.message}`, error);
+        });
+
+        Logger.debug(undefined, "Registered Telegram message handlers.");
     }
 
     private static async sendMessageWrapper(chatId: string, content: string, options: TelegramBot.SendMessageOptions = {}) {
@@ -191,15 +203,18 @@ export class TelegramInstance {
         const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
 
         const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.audio.file_id, Config.LOCAL_STORAGE(workflowId));
-        if (result) {
-            const payload = `<audio><file_id>${msg.audio.file_id}</file_id><duration>${msg.audio.duration}</duration><performer>${msg.audio.performer || ""}</performer><title>${msg.audio.title || ""}</title><mime_type>${msg.audio.mime_type || ""}</mime_type><file_size>${msg.audio.file_size || ""}</file_size></audio>`;
-            await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-        } else {
+        if (!result) {
             Logger.error(workflowId, `Failed to download audio with file_id: ${msg.audio.file_id}`);
+            return;
         }
 
-        const transcript = "<not_implemented>Unsupported: Telegram Audio Messages</not_implemented>"; // TODO: Implement audio transcription
-        return signalAgenticWorkflowMessage(workflowId, author, transcript);
+        const transcript = await generateTranscription(workflowId, result);
+        const payload = `<audio><file_id>${msg.audio.file_id}</file_id><duration>${msg.audio.duration}</duration><performer>${msg.audio.performer || ""}</performer><title>${msg.audio.title || ""}</title><mime_type>${msg.audio.mime_type || ""}</mime_type><file_size>${msg.audio.file_size || ""}</file_size><transcript>${transcript}</transcript></audio>`;
+        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
+
+        if (msg.caption) {
+            return signalAgenticWorkflowMessage(workflowId, author, msg.caption);
+        }
     }
 
     private static async handleVoiceMessage(msg: TelegramBot.Message): Promise<void> {
@@ -210,14 +225,15 @@ export class TelegramInstance {
         const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
 
         const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.voice.file_id, Config.LOCAL_STORAGE(workflowId));
-        if (result) {
-            const payload = `<voice><file_id>${msg.voice.file_id}</file_id><duration>${msg.voice.duration}</duration><mime_type>${msg.voice.mime_type || ""}</mime_type><file_size>${msg.voice.file_size || ""}</file_size></voice>`;
-            await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-        } else {
+        if (!result) {
             Logger.error(workflowId, `Failed to download voice message with file_id: ${msg.voice.file_id}`);
+            return;
         }
 
-        const transcript = "<not_implemented>Unsupported: Telegram Voice Messages</not_implemented>"; // TODO: Implement voice transcription
+        const payload = `<voice><file_id>${msg.voice.file_id}</file_id><duration>${msg.voice.duration}</duration><mime_type>${msg.voice.mime_type || ""}</mime_type><file_size>${msg.voice.file_size || ""}</file_size></voice>`;
+        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
+
+        const transcript = await generateTranscription(workflowId, result);
         return signalAgenticWorkflowMessage(workflowId, author, transcript);
     }
 
