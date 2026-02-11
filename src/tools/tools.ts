@@ -3,7 +3,6 @@ import { Logger } from "../singletons/logger";
 import { OpenWeatherMapLookupTool } from "./OpenWeatherMapLookupTool";
 import { FetchWebpageContent } from "./FetchWebpageContent";
 import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { SearXNGSearch } from "./SearXNGSearchTool";
 import { MetaBugReport, MetaFeatureRequest, MetaFeedbackTool } from "./HennosMetaTools";
 import { WolframAlpha } from "./WolframAlpha";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
@@ -15,7 +14,6 @@ import { AudiobookRequest, EbookRequest } from "./MiscFileRequestTool";
 import { HennosRetrieveArtifact } from "./HennosExternalArtifacts";
 
 const PUBLIC_TOOLS = [
-    SearXNGSearch,
     MetaFeedbackTool,
     MetaFeatureRequest,
     MetaBugReport,

@@ -46,20 +46,20 @@ export class MetaBugReport extends BaseTool {
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(workflowId, `MetaBugReport callback. ${JSON.stringify({ title: args.title, report: args.report })}`);
         if (!args.title) {
-            return ["bug_report, title not provided", metadata];
+            return [JSON.stringify({ error: "title not provided" }), metadata];
         }
 
         if (!args.report) {
-            return ["bug_report, report not provided", metadata];
+            return [JSON.stringify({ error: "report not provided" }), metadata];
         }
 
         try {
             const url = await createGitHubIssue(workflowId, args.title, args.report);
-            return [`bug_report: ${url}`, metadata];
+            return [JSON.stringify({ bug_report_url: url }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `MetaBugReport unable to create bug report. ${JSON.stringify({ title: args.title, report: args.report, error: error.message })}`);
-            return ["bug_report, unable to create but report", metadata];
+            return [JSON.stringify({ error: "unable to create bug report" }), metadata];
         }
     }
 }

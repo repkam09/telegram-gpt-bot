@@ -41,11 +41,11 @@ export class PythonSandbox extends BaseTool {
             });
 
             Logger.debug(workflowId, `PythonSandbox, results: ${JSON.stringify(result)}`);
-            return [`PythonSandbox: ${JSON.stringify(result)}`, metadata];
+            return [JSON.stringify(result), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `PythonSandbox error: ${error.message}`, error);
-            return [`PythonSandbox unable to execute. Error: ${error.message}`, metadata];
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 }

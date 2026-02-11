@@ -44,17 +44,17 @@ export class WolframAlpha extends BaseTool {
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(workflowId, `WolframAlpha callback. ${JSON.stringify({ input: args.input })}`);
         if (!args.input) {
-            return ["wolfram_alpha, input not provided", metadata];
+            return [JSON.stringify({ error: "Input not provided" }), metadata];
         }
 
         try {
             const response = await BaseTool.fetchTextData(`https://www.wolframalpha.com/api/v1/llm-api?appid=${Config.WOLFRAM_ALPHA_APP_ID}&maxchars=4096&input=${encodeURI(args.input)}`);
             Logger.debug(workflowId, `WolframAlpha callback. ${JSON.stringify({ input: args.input, response_length: response.length })}`);
-            return [`wolfram_alpha, input '${args.input}', returned the following response: ${response}`, metadata];
+            return [JSON.stringify({ response }), metadata];
         } catch (err) {
             const error = err as Error;
             Logger.error(workflowId, `WolframAlpha callback error. ${JSON.stringify({ input: args.input, err: error.message })}`, error);
-            return [`wolfram_alpha, input '${args.input}', encountered an error while fetching results`, metadata];
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 }

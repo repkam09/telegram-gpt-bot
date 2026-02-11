@@ -2,6 +2,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
+import { signalAgenticWorkflowAdminMessage } from "../temporal/agent/interface";
 
 export class JellyseerMediaRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -47,15 +48,15 @@ export class JellyseerMediaRequest extends BaseTool {
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(workflowId, `jellyseer_media_request. ${JSON.stringify({ args })}`);
         if (!args.mediaType) {
-            return ["jellyseer_media_request failed, mediaType must be provided", metadata];
+            return [JSON.stringify({ error: "mediaType must be provided" }), metadata];
         }
 
         if (!["tv", "movie"].includes(args.mediaType)) {
-            return ["jellyseer_media_request failed, mediaType must be one of 'tv' or 'movie'", metadata];
+            return [JSON.stringify({ error: "mediaType must be one of 'tv' or 'movie'" }), metadata];
         }
 
         if (!args.mediaId) {
-            return ["jellyseer_media_request failed, mediaId must be provided", metadata];
+            return [JSON.stringify({ error: "mediaId must be provided" }), metadata];
         }
 
         try {
@@ -65,14 +66,14 @@ export class JellyseerMediaRequest extends BaseTool {
 
             if (data.mediaInfo) {
                 if (Config.JELLYFIN_BASE_URL) {
-                    return [`jellyseer_media_request failed, the media is already available for streaming. Stream URL: ${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}`, metadata];
+                    return [JSON.stringify({ error: "media is already available for streaming", stream_url: `${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}` }), metadata];
                 }
-                return ["jellyseer_media_request failed, the media is already available for streaming.", metadata];
+                return [JSON.stringify({ error: "media is already available for streaming" }), metadata];
             }
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `jellyseer_media_request error: ${error.message}`, error);
-            return ["jellyseer_media_request failed, unable to fetch media info", metadata];
+            return [JSON.stringify({ error: "jellyseer_media_request failed, unable to fetch media info" }), metadata];
         }
 
 
@@ -90,11 +91,13 @@ export class JellyseerMediaRequest extends BaseTool {
 
             // @TOOD: Figure out how to notify the admin of the request.
             Logger.info(workflowId, `${workflowId} has requested ${args.mediaType} with id ${args.mediaId}`);
-            return ["jellyseer_media_request, success", metadata];
+
+            await signalAgenticWorkflowAdminMessage(workflowId, `User has requested ${args.mediaType} with id ${args.mediaId}. Please review the request within the Jellyfin/Jellyseer system.`);
+            return [JSON.stringify({ status: "requested" }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `jellyseer_media_request error: ${error.message}`, error);
-            return ["jellyseer_media_request failed", metadata];
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 }
@@ -142,15 +145,15 @@ export class JellyseerMediaSearch extends BaseTool {
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(workflowId, `jellyseer_media_search. ${JSON.stringify({ args })}`);
         if (!args.mediaType) {
-            return ["jellyseer_media_search failed, mediaType must be provided", metadata];
+            return [JSON.stringify({ error: "mediaType must be provided" }), metadata];
         }
 
         if (!["tv", "movie"].includes(args.mediaType)) {
-            return ["jellyseer_media_search failed, mediaType must be one of 'tv' or 'movie'", metadata];
+            return [JSON.stringify({ error: "mediaType must be one of 'tv' or 'movie'" }), metadata];
         }
 
         if (!args.title) {
-            return ["jellyseer_media_search failed, title must be provided", metadata];
+            return [JSON.stringify({ error: "title must be provided" }), metadata];
         }
 
         Logger.debug(workflowId, `jellyseer_media_search. ${JSON.stringify({ mediaType: args.mediaType, title: args.title })}`);
@@ -179,11 +182,11 @@ export class JellyseerMediaSearch extends BaseTool {
 
             Logger.debug(workflowId, `jellyseer_media_search: ${JSON.stringify(data)}`);
 
-            return [`jellyseer_media_search: ${JSON.stringify(data)}`, metadata];
+            return [JSON.stringify({ results: data }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `jellyseer_media_search error: ${error.message}`, error);
-            return [`jellyseer_media_search unable to fetch results for ${args.title}`, metadata];
+            return [JSON.stringify({ error: `unable to fetch results for ${args.title}` }), metadata];
         }
     }
 }

@@ -10,7 +10,7 @@ import { generateTranscription } from "../singletons/transcription";
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
 
-    static async run(): Promise<void> {
+    static async init(): Promise<void> {
         if (!Config.TELEGRAM_BOT_KEY) {
             console.error("TELEGRAM_BOT_KEY is not set in the environment variables.");
             throw new Error("TELEGRAM_BOT_KEY is required to run TelegramInstance.");

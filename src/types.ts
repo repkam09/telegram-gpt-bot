@@ -1,4 +1,4 @@
-export type HennosAgenticResponse = HennosStringResponse | HennosActionResponse | HennosEmptyResponse | HennosInternalThoughtResponse;
+export type HennosAgenticResponse = HennosStringResponse | HennosActionResponse | HennosEmptyResponse;
 
 export type HennosActionResponse = {
     __type: "action";
@@ -6,11 +6,6 @@ export type HennosActionResponse = {
         name: string;
         input: Record<string, string>;
     };
-}
-
-export type HennosInternalThoughtResponse = {
-    __type: "internal_thought";
-    payload: string;
 }
 
 export type HennosStringResponse = {

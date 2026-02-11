@@ -74,7 +74,7 @@ export class FetchWebpageContent extends BaseTool {
 
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         if (!args.url) {
-            return ["fetch_webpage_content error, required parameter 'url' not provided", metadata];
+            return [JSON.stringify({ error: "required parameter 'url' not provided" }), metadata];
         }
 
         Logger.info(workflowId, `fetch_webpage_content, url=${args.url}, query=${args.query}`);
@@ -83,7 +83,7 @@ export class FetchWebpageContent extends BaseTool {
 
             // If the HTML is smaller than 32000 tokens (~128k characters), we can just return the whole thing
             if (!args.query && html.length < 128000) {
-                return [`fetch_webpage_content, url: ${args.url}, page_content: ${html}`, metadata];
+                return [html, metadata];
             }
 
             const filePath = path.join(Config.LOCAL_STORAGE(workflowId), "/", `${Date.now().toString()}.html`);
@@ -92,16 +92,16 @@ export class FetchWebpageContent extends BaseTool {
 
             const query = args.query ? args.query : "Could you provide a summary of this webpage content?";
             const result = await handleDocument(workflowId, filePath, args.url, new HTMLReader(), query);
-            return [`fetch_webpage_content, url: ${args.url}, result: ${result}`, metadata];
+            return [JSON.stringify({ summary: result }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             if (err instanceof AxiosError) {
                 Logger.error(workflowId, `fetch_webpage_content error. url=${args.url} status=${err.response?.status} statusText=${err.response?.statusText}`, error);
-                return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}', HTTP Status: ${err.response?.status}, Status Text: ${err.response?.statusText}`, metadata];
+                return [JSON.stringify({ error: `unable to fetch content from URL '${args.url}', HTTP Status: ${err.response?.status}, Status Text: ${err.response?.statusText}` }), metadata];
             }
 
             Logger.error(workflowId, `fetch_webpage_content error url=${args.url} error=${error.message}`, error);
-            return [`fetch_webpage_content error, unable to fetch content from URL '${args.url}'`, metadata];
+            return [JSON.stringify({ error: `unable to fetch content from URL '${args.url}'` }), metadata];
         }
     }
 }

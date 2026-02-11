@@ -44,11 +44,11 @@ export class EbookRequest extends BaseTool {
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(workflowId, `ebook_request. ${JSON.stringify({ args })}`);
         if (!args.ebookTitle) {
-            return ["ebook_request failed, ebookTitle must be provided", metadata];
+            return [JSON.stringify({ error: "ebookTitle must be provided" }), metadata];
         }
 
         if (!args.ebookAuthor) {
-            return ["ebook_request failed, ebookAuthor must be provided", metadata];
+            return [JSON.stringify({ error: "ebookAuthor must be provided" }), metadata];
         }
 
         Logger.debug(workflowId, `ebook_request. ${JSON.stringify({ ebookTitle: args.ebookTitle, ebookAuthor: args.ebookAuthor })}`);
@@ -56,11 +56,11 @@ export class EbookRequest extends BaseTool {
         try {
             const formattedMessage = `New ebook request:\n\nTitle: ${args.ebookTitle}\nAuthor: ${args.ebookAuthor}\nRequested by: ${workflowId})`;
             await signalAgenticWorkflowAdminMessage(workflowId, `<ebook_request>\n${formattedMessage}\n</ebook_request>`);
-            return ["ebook_request: Request submitted successfully", metadata];
+            return [JSON.stringify({ status: "requested" }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `ebook_request error: ${error.message}`, error);
-            return ["ebook_request failed", metadata];
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 }
@@ -106,11 +106,11 @@ export class AudiobookRequest extends BaseTool {
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(workflowId, `audiobook_request. ${JSON.stringify({ args })}`);
         if (!args.audiobookTitle) {
-            return ["audiobook_request failed, audiobookTitle must be provided", metadata];
+            return [JSON.stringify({ error: "audiobookTitle must be provided" }), metadata];
         }
 
         if (!args.audiobookAuthor) {
-            return ["audiobook_request failed, audiobookAuthor must be provided", metadata];
+            return [JSON.stringify({ error: "audiobookAuthor must be provided" }), metadata];
         }
 
         Logger.debug(workflowId, `audiobook_request. ${JSON.stringify({ audiobookTitle: args.audiobookTitle, audiobookAuthor: args.audiobookAuthor })}`);
@@ -118,11 +118,11 @@ export class AudiobookRequest extends BaseTool {
         try {
             const formattedMessage = `New audiobook request:\n\nTitle: ${args.audiobookTitle}\nAuthor: ${args.audiobookAuthor}\nRequested by: ${workflowId})`;
             await signalAgenticWorkflowAdminMessage(workflowId, `<audiobook_request>\n${formattedMessage}\n</audiobook_request>`);
-            return ["audiobook_request: Request submitted successfully", metadata];
+            return [JSON.stringify({ status: "requested" }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `audiobook_request error: ${error.message}`, error);
-            return ["audiobook_request failed", metadata];
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 }

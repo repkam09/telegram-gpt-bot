@@ -63,17 +63,17 @@ export class CreateArtifact extends BaseTool {
 
         // Basic validation
         if (!args.filename || !args.content) {
-            return ["create_artifact error: 'filename' and 'content' are required", metadata];
+            return [JSON.stringify({ error: "'filename' and 'content' are required" }), metadata];
         }
 
         const filename = sanitizeFilename(String(args.filename));
         if (!filename) {
-            return ["create_artifact error: invalid filename after sanitization", metadata];
+            return [JSON.stringify({ error: "invalid filename after sanitization" }), metadata];
         }
 
         if (args.content.length > CreateArtifact.MAX_CONTENT_LENGTH) {
             return [
-                `create_artifact error: content length (${args.content.length}) exceeds limit of ${CreateArtifact.MAX_CONTENT_LENGTH} characters. Please summarize or split into smaller files.`,
+                JSON.stringify({ error: `content length (${args.content.length}) exceeds limit of ${CreateArtifact.MAX_CONTENT_LENGTH} characters. Please summarize or split into smaller files.` }),
                 metadata
             ];
         }
@@ -107,7 +107,7 @@ export class CreateArtifact extends BaseTool {
             const error = err as Error;
             Logger.error(workflowId, "CreateArtifact write error. Error: " + error.message, error);
             return [
-                `create_artifact error: failed to write file '${filename}'. ${error.message}`,
+                JSON.stringify({ error: `failed to write file '${filename}'. ${error.message}` }),
                 metadata
             ];
         }

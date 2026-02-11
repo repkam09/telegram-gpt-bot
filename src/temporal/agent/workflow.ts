@@ -160,11 +160,6 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
             }
 
             const agentThought = await thought({ context });
-
-            if (agentThought.__type === "internal_thought") {
-                context.push(`<thought>\n${agentThought.payload}\n</thought>`);
-            }
-
             if (agentThought.__type === "string") {
                 await persistAgentMessage({
                     workflowId: workflowInfo().workflowId,
@@ -202,7 +197,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                 );
 
                 const agentObservation = await observation(
-                    { context, actionResult },
+                    { context: context.slice(-5), actionResult },
                 );
 
                 context.push(
