@@ -45,14 +45,14 @@ Instructions:
 2. Summarize the context, focusing on preserving key information and recent steps.
 3. Ensure that the most recent parts of the context remain intact.
 
-You do not need to include any XML tags such as <thought>, <action>, or <observation> in your response, those will be added automatically by the Agent Workflow.
+You do not need to include any XML tags such as <thought>, <action>, or <observation> in your response. Just provide the compressed context in plain text format.
 
 Here is the context history to be compacted:
 
-<context-history>
+<conversation-context>
 ${contextHistory}
-</context-history>
+</conversation-context>
 
-Provide a compressed version of the context history, preserving important details and recent steps.
+Provide a compressed version of the conversation-context, preserving important details and recent steps.
 `;
 }

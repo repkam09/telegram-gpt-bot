@@ -7,8 +7,10 @@ import "./temporal/workflows";
 export class HennosTemporalWorker {
     static async init() {
         Logger.info(undefined, "Starting Hennos Worker...");
+        const server = `${Config.TEMPORAL_HOST}:${Config.TEMPORAL_PORT}`;
+        Logger.info(undefined, `Connecting to Temporal server at ${server}...`);
         const connection = await NativeConnection.connect({
-            address: `${Config.TEMPORAL_HOST}:${Config.TEMPORAL_PORT}`,
+            address: server,
         });
 
         const worker = await Worker.create({

@@ -1,7 +1,7 @@
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
-import { agentWorkflow, agentWorkflowClearContext, agentWorkflowExternalContextSignal, agentWorkflowMessageSignal } from "./workflow";
+import { agentWorkflow, agentWorkflowClearContext, agentWorkflowExitSignal, agentWorkflowExternalContextSignal, agentWorkflowMessageSignal } from "./workflow";
 
 export class AgentResponseHandler {
     private static listeners: Map<string, (message: string, chatId: string) => Promise<void>> = new Map();
@@ -89,4 +89,26 @@ export async function signalAgenticWorkflowClearContext(workflowId: string) {
         args: [{}],
         signal: agentWorkflowClearContext,
     });
+}
+
+export async function signalAgenticWorkflowExit(workflowId: string) {
+    const client = await createTemporalClient();
+    await client.workflow.signalWithStart(agentWorkflow, {
+        taskQueue: Config.TEMPORAL_TASK_QUEUE,
+        workflowId: workflowId,
+        args: [{}],
+        signal: agentWorkflowExitSignal,
+    });
+}
+
+export async function queryAgenticWorkflowContext(workflowId: string): Promise<string[]> {
+    const client = await createTemporalClient();
+    try {
+        const handle = await client.workflow.getHandle(workflowId);
+        const result: string[] = await handle.query("agentWorkflowQueryContext");
+        return result;
+    } catch (error) {
+        Logger.error(undefined, `Error querying workflow context for workflowId ${workflowId}: ${error}`);
+        throw error;
+    }
 }

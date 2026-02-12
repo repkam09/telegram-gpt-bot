@@ -38,18 +38,17 @@ type ObservationPromptInput = {
 }
 
 export function observationPromptTemplate({ actionResult, previousSteps }: ObservationPromptInput): string {
-    return `You are a part of a ReAct (Reasoning and Acting) agent named Hennos tasked with assisting a user. The 'Action' step has just been completed and you are the 'Observation' step.
-Your job is to take the results of the last action, along with the recent conversation context, and generate observations that will help the agent make informed decisions in the next 'Thought' step.
-You should output bullet points of facts and insights based on the action result. Keep your points concise and relevant to the task at hand. Focus on extracting useful information that can guide the agent's next steps.
+    return `Take the contents of the <action-result> section below, keeping in mind the overall <conversation-context>, and generate a list of concise and relevant bullet points that capture the key facts and insights from the action result.
+These bullet points should be focused on extracting useful information that can guide the agent's next steps in addressing the user's query. Only output the bullet points, without any additional commentary or explanation.
 
-You do not need to include any XML tags such as <thought>, <action>, or <observation> in your response, those will be added automatically by the Agent Workflow.
+You do not need to include any XML tags such as <thought>, <action>, or <observation> in your response. Just provide the bullet points in plain text format.
 
-Here are the last few parts of the conversation and the result of the last action taken:
+Here is the context of the current conversation:
 <conversation-context>
 ${previousSteps}
 </conversation-context>
 
-Here is the result of the last action taken:
+Here is the result of the last action taken by the agent:
 <action-result>
 ${actionResult}
 </action-result>`;

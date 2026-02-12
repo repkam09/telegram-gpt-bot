@@ -1,14 +1,16 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
-import { AgentResponseHandler, createWorkflowId, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
+import { AgentResponseHandler, createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { Logger } from "../singletons/logger";
 import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 import path from "node:path";
+import fs from "fs/promises";
 import { generateTranscription } from "../singletons/transcription";
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
+    private static _errors: number = 0;
 
     static async init(): Promise<void> {
         if (!Config.TELEGRAM_BOT_KEY) {
@@ -18,7 +20,18 @@ export class TelegramInstance {
 
         Logger.info(undefined, "Starting Hennos Telegram Integration...");
 
-        const bot = new TelegramBot(Config.TELEGRAM_BOT_KEY, { polling: true });
+        const bot = new TelegramBot(Config.TELEGRAM_BOT_KEY);
+        if (Config.HENNOS_WEBHOOK_API_ENABLED) {
+            Logger.info(undefined, `Starting Telegram Bot in Webhook mode: ${Config.HENNOS_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
+
+            // This is the external URL that Telegram will use to send updates to our webhook.
+            bot.setWebHook(`https://${Config.HENNOS_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
+        } else {
+            Logger.info(undefined, "Starting Telegram Bot in Polling mode");
+            bot.deleteWebHook();
+            bot.startPolling();
+        }
+
         TelegramInstance._instance = bot;
 
         Logger.debug(undefined, "Telegram bot initialized and polling started.");
@@ -56,6 +69,13 @@ export class TelegramInstance {
 
         bot.on("polling_error", (error: Error) => {
             Logger.error(undefined, `Telegram polling error: ${error.message}`, error);
+            TelegramInstance._errors++;
+
+            // If we have more than 10 errors, exit the process to allow a restart
+            if (TelegramInstance._errors > 10) {
+                Logger.error(undefined, "Too many Telegram polling errors, exiting process to allow restart.");
+                process.exit(1);
+            }
         });
 
         Logger.debug(undefined, "Registered Telegram message handlers.");
@@ -264,6 +284,11 @@ export class TelegramInstance {
             return;
         }
 
+        // Check if this is a command
+        if (msg.text.startsWith("/")) {
+            return TelegramInstance.handleTextCommandMessage(msg);
+        }
+
         const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
         if (msg.forward_date) {
             const originaldate = new Date(msg.forward_date * 1000).toISOString();
@@ -309,6 +334,23 @@ export class TelegramInstance {
 
     private static async handleUnimplemented(event: string, msg: TelegramBot.Message): Promise<void> {
         Logger.debug(undefined, `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
+    }
+
+    private static async handleTextCommandMessage(msg: TelegramBot.Message): Promise<void> {
+        if (!msg.from || !msg.text) {
+            return;
+        }
+
+        const command = msg.text.split(" ")[0].substring(1).toLowerCase().trim();
+        Logger.debug(undefined, `Received Telegram command message: ${msg.text} from ${msg.from?.first_name} ${msg.from?.last_name || ""}`);
+        if (command === "debug") {
+            const { workflowId } = TelegramInstance.workflowSignalArguments(msg);
+            const context = await queryAgenticWorkflowContext(workflowId);
+
+            const filePath = path.join(Config.LOCAL_STORAGE(workflowId), `debug_context_${Date.now()}.xml`);
+            await fs.writeFile(filePath, context.join("\n"), "utf-8");
+            Logger.debug(undefined, `Workflow context written to ${filePath}`);
+        }
     }
 }
 

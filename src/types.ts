@@ -5,6 +5,7 @@ export type HennosActionResponse = {
     payload: {
         name: string;
         input: Record<string, string>;
+        reason: string;
     };
 }
 

@@ -188,7 +188,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
             if (agentThought.__type === "action") {
                 context.push(
-                    `<action><name>${agentThought.payload.name}</name><input>${JSON.stringify(agentThought.payload.input)}</input></action>`,
+                    `<action>\n<name>${agentThought.payload.name}</name>\n<input>${JSON.stringify(agentThought.payload.input)}</input>\n<reason>${agentThought.payload.reason}</reason>\n</action>`,
                 );
 
                 const actionResult = await action(

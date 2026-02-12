@@ -37,6 +37,36 @@ export class Config {
         return process.env.HENNOS_LLM_PROVIDER;
     }
 
+    static get HENNOS_WEBHOOK_API_PORT(): number | false {
+        if (!process.env.HENNOS_WEBHOOK_API_PORT) {
+            return false;
+        }
+
+        const port = parseInt(process.env.HENNOS_WEBHOOK_API_PORT);
+
+        if (Number.isNaN(port)) {
+            throw new Error("Invalid HENNOS_WEBHOOK_API_PORT value");
+        }
+
+        return port;
+    }
+
+    static get HENNOS_WEBHOOK_EXTERNAL(): string | false {
+        if (!process.env.HENNOS_WEBHOOK_EXTERNAL) {
+            return false;
+        }
+
+        return process.env.HENNOS_WEBHOOK_EXTERNAL;
+    }
+
+    static get HENNOS_WEBHOOK_API_ENABLED(): boolean {
+        if (!Config.HENNOS_WEBHOOK_API_PORT || !Config.HENNOS_WEBHOOK_EXTERNAL) {
+            return false;
+        }
+
+        return true;
+    }
+
     static get OPENAI_API_KEY(): string {
         if (!process.env.OPENAI_API_KEY) {
             throw new Error("Missing OPENAI_API_KEY");
