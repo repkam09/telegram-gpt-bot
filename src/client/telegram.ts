@@ -1,12 +1,13 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
-import { AgentResponseHandler, createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
+import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { Logger } from "../singletons/logger";
 import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 import path from "node:path";
 import fs from "fs/promises";
 import { generateTranscription } from "../singletons/transcription";
+import { AgentResponseHandler } from "../response";
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
@@ -54,8 +55,6 @@ export class TelegramInstance {
                 Logger.error("telegram", `Error sending document to chatId ${chatId}: ${error.message}`, error);
             }
         });
-
-        Logger.debug(undefined, "Registered AgentResponseHandler listeners for Telegram.");
 
         bot.on("text", TelegramInstance.handleTextMessage);
         bot.on("location", TelegramInstance.handleLocationMessage);

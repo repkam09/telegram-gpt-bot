@@ -1,27 +1,40 @@
 import { Config } from "./singletons/config";
 import { Logger } from "./singletons/logger";
 import { DefaultLogger, makeTelemetryFilterString, NativeConnection, Runtime, Worker } from "@temporalio/worker";
-import * as activities from "./temporal/activities";
+import * as agentActivities from "./temporal/agent/activities";
+import * as gemstoneActivities from "./temporal/gemstone/activities";
 import "./temporal/workflows";
 
 export class HennosTemporalWorker {
     static async init() {
-        Logger.info(undefined, "Starting Hennos Worker...");
         const server = `${Config.TEMPORAL_HOST}:${Config.TEMPORAL_PORT}`;
         Logger.info(undefined, `Connecting to Temporal server at ${server}...`);
         const connection = await NativeConnection.connect({
             address: server,
         });
 
-        const worker = await Worker.create({
+        Logger.info(undefined, "Starting Hennos Worker...");
+        const agentWorker = await Worker.create({
             connection,
             namespace: Config.TEMPORAL_NAMESPACE,
-            taskQueue: Config.TEMPORAL_TASK_QUEUE,
+            taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
             workflowsPath: require.resolve("./temporal/workflows"),
-            activities,
+            activities: agentActivities,
         });
 
-        worker.run().finally(() => connection.close());
+        Logger.info(undefined, "Starting Gemstone Worker...");
+        const gemstoneWorker = await Worker.create({
+            connection,
+            namespace: Config.TEMPORAL_NAMESPACE,
+            taskQueue: Config.TEMPORAL_GEMSTONE_TASK_QUEUE,
+            workflowsPath: require.resolve("./temporal/workflows"),
+            activities: gemstoneActivities,
+        });
+
+        return Promise.all([
+            agentWorker.run().finally(() => connection.close()),
+            gemstoneWorker.run().finally(() => connection.close())
+        ]);
     }
 }
 

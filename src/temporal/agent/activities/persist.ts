@@ -1,5 +1,5 @@
 import { Database } from "../../../database";
-import { AgentResponseHandler } from "../interface";
+import { AgentResponseHandler } from "../../../response";
 
 type BroadcastUserInput = {
     type: "user-message"

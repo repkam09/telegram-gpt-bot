@@ -1,12 +1,13 @@
 import { resolveModelProvider } from "../../../provider";
 import { Context } from "@temporalio/activity";
+import { GemstoneAgentContext } from "../interface";
 
 export type CompactionInput = {
-    context: string[],
+    context: GemstoneAgentContext[],
 }
 
 export type CompactionResult = {
-    context: string[],
+    context: GemstoneAgentContext[],
 }
 
 export async function compact(input: CompactionInput
@@ -14,7 +15,7 @@ export async function compact(input: CompactionInput
     const workflowId = Context.current().info.workflowExecution.workflowId;
     const model = resolveModelProvider("low");
     const compactTemplate = compactPromptTemplate({
-        contextHistory: input.context.join("\n"),
+        contextHistory: input.context.map(entry => `${entry.role}: ${entry.content}`).join("\n"),
     });
 
     const response = await model.invoke(workflowId, [
@@ -26,7 +27,10 @@ export async function compact(input: CompactionInput
     }
 
     return {
-        context: [response.payload, ...input.context.slice(-3)],
+        context: [
+            { role: "user", content: "Summarize our conversation so far." },
+            { role: "assistant", content: response.payload }
+        ],
     };
 }
 
@@ -44,8 +48,6 @@ Instructions:
 2. Summarize the context, focusing on preserving key information and recent steps.
 3. Ensure that the most recent parts of the context remain intact.
 
-You do not need to include any XML tags such as <thought>, <action>, or <observation> in your response. Just provide the compressed context in plain text format.
-
 Here is the context history to be compacted:
 
 <conversation-context>
@@ -53,5 +55,6 @@ ${contextHistory}
 </conversation-context>
 
 Provide a compressed version of the conversation-context, preserving important details and recent steps.
+Only provide the compressed context in plain text format.
 `;
 }

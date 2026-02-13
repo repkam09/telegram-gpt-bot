@@ -1,8 +1,8 @@
 import { ApplicationFailure, Context } from "@temporalio/activity";
-import { availableToolsAsString } from "../../../tools/tools";
 import { HennosTool, resolveModelProvider } from "../../../provider";
-import { HennosAgenticResponse } from "../../../types";
 import { Logger } from "../../../singletons/logger";
+import { HennosAgenticResponse } from "../types";
+import { availableToolsAsString } from "../tools";
 
 export type ThoughtInput = {
     context: string[];

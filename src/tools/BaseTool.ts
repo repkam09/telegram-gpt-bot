@@ -10,6 +10,12 @@ export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;
 export type ToolCallResponse = [string, ToolCallMetadata];
 
+export type HennosBaseTool = {
+    isEnabled: () => boolean;
+    definition: () => Tool;
+    callback: (workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata) => Promise<ToolCallResponse>;
+}
+
 export abstract class BaseTool {
     public static isEnabled(): boolean {
         return true;

@@ -52,7 +52,8 @@ export class HennosOpenAIProvider {
             messages: prompt,
             safety_identifier: `${workflowId}`,
             tool_choice: tools ? "auto" : undefined,
-            tools: tools
+            tools: tools,
+            parallel_tool_calls: tools ? false : undefined
         });
 
         Logger.info(workflowId, `OpenAI Invoke Success, Usage: ${calculateUsage(response.usage)}`);

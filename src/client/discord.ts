@@ -2,11 +2,12 @@ import fs from "fs/promises";
 import path from "path";
 
 import { Client, DMChannel, Events, GatewayIntentBits, Message, OmitPartialGroupDMChannel, Partials } from "discord.js";
-import { AgentResponseHandler, createWorkflowId, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
+import { createWorkflowId, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
+import { AgentResponseHandler } from "../response";
 
 export class DiscordInstance {
     static async init() {

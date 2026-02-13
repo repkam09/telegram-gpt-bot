@@ -34,6 +34,7 @@
     "@temporalio/client": "^1.14.1",
     "@temporalio/worker": "^1.14.1",
     "@temporalio/workflow": "^1.14.1",
+    "@wise-old-man/utils": "^4.0.9",
     "axios": "^1.13.4",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.4",

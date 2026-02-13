@@ -4,7 +4,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { AgentResponseHandler } from "../temporal/agent/interface";
+import { AgentResponseHandler } from "../response";
 
 /**
  * CreateArtifact allows the model to create a text-based file artifact (code, HTML, Markdown, JSON, etc.)

@@ -1,17 +1,12 @@
-import {
-    ActivityFailure,
-    condition,
-    continueAsNew,
-    defineQuery,
-    defineSignal,
-    proxyActivities,
-    setHandler,
-    workflowInfo,
-} from "@temporalio/workflow";
-import type * as activities from "./activities";
-import { AgentWorkflowInput, PendingMessage } from "./interface";
+/**
+ * AI Agent: Expert in Oldschool RuneScape news, topics, stats, items, prices, etc.
+ */
 
-const { persistUserMessage, persistAgentMessage, tokens } = proxyActivities<typeof activities>({
+import { ActivityFailure, condition, continueAsNew, defineSignal, proxyActivities, setHandler, workflowInfo } from "@temporalio/workflow";
+import { GemstoneAgentContext, GemstoneAgentWorkflowInput, PendingMessage } from "./interface";
+import * as activities from "./activities";
+
+const { persistAgentMessage, tokens } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
         backoffCoefficient: 1,
@@ -38,26 +33,15 @@ const { compact, observation } = proxyActivities<typeof activities>({
     },
 });
 
-export const agentWorkflowQueryContext = defineQuery<string[]>("agentWorkflowQueryContext");
-
-export const agentWorkflowMessageSignal = defineSignal<[string, string, string]>(
-    "agentWorkflowMessage",
+export const gemstoneAgentWorkflowMessageSignal = defineSignal<[string, string, string]>(
+    "gemstoneAgentWorkflowMessage",
 );
 
-export const agentWorkflowExternalContextSignal = defineSignal<[string, string, string]>(
-    "agentWorkflowExternalContext",
-);
+export const gemstoneAgentWorkflowExitSignal = defineSignal("gemstoneAgentWorkflowExit");
+export const gemstoneAgentWorkflowContinueAsNew = defineSignal("gemstoneAgentWorkflowContinueAsNew");
 
-export const agentWorkflowExternalArtifactSignal = defineSignal<[string, string, string, string]>(
-    "agentWorkflowExternalArtifact",
-);
-
-export const agentWorkflowExitSignal = defineSignal("agentWorkflowExit");
-export const agentWorkflowContinueAsNew = defineSignal("agentWorkflowContinueAsNew");
-export const agentWorkflowClearContext = defineSignal("agentWorkflowClearContext");
-
-export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
-    let context: string[] = input.continueAsNew
+export async function gemstoneAgentWorkflow(input: GemstoneAgentWorkflowInput): Promise<void> {
+    const context: GemstoneAgentContext[] = input.continueAsNew
         ? input.continueAsNew.context
         : [];
 
@@ -71,7 +55,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
     let userRequestedContinueAsNew = false;
 
-    setHandler(agentWorkflowMessageSignal, (message: string, author: string, date: string) => {
+    setHandler(gemstoneAgentWorkflowMessageSignal, (message: string, author: string, date: string) => {
         pending.push({
             message,
             author,
@@ -79,28 +63,12 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         });
     });
 
-    setHandler(agentWorkflowExternalContextSignal, (content: string, author: string, date: string) => {
-        context.push(`<external_context date="${date}" author="${author}">\n${content}\n</external_context>`);
-    });
-
-    setHandler(agentWorkflowExternalArtifactSignal, (ref: string, description: string, mimetype: string, date: string) => {
-        context.push(`<external_artifact date="${date}" mimetype="${mimetype}" id="${ref}">\n<description>\n${description}\n</description>\n</external_artifact>`);
-    });
-
-    setHandler(agentWorkflowExitSignal, () => {
+    setHandler(gemstoneAgentWorkflowExitSignal, () => {
         userRequestedExit = true;
     });
 
-    setHandler(agentWorkflowContinueAsNew, () => {
+    setHandler(gemstoneAgentWorkflowContinueAsNew, () => {
         userRequestedContinueAsNew = true;
-    });
-
-    setHandler(agentWorkflowClearContext, () => {
-        context = [];
-    });
-
-    setHandler(agentWorkflowQueryContext, () => {
-        return context;
     });
 
     const continueCondition = async () => {
@@ -109,7 +77,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
     const compactAndContinueAsNew = async () => {
         const compactContext = await compact({ context });
-        return continueAsNew<typeof agentWorkflow>({
+        return continueAsNew<typeof gemstoneAgentWorkflow>({
             continueAsNew: {
                 context: compactContext.context,
                 pending,
@@ -135,15 +103,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
             // grab all the pending messages and put them into context
             while (pending.length > 0) {
                 const entry = pending.shift()!;
-
-                await persistUserMessage({
-                    workflowId: workflowInfo().workflowId,
-                    name: entry.author,
-                    type: "user-message",
-                    message: entry.message,
-                });
-
-                context.push(`<user_message date="${entry.date}" author="${entry.author}">\n${entry.message}\n</user_message>`);
+                context.push({ role: "user", content: `${entry.author}: ${entry.message}` });
             }
 
             const agentThought = await thought({ context });
@@ -155,9 +115,9 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                     message: agentThought.payload,
                 });
 
-                context.push(`<answer>\n${agentThought.payload}\n</answer>`);
+                context.push({ role: "assistant", content: agentThought.payload });
 
-                const tokenCount = await tokens(context);
+                const tokenCount = await tokens(context.map((entry) => entry.content));
                 const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
 
                 if (workflowInfo().continueAsNewSuggested || passedTokenLimit) {
@@ -168,14 +128,10 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                 await continueCondition();
             }
 
-            if (agentThought.__type == "empty") {
-                await continueCondition();
-            }
-
 
             if (agentThought.__type === "action") {
                 context.push(
-                    `<action>\n<name>${agentThought.payload.name}</name>\n<input>${JSON.stringify(agentThought.payload.input)}</input>\n<reason>${agentThought.payload.reason}</reason>\n</action>`,
+                    { role: "assistant", content: `<action>\n<name>${agentThought.payload.name}</name>\n<input>${JSON.stringify(agentThought.payload.input)}</input>\n</action>` },
                 );
 
                 const actionResult = await action(
@@ -188,17 +144,17 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                 );
 
                 context.push(
-                    `<observation>\n${agentObservation.observations}\n</observation>`,
+                    { role: "assistant", content: `<observation>\n${agentObservation.observations}\n</observation>` },
                 );
             }
         } catch (error: unknown) {
             if (error instanceof ActivityFailure) {
                 const activityError = error.cause;
                 context.push(
-                    `<error>\nTemporal ActivityFailure: ${activityError?.message}\n</error>`,
+                    { role: "assistant", content: `<error>\nTemporal ActivityFailure: ${activityError?.message}\n</error>` },
                 );
             } else {
-                context.push(`<error>\nUnknown Error: ${(error as Error).message}\n</error>`);
+                context.push({ role: "assistant", content: `<error>\nUnknown Error: ${(error as Error).message}\n</error>` });
             }
         }
     }

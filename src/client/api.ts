@@ -1,10 +1,13 @@
 import express, { Express, Request, Response } from "express";
+import path from "node:path";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { TelegramInstance } from "./telegram";
-import { AgentResponseHandler, queryAgenticWorkflowContext, signalAgenticWorkflowExit, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
+import { createWorkflowId as createAgentWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExit, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { randomUUID } from "node:crypto";
 import { HennosRealtime } from "../realtime/sip";
+import { AgentResponseHandler } from "../response";
+import { signalGemstoneWorkflowMessage, createWorkflowId as createGemstoneWorkflowId } from "../temporal/gemstone/interface";
 
 export class WebhookInstance {
     static _instance: Express;
@@ -26,21 +29,24 @@ export class WebhookInstance {
         Logger.info(undefined, "Starting Hennos Webhook API");
 
         const app = WebhookInstance.instance();
+        app.use(express.static(path.join(__dirname, "../../public")));
+
         app.get("/healthz", (req: Request, res: Response) => {
             return res.status(200).send("OK");
         });
 
         // Set up endpoints for each of the Temporal Workflow Signals
-        app.get("/hennos/conversation/:workflowId", async (req: Request, res: Response) => {
-            const workflowId = req.params.workflowId;
-            if (!workflowId) {
-                return res.status(400).send("Missing workflowId");
+        app.get("/hennos/conversation/:sessionId", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                return res.status(400).send("Missing sessionId");
             }
 
-            if (Array.isArray(workflowId)) {
-                return res.status(400).send("Invalid workflowId");
+            if (Array.isArray(sessionId)) {
+                return res.status(400).send("Invalid sessionId");
             }
 
+            const workflowId = createAgentWorkflowId("webhook", sessionId);
             // TODO: This really should read from the Database of actual messages
             //       the context is the (potentially compressed) working memory.
             // 
@@ -50,33 +56,40 @@ export class WebhookInstance {
             return res.status(200).json(context);
         });
 
-        app.get("/hennos/conversation/:workflowId/stream", (req: Request, res: Response) => {
-            const workflowId = req.params.workflowId;
-            if (!workflowId) {
-                return res.status(400).send("Missing workflowId");
+        app.get("/hennos/conversation/:sessionId/stream", (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                return res.status(400).send("Missing sessionId");
             }
 
-            if (Array.isArray(workflowId)) {
-                return res.status(400).send("Invalid workflowId");
+            if (Array.isArray(sessionId)) {
+                return res.status(400).send("Invalid sessionId");
             }
+
+            Logger.debug(undefined, `New connection established for Hennos sessionId: ${sessionId}`);
 
             // Set up headers for the SSE Stream
             res.setHeader("Content-Type", "text/event-stream");
             res.setHeader("Cache-Control", "no-cache");
             res.setHeader("Connection", "keep-alive");
+            res.flushHeaders(); // Send headers immediately to keep connection open
 
-            if (!WebhookInstance._streams.has(workflowId)) {
-                WebhookInstance._streams.set(workflowId, []);
+            // Send initial comment to establish connection
+            res.write(`data: ${JSON.stringify({ event: "connected" })}\n\n`);
+
+            if (!WebhookInstance._streams.has(sessionId)) {
+                WebhookInstance._streams.set(sessionId, []);
             }
 
             const socketId = randomUUID();
 
-            const streams = WebhookInstance._streams.get(workflowId)!;
+            const streams = WebhookInstance._streams.get(sessionId)!;
             streams.push({ res, uuid: socketId });
 
             req.on("close", () => {
+                Logger.debug(undefined, `Connection closed for Hennos sessionId: ${sessionId}`);
                 // Remove the stream from the list of active streams
-                const streams = WebhookInstance._streams.get(workflowId)!;
+                const streams = WebhookInstance._streams.get(sessionId)!;
                 const index = streams.findIndex(s => s.uuid === socketId);
                 if (index !== -1) {
                     streams.splice(index, 1);
@@ -88,17 +101,19 @@ export class WebhookInstance {
 
         });
 
-        app.post("/hennos/conversation/:workflowId/message", async (req: Request, res: Response) => {
-            const workflowId = req.params.workflowId;
-            if (!workflowId) {
-                Logger.error(undefined, "Missing workflowId");
-                return res.status(400).send("Missing workflowId");
+        app.post("/hennos/conversation/:sessionId/message", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
             }
 
-            if (Array.isArray(workflowId)) {
-                Logger.error(undefined, "Invalid workflowId");
-                return res.status(400).send("Invalid workflowId");
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
             }
+
+            const workflowId = createAgentWorkflowId("webhook", sessionId);
 
             const message = req.body.message;
             if (!message) {
@@ -123,17 +138,19 @@ export class WebhookInstance {
             return res.status(200).json({ status: "ok" });
         });
 
-        app.post("/hennos/conversation/:workflowId/artifact", async (req: Request, res: Response) => {
-            const workflowId = req.params.workflowId;
-            if (!workflowId) {
-                Logger.error(undefined, "Missing workflowId");
-                return res.status(400).send("Missing workflowId");
+        app.post("/hennos/conversation/:sessionId/artifact", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
             }
 
-            if (Array.isArray(workflowId)) {
-                Logger.error(undefined, "Invalid workflowId");
-                return res.status(400).send("Invalid workflowId");
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
             }
+
+            const workflowId = createAgentWorkflowId("webhook", sessionId);
 
             const author = req.body.author;
             if (!author) {
@@ -151,12 +168,19 @@ export class WebhookInstance {
             }
         });
 
-        app.delete("/hennos/conversation/:workflowId", async (req: Request, res: Response) => {
-            const workflowId = req.params.workflowId;
-            if (!workflowId) {
-                Logger.error(undefined, "Missing workflowId");
-                return res.status(400).send("Missing workflowId");
+        app.delete("/hennos/conversation/:sessionId", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
             }
+
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
+            }
+
+            const workflowId = createAgentWorkflowId("webhook", sessionId);
 
             if (Array.isArray(workflowId)) {
                 Logger.error(undefined, "Invalid workflowId");
@@ -174,17 +198,19 @@ export class WebhookInstance {
             return res.status(200).json({ status: "ok" });
         });
 
-        app.post("/hennos/conversation/:workflowId/context", async (req: Request, res: Response) => {
-            const workflowId = req.params.workflowId;
-            if (!workflowId) {
-                Logger.error(undefined, "Missing workflowId");
-                return res.status(400).send("Missing workflowId");
+        app.post("/hennos/conversation/:sessionId/context", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
             }
 
-            if (Array.isArray(workflowId)) {
-                Logger.error(undefined, "Invalid workflowId");
-                return res.status(400).send("Invalid workflowId");
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
             }
+
+            const workflowId = createAgentWorkflowId("webhook", sessionId);
 
             const message = req.body.message;
             if (!message) {
@@ -238,6 +264,88 @@ export class WebhookInstance {
             return res.status(200).json({ status: "ok" });
         });
 
+        app.post("/gemstone/conversation/:sessionId/message", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
+            }
+
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
+            }
+
+            const workflowId = createGemstoneWorkflowId("webhook", sessionId);
+
+            const message = req.body.message;
+            if (!message) {
+                Logger.error(workflowId, "Missing message");
+                return res.status(400).send("Missing message");
+            }
+
+            const author = req.body.author;
+            if (!author) {
+                Logger.error(workflowId, "Missing author");
+                return res.status(400).send("Missing author");
+            }
+
+            try {
+                await signalGemstoneWorkflowMessage(workflowId, author, message);
+            } catch (err: unknown) {
+                const error = err as Error;
+                Logger.error(workflowId, `Error signaling gemstone workflow message: ${error.message}`);
+                return res.status(500).json({ status: "error", message: "error sending message" });
+            }
+
+            return res.status(200).json({ status: "ok" });
+        });
+
+        app.get("/gemstone/conversation/:sessionId/stream", (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                return res.status(400).send("Missing sessionId");
+            }
+
+            if (Array.isArray(sessionId)) {
+                return res.status(400).send("Invalid sessionId");
+            }
+
+            Logger.debug(undefined, `New connection established for Gemstone sessionId: ${sessionId}`);
+
+            // Set up headers for the SSE Stream
+            res.setHeader("Content-Type", "text/event-stream");
+            res.setHeader("Cache-Control", "no-cache");
+            res.setHeader("Connection", "keep-alive");
+            res.flushHeaders(); // Send headers immediately to keep connection open
+
+            // Send initial comment to establish connection
+            res.write(`data: ${JSON.stringify({ event: "connected" })}\n\n`);
+
+            if (!WebhookInstance._streams.has(sessionId)) {
+                WebhookInstance._streams.set(sessionId, []);
+            }
+
+            const socketId = randomUUID();
+
+            const streams = WebhookInstance._streams.get(sessionId)!;
+            streams.push({ res, uuid: socketId });
+
+            req.on("close", () => {
+                Logger.debug(undefined, `Connection closed for Gemstone sessionId: ${sessionId}`);
+                // Remove the stream from the list of active streams
+                const streams = WebhookInstance._streams.get(sessionId)!;
+                const index = streams.findIndex(s => s.uuid === socketId);
+                if (index !== -1) {
+                    streams.splice(index, 1);
+                }
+
+                // Close the response
+                res.end();
+            });
+
+        });
+
         if (Config.TELEGRAM_BOT_KEY) {
             // Set up endpoints for Telegram Webhook mode
             app.post(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
@@ -263,6 +371,8 @@ export class WebhookInstance {
                         stream.res.write(`data: ${JSON.stringify({ role: "assistant", content: message })}\n\n`);
                     }
                 }
+            } else {
+                Logger.debug(undefined, `No active streams for chatId: ${chatId}`);
             }
         });
 

@@ -3,39 +3,20 @@ import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
 import { agentWorkflow, agentWorkflowClearContext, agentWorkflowExitSignal, agentWorkflowExternalContextSignal, agentWorkflowMessageSignal } from "./workflow";
 
-export class AgentResponseHandler {
-    private static listeners: Map<string, (message: string, chatId: string) => Promise<void>> = new Map();
-    private static artifactListeners: Map<string, (filePath: string, chatId: string, description?: string) => Promise<void>> = new Map();
 
-    public static registerListener(type: string, callback: (message: string, chatId: string) => Promise<void>): void {
-        this.listeners.set(type, callback);
-    }
-
-    public static registerArtifactListener(type: string, callback: (filePath: string, chatId: string, description?: string) => Promise<void>): void {
-        this.artifactListeners.set(type, callback);
-    }
-
-    public static async handle(workflowId: string, message: string): Promise<void> {
-        const workflowInfo = parseWorkflowId(workflowId);
-
-        const listener = this.listeners.get(workflowInfo.platform);
-        if (listener) {
-            await listener(message, workflowInfo.chatId);
-        } else {
-            Logger.warn(undefined, `No listener registered for platform: ${workflowInfo.platform}`);
-        }
-    }
-
-    public static async handleArtifact(workflowId: string, filePath: string, description?: string): Promise<void> {
-        const workflowInfo = parseWorkflowId(workflowId);
-        const listener = this.artifactListeners.get(workflowInfo.platform);
-        if (listener) {
-            await listener(filePath, workflowInfo.chatId, description);
-        } else {
-            Logger.warn(undefined, `No artifact listener registered for platform: ${workflowInfo.platform}`);
-        }
-    }
+export type PendingMessage = {
+    author: string;
+    message: string;
+    date: string;
 }
+
+export type AgentWorkflowInput = {
+    continueAsNew?: {
+        context: string[];
+        pending: PendingMessage[];
+        userRequestedExit: boolean;
+    };
+};
 
 export function createWorkflowId(platform: string, chatId: string): string {
     const payload = JSON.stringify({
@@ -52,7 +33,7 @@ export function parseWorkflowId(workflowId: string): { platform: string; chatId:
 export async function signalAgenticWorkflowMessage(workflowId: string, author: string, message: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowMessageSignal,
@@ -73,7 +54,7 @@ export async function signalAgenticWorkflowAdminMessage(author: string, message:
 export async function signalAgenticWorkflowExternalContext(workflowId: string, author: string, content: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowExternalContextSignal,
@@ -84,7 +65,7 @@ export async function signalAgenticWorkflowExternalContext(workflowId: string, a
 export async function signalAgenticWorkflowClearContext(workflowId: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowClearContext,
@@ -94,7 +75,7 @@ export async function signalAgenticWorkflowClearContext(workflowId: string) {
 export async function signalAgenticWorkflowExit(workflowId: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowExitSignal,
