@@ -1,37 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemstone Test</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, sans-serif; background: #1a2e1a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
-        header { background: #1e3e16; padding: 12px 20px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #2d5a1e; }
-        header h1 { font-size: 18px; color: #4caf50; }
-        .config { display: flex; gap: 8px; align-items: center; }
-        .config label { font-size: 13px; color: #888; }
-        .config input { background: #1a3a12; border: 1px solid #2d5a1e; color: #e0e0e0; padding: 4px 8px; border-radius: 4px; font-size: 13px; width: 180px; }
-        .config button { background: #4caf50; color: white; border: none; padding: 5px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-        .config button:hover { background: #388e3c; }
-        .config button.disconnect { background: #555; }
-        .config button.disconnect:hover { background: #777; }
-        #status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
-        #status.connected { background: #1b5e20; color: #a5d6a7; }
-        #status.disconnected { background: #4a1a1a; color: #ef9a9a; }
-        #messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
-        .message { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-        .message.user { align-self: flex-end; background: #1a3a12; border-bottom-right-radius: 4px; }
-        .message.assistant { align-self: flex-start; background: #1e3e16; border: 1px solid #2d5a1e; border-bottom-left-radius: 4px; }
-        .message .meta { font-size: 11px; color: #666; margin-bottom: 4px; }
-        #input-area { background: #1e3e16; padding: 12px 20px; border-top: 1px solid #2d5a1e; display: flex; gap: 8px; }
-        #input-area textarea { flex: 1; background: #1a3a12; border: 1px solid #2d5a1e; color: #e0e0e0; padding: 8px 12px; border-radius: 8px; font-size: 14px; font-family: inherit; resize: none; height: 44px; }
-        #input-area textarea:focus { outline: none; border-color: #4caf50; }
-        #input-area button { background: #4caf50; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        #input-area button:hover { background: #388e3c; }
-        #input-area button:disabled { background: #555; cursor: not-allowed; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: #1a2e1a;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #1e3e16;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid #2d5a1e;
+        }
+
+        header h1 {
+            font-size: 18px;
+            color: #4caf50;
+        }
+
+        .config {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .config label {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .config input {
+            background: #1a3a12;
+            border: 1px solid #2d5a1e;
+            color: #e0e0e0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 180px;
+        }
+
+        .config button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .config button:hover {
+            background: #388e3c;
+        }
+
+        .config button.disconnect {
+            background: #555;
+        }
+
+        .config button.disconnect:hover {
+            background: #777;
+        }
+
+        #status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        #status.connected {
+            background: #1b5e20;
+            color: #a5d6a7;
+        }
+
+        #status.disconnected {
+            background: #4a1a1a;
+            color: #ef9a9a;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #1a3a12;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: #1e3e16;
+            border: 1px solid #2d5a1e;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message .meta {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        #input-area {
+            background: #1e3e16;
+            padding: 12px 20px;
+            border-top: 1px solid #2d5a1e;
+            display: flex;
+            gap: 8px;
+        }
+
+        #input-area textarea {
+            flex: 1;
+            background: #1a3a12;
+            border: 1px solid #2d5a1e;
+            color: #e0e0e0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            height: 44px;
+        }
+
+        #input-area textarea:focus {
+            outline: none;
+            border-color: #4caf50;
+        }
+
+        #input-area button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #input-area button:hover {
+            background: #388e3c;
+        }
+
+        #input-area button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
     </style>
 </head>
+
 <body>
     <header>
         <h1>Gemstone</h1>
@@ -82,6 +229,11 @@
             eventSource.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    if (data.event) {
+                        console.log(data.event);
+                        return;
+                    }
+
                     appendMessage(data.role || "assistant", data.content);
                 } catch {
                     appendMessage("assistant", event.data);
@@ -164,4 +316,5 @@
         }
     </script>
 </body>
+
 </html>

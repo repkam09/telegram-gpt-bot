@@ -8,10 +8,27 @@ import { randomUUID } from "node:crypto";
 import { HennosRealtime } from "../realtime/sip";
 import { AgentResponseHandler } from "../response";
 import { signalGemstoneWorkflowMessage, createWorkflowId as createGemstoneWorkflowId } from "../temporal/gemstone/interface";
-
 export class WebhookInstance {
     static _instance: Express;
-    static _streams: Map<string, { res: Response, uuid: string }[]> = new Map();
+    static _streams: Map<string, { stream: Response, uuid: string }[]> = new Map();
+
+    static register(sessionId: string, socketId: string, stream: Response) {
+        if (!WebhookInstance._streams.has(sessionId)) {
+            WebhookInstance._streams.set(sessionId, []);
+        }
+        WebhookInstance._streams.get(sessionId)?.push({ stream, uuid: socketId });
+    }
+
+    static unregister(sessionId: string, socketId: string) {
+        const streams = WebhookInstance._streams.get(sessionId);
+        if (streams) {
+            WebhookInstance._streams.set(sessionId, streams.filter(s => s.uuid !== socketId));
+        }
+    }
+
+    static sockets(sessionId: string) {
+        return WebhookInstance._streams.get(sessionId) || [];
+    }
 
     static instance(): Express {
         if (!WebhookInstance._instance) {
@@ -56,7 +73,7 @@ export class WebhookInstance {
             return res.status(200).json(context);
         });
 
-        app.get("/hennos/conversation/:sessionId/stream", (req: Request, res: Response) => {
+        app.get("/:agent/conversation/:sessionId/stream", (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
                 return res.status(400).send("Missing sessionId");
@@ -66,7 +83,24 @@ export class WebhookInstance {
                 return res.status(400).send("Invalid sessionId");
             }
 
-            Logger.debug(undefined, `New connection established for Hennos sessionId: ${sessionId}`);
+            const agent = req.params.agent;
+            if (!agent) {
+                return res.status(400).send("Missing agent");
+            }
+
+            if (Array.isArray(agent)) {
+                return res.status(400).send("Invalid agent");
+            }
+
+            const agents = ["hennos", "gemstone"];
+            if (!agents.includes(agent)) {
+                return res.status(400).send("Invalid agent");
+            }
+
+            // Socket tuning
+            req.socket.setTimeout(0);
+            req.socket.setNoDelay(true);
+            req.socket.setKeepAlive(true);
 
             // Set up headers for the SSE Stream
             res.setHeader("Content-Type", "text/event-stream");
@@ -74,31 +108,18 @@ export class WebhookInstance {
             res.setHeader("Connection", "keep-alive");
             res.flushHeaders(); // Send headers immediately to keep connection open
 
-            // Send initial comment to establish connection
-            res.write(`data: ${JSON.stringify({ event: "connected" })}\n\n`);
-
-            if (!WebhookInstance._streams.has(sessionId)) {
-                WebhookInstance._streams.set(sessionId, []);
-            }
-
             const socketId = randomUUID();
 
-            const streams = WebhookInstance._streams.get(sessionId)!;
-            streams.push({ res, uuid: socketId });
+            Logger.debug(undefined, `New connection established for ${agent} sessionId: ${sessionId}, socketId: ${socketId}`);
+            WebhookInstance.register(sessionId, socketId, res);
 
-            req.on("close", () => {
-                Logger.debug(undefined, `Connection closed for Hennos sessionId: ${sessionId}`);
-                // Remove the stream from the list of active streams
-                const streams = WebhookInstance._streams.get(sessionId)!;
-                const index = streams.findIndex(s => s.uuid === socketId);
-                if (index !== -1) {
-                    streams.splice(index, 1);
-                }
-
-                // Close the response
-                res.end();
+            res.on("close", () => {
+                Logger.debug(undefined, `Client disconnected for ${agent} sessionId: ${sessionId}, socketId: ${socketId}`);
+                WebhookInstance.unregister(sessionId, socketId);
             });
 
+            // Send initial comment to establish connection
+            res.write(`data: ${JSON.stringify({ event: "connected" })}\n\n`);
         });
 
         app.post("/hennos/conversation/:sessionId/message", async (req: Request, res: Response) => {
@@ -301,51 +322,6 @@ export class WebhookInstance {
             return res.status(200).json({ status: "ok" });
         });
 
-        app.get("/gemstone/conversation/:sessionId/stream", (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            Logger.debug(undefined, `New connection established for Gemstone sessionId: ${sessionId}`);
-
-            // Set up headers for the SSE Stream
-            res.setHeader("Content-Type", "text/event-stream");
-            res.setHeader("Cache-Control", "no-cache");
-            res.setHeader("Connection", "keep-alive");
-            res.flushHeaders(); // Send headers immediately to keep connection open
-
-            // Send initial comment to establish connection
-            res.write(`data: ${JSON.stringify({ event: "connected" })}\n\n`);
-
-            if (!WebhookInstance._streams.has(sessionId)) {
-                WebhookInstance._streams.set(sessionId, []);
-            }
-
-            const socketId = randomUUID();
-
-            const streams = WebhookInstance._streams.get(sessionId)!;
-            streams.push({ res, uuid: socketId });
-
-            req.on("close", () => {
-                Logger.debug(undefined, `Connection closed for Gemstone sessionId: ${sessionId}`);
-                // Remove the stream from the list of active streams
-                const streams = WebhookInstance._streams.get(sessionId)!;
-                const index = streams.findIndex(s => s.uuid === socketId);
-                if (index !== -1) {
-                    streams.splice(index, 1);
-                }
-
-                // Close the response
-                res.end();
-            });
-
-        });
-
         if (Config.TELEGRAM_BOT_KEY) {
             // Set up endpoints for Telegram Webhook mode
             app.post(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
@@ -364,11 +340,14 @@ export class WebhookInstance {
             Logger.info(undefined, `Received webhook message: ${message} for chatId: ${chatId}`);
 
             // Grab any listening response streams for this chatId
-            const streams = WebhookInstance._streams.get(chatId);
-            if (streams) {
-                for (const stream of streams) {
-                    if (!stream.res.writableEnded) {
-                        stream.res.write(`data: ${JSON.stringify({ role: "assistant", content: message })}\n\n`);
+            const sockets = WebhookInstance.sockets(chatId);
+            if (sockets) {
+                Logger.debug(undefined, `Found ${sockets.length} active streams for chatId: ${chatId}`);
+                for (const session of sockets) {
+                    if (!session.stream.writableEnded) {
+                        session.stream.write(`data: ${JSON.stringify({ role: "assistant", content: message })}\n\n`);
+                    } else {
+                        Logger.warn(undefined, `Stream ended for chatId: ${chatId}`);
                     }
                 }
             } else {
