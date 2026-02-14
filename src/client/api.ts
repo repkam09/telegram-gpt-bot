@@ -110,7 +110,7 @@ export class WebhookInstance {
 
             const socketId = randomUUID();
 
-            Logger.debug(undefined, `New connection established for ${agent} sessionId: ${sessionId}, socketId: ${socketId}`);
+            Logger.debug(undefined, `Client connected for ${agent} sessionId: ${sessionId}, socketId: ${socketId}`);
             WebhookInstance.register(sessionId, socketId, res);
 
             res.on("close", () => {
