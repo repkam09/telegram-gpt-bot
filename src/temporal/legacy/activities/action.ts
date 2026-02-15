@@ -3,7 +3,7 @@ import { ToolCallResponse } from "../../../tools/BaseTool";
 import { Context } from "@temporalio/activity";
 import { tools } from "../tools";
 
-export async function gemstoneAction(
+export async function legacyAction(
     toolName: string,
     input: Record<string, string>
 ): Promise<string> {

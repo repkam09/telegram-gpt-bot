@@ -42,7 +42,7 @@ export class CommandLineInstance {
 async function signalWithStartAgentWorkflow(input: string): Promise<void> {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_TASK_QUEUE,
         workflowId: createWorkflowId("cli", "cli"),
         args: [{}],
         signal: agentWorkflowMessageSignal,

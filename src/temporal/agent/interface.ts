@@ -33,7 +33,7 @@ export function parseWorkflowId(workflowId: string): { platform: string; chatId:
 export async function signalAgenticWorkflowMessage(workflowId: string, author: string, message: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowMessageSignal,
@@ -54,7 +54,7 @@ export async function signalAgenticWorkflowAdminMessage(author: string, message:
 export async function signalAgenticWorkflowExternalContext(workflowId: string, author: string, content: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowExternalContextSignal,
@@ -65,7 +65,7 @@ export async function signalAgenticWorkflowExternalContext(workflowId: string, a
 export async function signalAgenticWorkflowClearContext(workflowId: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowClearContext,
@@ -75,7 +75,7 @@ export async function signalAgenticWorkflowClearContext(workflowId: string) {
 export async function signalAgenticWorkflowExit(workflowId: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_HENNOS_TASK_QUEUE,
+        taskQueue: Config.TEMPORAL_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: agentWorkflowExitSignal,

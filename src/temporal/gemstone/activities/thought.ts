@@ -4,15 +4,15 @@ import { Logger } from "../../../singletons/logger";
 import { GemstoneAgenticResponse } from "../types";
 import { tools } from "../tools";
 
-export type ThoughtInput = {
+export type GemstoneThoughtInput = {
     context: { role: "user" | "assistant" | "system"; content: string }[];
 }
 
-export async function thought(input: ThoughtInput,
+export async function gemstoneThought(input: GemstoneThoughtInput,
 ): Promise<GemstoneAgenticResponse> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
 
-    const systemPrompt = thoughtPromptTemplate({
+    const systemPrompt = gemstoneThoughtPromptTemplate({
         currentDate: new Date().toISOString().split("T")[0]
     });
 
@@ -45,11 +45,11 @@ export async function thought(input: ThoughtInput,
     throw new ApplicationFailure("Invalid response from model provider, expected string or tool response", "InvalidModelResponse");
 }
 
-type ThoughtPromptInput = {
+type GemstoneThoughtPromptInput = {
     currentDate: string,
 }
 
-export function thoughtPromptTemplate({ currentDate }: ThoughtPromptInput): string {
+export function gemstoneThoughtPromptTemplate({ currentDate }: GemstoneThoughtPromptInput): string {
     const dayOfWeek = new Date().getDay();
     const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 

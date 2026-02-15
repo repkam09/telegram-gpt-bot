@@ -1,12 +1,12 @@
 import { AgentResponseHandler } from "../../../response";
 
-type GemstoneBroadcastAgentInput = {
+type LegacyBroadcastAgentInput = {
     type: "agent-message"
     workflowId: string;
     message: string;
     name: "assistant";
 }
 
-export async function persistGemstoneAgentMessage(input: GemstoneBroadcastAgentInput) {
+export async function persistLegacyAgentMessage(input: LegacyBroadcastAgentInput) {
     return AgentResponseHandler.handle(input.workflowId, input.message);
 }

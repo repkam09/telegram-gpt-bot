@@ -2,7 +2,7 @@ import { Logger } from "../../../singletons/logger";
 import { encoding_for_model } from "tiktoken";
 import { Context } from "@temporalio/activity";
 
-export async function tokens(
+export async function gemstoneTokens(
     context: string[],
 ): Promise<{
     tokenCount: number;

@@ -6,7 +6,7 @@ import { ActivityFailure, condition, continueAsNew, defineSignal, proxyActivitie
 import { GemstoneAgentContext, GemstoneAgentWorkflowInput, PendingMessage } from "./interface";
 import * as activities from "./activities";
 
-const { persistAgentMessage, tokens } = proxyActivities<typeof activities>({
+const { persistGemstoneAgentMessage, gemstoneTokens } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
         backoffCoefficient: 1,
@@ -15,7 +15,7 @@ const { persistAgentMessage, tokens } = proxyActivities<typeof activities>({
     },
 });
 
-const { thought, action } = proxyActivities<typeof activities>({
+const { gemstoneThought, gemstoneAction } = proxyActivities<typeof activities>({
     startToCloseTimeout: "5 minutes",
     retry: {
         backoffCoefficient: 1,
@@ -24,7 +24,7 @@ const { thought, action } = proxyActivities<typeof activities>({
     },
 });
 
-const { compact, observation } = proxyActivities<typeof activities>({
+const { gemstoneCompact, gemstoneObservation } = proxyActivities<typeof activities>({
     startToCloseTimeout: "1 minute",
     retry: {
         backoffCoefficient: 1,
@@ -76,7 +76,7 @@ export async function gemstoneAgentWorkflow(input: GemstoneAgentWorkflowInput): 
     };
 
     const compactAndContinueAsNew = async () => {
-        const compactContext = await compact({ context });
+        const compactContext = await gemstoneCompact({ context });
         return continueAsNew<typeof gemstoneAgentWorkflow>({
             continueAsNew: {
                 context: compactContext.context,
@@ -106,9 +106,9 @@ export async function gemstoneAgentWorkflow(input: GemstoneAgentWorkflowInput): 
                 context.push({ role: "user", content: `${entry.author}: ${entry.message}` });
             }
 
-            const agentThought = await thought({ context });
+            const agentThought = await gemstoneThought({ context });
             if (agentThought.__type === "string") {
-                await persistAgentMessage({
+                await persistGemstoneAgentMessage({
                     workflowId: workflowInfo().workflowId,
                     name: "assistant",
                     type: "agent-message",
@@ -117,7 +117,7 @@ export async function gemstoneAgentWorkflow(input: GemstoneAgentWorkflowInput): 
 
                 context.push({ role: "assistant", content: agentThought.payload });
 
-                const tokenCount = await tokens(context.map((entry) => entry.content));
+                const tokenCount = await gemstoneTokens(context.map((entry) => entry.content));
                 const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
 
                 if (workflowInfo().continueAsNewSuggested || passedTokenLimit) {
@@ -134,12 +134,12 @@ export async function gemstoneAgentWorkflow(input: GemstoneAgentWorkflowInput): 
                     { role: "assistant", content: `<action>\n<name>${agentThought.payload.name}</name>\n<input>${JSON.stringify(agentThought.payload.input)}</input>\n</action>` },
                 );
 
-                const actionResult = await action(
+                const actionResult = await gemstoneAction(
                     agentThought.payload.name,
                     agentThought.payload.input,
                 );
 
-                const agentObservation = await observation(
+                const agentObservation = await gemstoneObservation(
                     { context: context.slice(-5), actionResult },
                 );
 

@@ -2,19 +2,19 @@ import { resolveModelProvider } from "../../../provider";
 import { Context } from "@temporalio/activity";
 import { GemstoneAgentContext } from "../interface";
 
-export type CompactionInput = {
+export type GemstoneCompactionInput = {
     context: GemstoneAgentContext[],
 }
 
-export type CompactionResult = {
+export type GemstoneCompactionResult = {
     context: GemstoneAgentContext[],
 }
 
-export async function compact(input: CompactionInput
-): Promise<CompactionResult> {
+export async function gemstoneCompact(input: GemstoneCompactionInput
+): Promise<GemstoneCompactionResult> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
     const model = resolveModelProvider("low");
-    const compactTemplate = compactPromptTemplate({
+    const compactTemplate = gemstoneCompactPromptTemplate({
         contextHistory: input.context.map(entry => `${entry.role}: ${entry.content}`).join("\n"),
     });
 
@@ -34,11 +34,11 @@ export async function compact(input: CompactionInput
     };
 }
 
-type CompactPromptInput = {
+type GemstoneCompactPromptInput = {
     contextHistory: string,
 }
 
-export function compactPromptTemplate({ contextHistory }: CompactPromptInput): string {
+export function gemstoneCompactPromptTemplate({ contextHistory }: GemstoneCompactPromptInput): string {
     return `You are a summarization agent tasked with compressing the chat history and context of a ReAct (Reasoning and Acting) agent.
   
 Your goal is to summarize the provided context, attempting to preserve the most important parts of the context history.

@@ -1,8 +1,8 @@
 import { Config, HennosModelConfig } from "./config";
 import OpenAI from "openai";
 import { Logger } from "./logger";
-import { ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionTool, ChatCompletionUserMessageParam } from "openai/resources";
-import { HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
+import { ChatCompletion, ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionTool, ChatCompletionUserMessageParam } from "openai/resources";
+import { CompletionContextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 
 export class HennosOpenAISingleton {
     private static _instance: HennosOpenAIProvider | null = null;
@@ -21,6 +21,22 @@ export class HennosOpenAISingleton {
         }
         return HennosOpenAISingleton._mini;
     }
+}
+
+type OpenAICompletionResponse = OpenAICompletionResponseString | OpenAICompletionResponseTool;
+
+type OpenAICompletionResponseString = {
+    __type: "string";
+    payload: string;
+}
+
+type OpenAICompletionResponseTool = {
+    __type: "tool";
+    payload: {
+        name: string;
+        input: string;
+        id: string;
+    };
 }
 
 export class HennosOpenAIProvider {
@@ -43,11 +59,62 @@ export class HennosOpenAIProvider {
         const converted = tools ? convertHennosTools(tools) : undefined;
         const prompt = convertHennosMessages(messages);
 
-        return this._invoke(workflowId, prompt, converted);
+        const result = await this._completion(workflowId, prompt, converted);
+
+        if (result.__type === "string") {
+            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in String Response");
+            return {
+                __type: "string",
+                payload: result.payload
+            };
+        }
+
+        if (result.__type === "tool") {
+            return {
+                __type: "tool",
+                payload: {
+                    name: result.payload.name,
+                    input: result.payload.input,
+                }
+            };
+        }
+
+        throw new Error("OpenAI Invoke Failed, Unhandled Response Type");
     }
 
-    private async _invoke(workflowId: string, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], tools?: ChatCompletionTool[]): Promise<HennosInvokeResponse> {
-        const response = await this.client.chat.completions.create({
+    public async completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse> {
+        Logger.info(workflowId, `OpenAI Invoke Start (${this.model.MODEL})`);
+        const converted = tools ? convertHennosTools(tools) : undefined;
+        const prompt = convertCompletionMessages(messages);
+
+        const convertedIterations = iterations > 10 ? converted : undefined;
+        const result = await this._completion(workflowId, prompt, convertedIterations);
+
+        if (result.__type === "string") {
+            Logger.info(workflowId, "OpenAI Completion Success, Resulted in String Response");
+            return {
+                __type: "string",
+                payload: result.payload
+            };
+        }
+
+        if (result.__type === "tool") {
+            Logger.info(workflowId, "OpenAI Completion Success, Resulted in Tool Response");
+            return {
+                __type: "tool",
+                payload: {
+                    name: result.payload.name,
+                    input: JSON.parse(result.payload.input),
+                    id: result.payload.id
+                }
+            };
+        }
+
+        throw new Error("OpenAI Completion Failed, Unhandled Response Type");
+    }
+
+    private async _completion(workflowId: string, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], tools?: ChatCompletionTool[]): Promise<OpenAICompletionResponse> {
+        const response: ChatCompletion = await this.client.chat.completions.create({
             model: this.model.MODEL,
             messages: prompt,
             safety_identifier: `${workflowId}`,
@@ -88,7 +155,7 @@ export class HennosOpenAIProvider {
                 role: "assistant",
                 content: choice.message.content ? choice.message.content : ""
             });
-            return this._invoke(workflowId, prompt, tools);
+            return this._completion(workflowId, prompt, tools);
         }
 
         if (choice.finish_reason === "tool_calls") {
@@ -105,9 +172,9 @@ export class HennosOpenAIProvider {
             return {
                 __type: "tool",
                 payload: {
-                    uuid: toolCall.id,
                     name: toolCall.function.name,
-                    input: toolCall.function.arguments
+                    input: toolCall.function.arguments,
+                    id: toolCall.id
                 }
             };
         }
@@ -160,6 +227,41 @@ export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Co
                 content: val.content
             });
         }
+        return acc;
+    }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
+}
+
+export function convertCompletionMessages(messages: CompletionContextEntry[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    return messages.reduce((acc, val) => {
+        if (val.role === "user" || val.role === "assistant" || val.role === "system") {
+            acc.push({
+                role: val.role satisfies ChatCompletionRole,
+                content: val.content
+            });
+        }
+
+        if (val.role === "tool_response") {
+            acc.push({
+                role: "tool",
+                tool_call_id: val.id,
+                content: val.result
+            });
+        }
+
+        if (val.role === "tool_call") {
+            acc.push({
+                role: "assistant",
+                tool_calls: [{
+                    type: "function",
+                    id: val.id,
+                    function: {
+                        name: val.name,
+                        arguments: JSON.stringify(val.input)
+                    }
+                }]
+            });
+        }
+
         return acc;
     }, [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
 }

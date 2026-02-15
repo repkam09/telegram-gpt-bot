@@ -1,25 +1,12 @@
 import { Config } from "../../singletons/config";
 import { createTemporalClient } from "../../singletons/temporal";
-import { gemstoneAgentWorkflow, gemstoneAgentWorkflowMessageSignal } from "./workflow";
+import { legacyWorkflow, legacyWorkflowMessageSignal } from "./workflow";
 
 export type PendingMessage = {
     author: string;
     message: string;
     date: string;
 }
-
-export type GemstoneAgentWorkflowInput = {
-    continueAsNew?: {
-        context: GemstoneAgentContext[];
-        pending: PendingMessage[];
-        userRequestedExit: boolean;
-    };
-};
-
-export type GemstoneAgentContext = {
-    role: "user" | "assistant" | "system";
-    content: string;
-};
 
 export function createWorkflowId(platform: string, chatId: string): string {
     const payload = JSON.stringify({
@@ -33,13 +20,19 @@ export function parseWorkflowId(workflowId: string): { platform: string; chatId:
     return JSON.parse(workflowId);
 }
 
-export async function signalGemstoneWorkflowMessage(workflowId: string, author: string, message: string) {
+export async function signalLegacyWorkflowMessage(workflowId: string, author: string, message: string) {
     const client = await createTemporalClient();
-    await client.workflow.signalWithStart(gemstoneAgentWorkflow, {
+    await client.workflow.signalWithStart(legacyWorkflow, {
         taskQueue: Config.TEMPORAL_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
-        signal: gemstoneAgentWorkflowMessageSignal,
+        signal: legacyWorkflowMessageSignal,
         signalArgs: [message, author, new Date().toISOString()],
     });
 }
+
+export type LegacyWorkflowInput = {
+    continueAsNew?: {
+        pending: PendingMessage[];
+    };
+};

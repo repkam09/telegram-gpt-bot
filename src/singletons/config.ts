@@ -332,22 +332,13 @@ export class Config {
         return process.env.TEMPORAL_NAMESPACE;
     }
 
-    static get TEMPORAL_HENNOS_TASK_QUEUE(): string {
+    static get TEMPORAL_TASK_QUEUE(): string {
         if (!process.env.TEMPORAL_TASK_QUEUE) {
-            return "development-hennos";
+            return "development";
         }
 
-        return process.env.TEMPORAL_TASK_QUEUE + "-hennos";
+        return process.env.TEMPORAL_TASK_QUEUE;
     }
-
-    static get TEMPORAL_GEMSTONE_TASK_QUEUE(): string {
-        if (!process.env.TEMPORAL_TASK_QUEUE) {
-            return "development-gemstone";
-        }
-
-        return process.env.TEMPORAL_TASK_QUEUE + "-gemstone";
-    }
-
 
     static get LIFEFORCE_AUTH_TOKEN(): string {
         if (!process.env.LIFEFORCE_AUTH_TOKEN) {

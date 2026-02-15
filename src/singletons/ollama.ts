@@ -1,8 +1,9 @@
 import { Config } from "./config";
-import { Message, Ollama } from "ollama";
+import { ChatResponse, Message, Ollama } from "ollama";
 import { Logger } from "./logger";
 import { HennosOpenAISingleton } from "./openai";
-import { HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
+import { CompletionContextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
+import { randomUUID } from "node:crypto";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosOllamaProvider | null = null;
@@ -29,8 +30,36 @@ export class HennosOllamaProvider {
         return this._invoke(workflowId, prompt, tools);
     }
 
+    public async completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse> {
+        Logger.info(workflowId, `Ollama Invoke Start (${Config.OLLAMA_LLM.MODEL})`);
+        const prompt = convertCompletionMessages(messages);
+
+        const converted = iterations > 10 ? tools : undefined;
+        const result = await this._invoke(workflowId, prompt, converted);
+
+        if (result.__type === "string") {
+            return {
+                __type: "string",
+                payload: result.payload
+            };
+        }
+
+        if (result.__type === "tool") {
+            return {
+                __type: "tool",
+                payload: {
+                    name: result.payload.name,
+                    input: JSON.parse(result.payload.input),
+                    id: `ollama-${randomUUID()}`
+                }
+            };
+        }
+
+        throw new Error("Ollama Completion Failed, Unhandled Response Type");
+    }
+
     private async _invoke(workflowId: string, prompt: Message[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
-        const response = await this.client.chat({
+        const response: ChatResponse = await this.client.chat({
             stream: false,
             model: Config.OLLAMA_LLM.MODEL,
             messages: prompt,
@@ -57,7 +86,6 @@ export class HennosOllamaProvider {
             return {
                 __type: "tool",
                 payload: {
-                    uuid: toolCall.function.name,
                     name: toolCall.function.name,
                     input: toolCall.function.arguments ? JSON.stringify(toolCall.function.arguments) : ""
                 }
@@ -87,4 +115,38 @@ function convertHennosMessages(messages: HennosMessage[]): Message[] {
         }
         return acc;
     }, [] as Message[]);
+}
+
+function convertCompletionMessages(messages: CompletionContextEntry[]): Message[] {
+    return messages.reduce((acc, val) => {
+        if (val.role === "user" || val.role === "assistant" || val.role === "system") {
+            acc.push({
+                role: val.role,
+                content: val.content
+            });
+        }
+
+        if (val.role === "tool_response") {
+            acc.push({
+                role: "tool",
+                content: val.result
+            });
+        }
+
+        if (val.role === "tool_call") {
+            acc.push({
+                role: "assistant",
+                content: "",
+                tool_calls: [{
+                    function: {
+                        name: val.name,
+                        arguments: val.input
+                    }
+                }]
+            });
+        }
+
+        return acc;
+    }, [] as Message[]);
+
 }

@@ -9,7 +9,6 @@ export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeTool
 export type HennosInvokeToolResponse = {
     __type: "tool";
     payload: {
-        uuid: string;
         name: string;
         input: string;
     };
@@ -26,9 +25,44 @@ export type HennosMessage = {
     content: string;
 }
 
+export type CompletionContextEntry = CompletionContextTextEntry | CompletionContextToolCallEntry | CompletionContextToolResponseEntry;
+
+export type CompletionContextTextEntry = {
+    role: "user" | "assistant" | "system";
+    content: string;
+}
+
+export type CompletionContextToolCallEntry = {
+    role: "tool_call";
+    name: string;
+    input: Record<string, string>;
+    id: string;
+}
+
+export type CompletionContextToolResponseEntry = {
+    role: "tool_response";
+    id: string;
+    result: string;
+}
+
+export type CompletionResponse = CompletionResponseString | CompletionResponseTool;
+export type CompletionResponseString = {
+    __type: "string";
+    payload: string;
+}
+
+export type CompletionResponseTool = {
+    __type: "tool";
+    payload: {
+        name: string;
+        input: Record<string, string>;
+        id: string;
+    };
+}
 
 type InvokableModelProvider = {
     invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse>;
+    completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse>;
     moderation(workflowId: string, input: string): Promise<boolean>;
 }
 

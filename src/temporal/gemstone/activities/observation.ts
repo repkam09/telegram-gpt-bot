@@ -2,20 +2,20 @@ import { resolveModelProvider } from "../../../provider";
 import { Context } from "@temporalio/activity";
 import { GemstoneAgentContext } from "../interface";
 
-export type ObservationInput = {
+export type GemstoneObservationInput = {
     context: GemstoneAgentContext[],
     actionResult: string,
 }
 
-export type ObservationResult = {
+export type GemstoneObservationResult = {
     observations: string;
 }
 
-export async function observation(input: ObservationInput
-): Promise<ObservationResult> {
+export async function gemstoneObservation(input: GemstoneObservationInput
+): Promise<GemstoneObservationResult> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
     const model = resolveModelProvider("low");
-    const promptTemplate = observationPromptTemplate({
+    const promptTemplate = gemstoneObservationPromptTemplate({
         previousSteps: input.context.map(entry => `${entry.role}: ${entry.content}`).join("\n"),
         actionResult: input.actionResult,
     });
@@ -33,12 +33,12 @@ export async function observation(input: ObservationInput
     };
 }
 
-type ObservationPromptInput = {
+type GemstoneObservationPromptInput = {
     previousSteps: string,
     actionResult: string,
 }
 
-export function observationPromptTemplate({ actionResult, previousSteps }: ObservationPromptInput): string {
+export function gemstoneObservationPromptTemplate({ actionResult, previousSteps }: GemstoneObservationPromptInput): string {
     return `Take the contents of the <action-result> section below, keeping in mind the overall <conversation-context>, and generate a list of concise and relevant bullet points that capture the key facts and insights from the action result.
 These bullet points should be focused on extracting useful information that can guide the agent's next steps in addressing the user's query. Only output the bullet points, without any additional commentary or explanation.
 
