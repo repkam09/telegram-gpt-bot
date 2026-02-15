@@ -183,11 +183,10 @@
     <header>
         <h1>Gemstone</h1>
         <div class="config">
-            <label>Workflow ID</label>
-            <input type="text" id="workflowId" value="test-gemstone-1" />
+            <label>Session ID</label>
+            <input type="text" id="workflowId" readonly />
             <label>Author</label>
             <input type="text" id="author" value="tester" />
-            <button id="connectBtn" onclick="toggleConnection()">Connect</button>
             <span id="status" class="disconnected">disconnected</span>
         </div>
     </header>
@@ -199,29 +198,58 @@
 
     <script>
         let eventSource = null;
+        let reconnectTimeout = null;
+        let reconnectDelay = 1000;
+        let manualDisconnect = false;
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function getOrCreateSessionId() {
+            const storageKey = 'gemstone-session-id';
+            let sessionId = localStorage.getItem(storageKey);
+
+            if (!sessionId) {
+                sessionId = generateUUID();
+                localStorage.setItem(storageKey, sessionId);
+            }
+
+            return sessionId;
+        }
 
         function getWorkflowId() { return document.getElementById("workflowId").value.trim(); }
         function getAuthor() { return document.getElementById("author").value.trim(); }
 
-        function toggleConnection() {
-            if (eventSource) {
-                disconnect();
-            } else {
-                connect();
-            }
-        }
-
         function connect() {
             const wfId = getWorkflowId();
-            if (!wfId) { alert("Enter a Workflow ID"); return; }
+            if (!wfId) {
+                if (!manualDisconnect) {
+                    appendSystem("Enter a Workflow ID to connect");
+                }
+                return;
+            }
+
+            // Clear any pending reconnect
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+
+            // Update UI to show connecting state
+            document.getElementById("status").textContent = "connecting...";
+            document.getElementById("status").className = "disconnected";
 
             eventSource = new EventSource(`/gemstone/conversation/${encodeURIComponent(wfId)}/stream`);
 
             eventSource.onopen = () => {
+                reconnectDelay = 1000; // Reset backoff on successful connection
                 document.getElementById("status").textContent = "connected";
                 document.getElementById("status").className = "connected";
-                document.getElementById("connectBtn").textContent = "Disconnect";
-                document.getElementById("connectBtn").className = "disconnect";
                 document.getElementById("sendBtn").disabled = false;
                 appendSystem("Connected to stream");
             };
@@ -243,21 +271,52 @@
             eventSource.onerror = () => {
                 appendSystem("SSE connection error");
                 disconnect();
+
+                // Auto-reconnect unless manually disconnected
+                if (!manualDisconnect) {
+                    scheduleReconnect();
+                }
             };
         }
 
+        function scheduleReconnect() {
+            if (reconnectTimeout) return;
+
+            appendSystem(`Reconnecting in ${reconnectDelay / 1000}s...`);
+            reconnectTimeout = setTimeout(() => {
+                reconnectTimeout = null;
+                connect();
+            }, reconnectDelay);
+
+            // Exponential backoff, max 30s
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+        }
+
         function disconnect() {
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
             }
+
             document.getElementById("status").textContent = "disconnected";
             document.getElementById("status").className = "disconnected";
-            document.getElementById("connectBtn").textContent = "Connect";
-            document.getElementById("connectBtn").className = "";
             document.getElementById("sendBtn").disabled = true;
-            appendSystem("Disconnected");
         }
+
+        // Auto-connect on page load
+        window.addEventListener("DOMContentLoaded", () => {
+            // Set the session ID from localStorage or generate a new one
+            const sessionId = getOrCreateSessionId();
+            document.getElementById("workflowId").value = sessionId;
+
+            manualDisconnect = false;
+            connect();
+        });
 
         async function sendMessage() {
             const wfId = getWorkflowId();
