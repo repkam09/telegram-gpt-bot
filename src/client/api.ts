@@ -40,7 +40,7 @@ export class WebhookInstance {
     }
 
     static async init() {
-        if (!Config.HENNOS_WEBHOOK_API_ENABLED) {
+        if (!Config.TELEGRAM_BOT_WEBHOOK_ENABLED) {
             return;
         }
         Logger.info(undefined, "Starting Hennos Webhook API");
@@ -355,8 +355,8 @@ export class WebhookInstance {
             }
         });
 
-        app.listen(Config.HENNOS_WEBHOOK_API_PORT, () => {
-            Logger.info(undefined, `Hennos Webhook API server is listening on ${Config.HENNOS_WEBHOOK_API_PORT}`);
+        app.listen(Config.TELEGRAM_BOT_WEBHOOK_PORT, () => {
+            Logger.info(undefined, `Hennos Webhook API server is listening on ${Config.TELEGRAM_BOT_WEBHOOK_PORT}`);
         });
         return app;
     }

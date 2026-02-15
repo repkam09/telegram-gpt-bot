@@ -22,11 +22,11 @@ export class TelegramInstance {
         Logger.info(undefined, "Starting Hennos Telegram Integration...");
 
         const bot = new TelegramBot(Config.TELEGRAM_BOT_KEY);
-        if (Config.HENNOS_WEBHOOK_API_ENABLED) {
-            Logger.info(undefined, `Starting Telegram Bot in Webhook mode: ${Config.HENNOS_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
+        if (Config.TELEGRAM_BOT_WEBHOOK_ENABLED) {
+            Logger.info(undefined, `Starting Telegram Bot in Webhook mode: ${Config.TELEGRAM_BOT_WEBHOOK_HOST}/bot${Config.TELEGRAM_BOT_KEY}`);
 
             // This is the external URL that Telegram will use to send updates to our webhook.
-            bot.setWebHook(`https://${Config.HENNOS_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
+            bot.setWebHook(`https://${Config.TELEGRAM_BOT_WEBHOOK_HOST}/bot${Config.TELEGRAM_BOT_KEY}`);
         } else {
             Logger.info(undefined, "Starting Telegram Bot in Polling mode");
             bot.deleteWebHook();

@@ -37,30 +37,30 @@ export class Config {
         return process.env.HENNOS_LLM_PROVIDER;
     }
 
-    static get HENNOS_WEBHOOK_API_PORT(): number | false {
-        if (!process.env.HENNOS_WEBHOOK_API_PORT) {
+    static get TELEGRAM_BOT_WEBHOOK_PORT(): number | false {
+        if (!process.env.TELEGRAM_BOT_WEBHOOK_PORT) {
             return false;
         }
 
-        const port = parseInt(process.env.HENNOS_WEBHOOK_API_PORT);
+        const port = parseInt(process.env.TELEGRAM_BOT_WEBHOOK_PORT);
 
         if (Number.isNaN(port)) {
-            throw new Error("Invalid HENNOS_WEBHOOK_API_PORT value");
+            throw new Error("Invalid TELEGRAM_BOT_WEBHOOK_PORT value");
         }
 
         return port;
     }
 
-    static get HENNOS_WEBHOOK_EXTERNAL(): string | false {
-        if (!process.env.HENNOS_WEBHOOK_EXTERNAL) {
+    static get TELEGRAM_BOT_WEBHOOK_HOST(): string | false {
+        if (!process.env.TELEGRAM_BOT_WEBHOOK_HOST) {
             return false;
         }
 
-        return process.env.HENNOS_WEBHOOK_EXTERNAL;
+        return process.env.TELEGRAM_BOT_WEBHOOK_HOST;
     }
 
-    static get HENNOS_WEBHOOK_API_ENABLED(): boolean {
-        if (!Config.HENNOS_WEBHOOK_API_PORT || !Config.HENNOS_WEBHOOK_EXTERNAL) {
+    static get TELEGRAM_BOT_WEBHOOK_ENABLED(): boolean {
+        if (!Config.TELEGRAM_BOT_WEBHOOK_PORT || !Config.TELEGRAM_BOT_WEBHOOK_HOST) {
             return false;
         }
 
