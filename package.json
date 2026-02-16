@@ -17,7 +17,8 @@
     "migrate:reset": "prisma migrate reset",
     "migrate:new": "prisma migrate dev --create-only",
     "prisma:generate": "prisma generate",
-    "dev": "npm-run-all build start"
+    "dev": "npm-run-all build start",
+    "test": "vitest run"
   },
   "author": "Mark Repka",
   "license": "MIT",
@@ -29,6 +30,7 @@
     "@axiomhq/pino": "^1.4.0",
     "@llamaindex/openai": "^0.4.22",
     "@llamaindex/readers": "^3.1.21",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@mozilla/readability": "^0.6.0",
     "@prisma/client": "^6",
     "@temporalio/client": "^1.14.1",
@@ -49,9 +51,11 @@
     "puppeteer": "^24.37.1",
     "sqlite3": "^5.1.7",
     "tiktoken": "^1.0.22",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@temporalio/testing": "^1.14.1",
     "@types/express": "^5.0.6",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^24",
@@ -64,6 +68,7 @@
     "prisma": "^6",
     "rimraf": "^6.1.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

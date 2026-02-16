@@ -1,0 +1,45 @@
+{
+    "servers": {
+        "atlassian-mcp-server": {
+            "type": "http",
+            "url": "https://mcp.atlassian.com/v1/mcp",
+            "gallery": "https://api.mcp.github.com",
+            "version": "1.1.1"
+        },
+        "lifeforce": {
+            "type": "http",
+            "url": "https://api.repkam09.com/api/mcp",
+            "headers": {
+                "authorization": "${input:lifeforce_token}"
+            }
+        },
+        "io.github.github/github-mcp-server": {
+            "type": "stdio",
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-e",
+                "GITHUB_PERSONAL_ACCESS_TOKEN=${input:github_token}",
+                "ghcr.io/github/github-mcp-server:0.30.3"
+            ],
+            "gallery": "https://api.mcp.github.com",
+            "version": "0.30.3"
+        }
+    },
+    "inputs": [
+        {
+            "id": "lifeforce_token",
+            "type": "promptString",
+            "description": "Enter Lifeforce API token",
+            "password": true
+        },
+        {
+            "id": "github_token",
+            "type": "promptString",
+            "description": "Enter GitHub Personal Access Token for GitHub MCP Server",
+            "password": true
+        }
+    ]
+}

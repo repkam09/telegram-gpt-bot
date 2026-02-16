@@ -22,6 +22,29 @@ model User {
   experimental  Boolean @default(false)
 }
 
+model KeyValueMemory {
+  id       Int      @id @default(autoincrement())
+  chatId   BigInt
+  key      String
+  value    String
+  datetime DateTime @default(now())
+
+  @@unique([chatId, key])
+}
+
+model FutureTask {
+  id      Int      @id @default(autoincrement())
+  chatId  BigInt
+  trigger DateTime
+  message String
+}
+
+model Group {
+  chatId      BigInt  @id
+  name        String
+  whitelisted Boolean @default(false)
+}
+
 model Messages {
   id       Int      @id @default(autoincrement())
   chatId   BigInt
@@ -30,6 +53,13 @@ model Messages {
   datetime DateTime @default(now())
   role     String
   from     BigInt   @default(-1)
+}
+
+model HennosLink {
+  id       Int      @id @default(autoincrement())
+  chatId   BigInt   @unique
+  link     String   @unique
+  datetime DateTime @default(now())
 }
 
 model Blacklist {

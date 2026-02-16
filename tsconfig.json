@@ -1,5 +1,5 @@
 {
-    "exclude": ["data"],
+    "exclude": ["data", "tests", "*.config.ts", "*.config.js"],
     "compilerOptions": {
       /* Visit https://aka.ms/tsconfig to read more about this file */
   
