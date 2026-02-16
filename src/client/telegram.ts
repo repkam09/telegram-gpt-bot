@@ -1,6 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
 import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
+import { signalLegacyWorkflowMessage } from "../temporal/legacy/interface";
 import { Logger } from "../singletons/logger";
 import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
@@ -8,6 +9,7 @@ import path from "node:path";
 import fs from "fs/promises";
 import { generateTranscription } from "../singletons/transcription";
 import { AgentResponseHandler } from "../response";
+import { Database } from "../database";
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
@@ -132,6 +134,15 @@ export class TelegramInstance {
             author: msg.from!.last_name ? `${msg.from!.first_name} ${msg.from!.last_name}` : `${msg.from!.first_name}`,
             workflowId: createWorkflowId("telegram", String(msg.chat.id)),
         };
+    }
+
+    private static async isUserWhitelisted(userId: number): Promise<boolean> {
+        const db = Database.instance();
+        const user = await db.user.findUnique({
+            where: { chatId: BigInt(userId) },
+            select: { whitelisted: true }
+        });
+        return user?.whitelisted ?? false;
     }
 
     private static async downloadTelegramFile(workflowId: string, fileId: string, downloadPath: string): Promise<string | null> {
@@ -288,6 +299,9 @@ export class TelegramInstance {
             return TelegramInstance.handleTextCommandMessage(msg);
         }
 
+        // Check if the user is whitelisted in the database
+        const isWhitelisted = await TelegramInstance.isUserWhitelisted(msg.from.id);
+
         const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
         if (msg.forward_date) {
             const originaldate = new Date(msg.forward_date * 1000).toISOString();
@@ -308,7 +322,12 @@ export class TelegramInstance {
             }
         }
 
-        return signalAgenticWorkflowMessage(workflowId, author, msg.text);
+        // Route to appropriate workflow based on whitelist status
+        if (isWhitelisted) {
+            return signalAgenticWorkflowMessage(workflowId, author, msg.text);
+        } else {
+            return signalLegacyWorkflowMessage(workflowId, author, msg.text);
+        }
     }
 
     private static async handleEditTextMessage(msg: TelegramBot.Message): Promise<void> {

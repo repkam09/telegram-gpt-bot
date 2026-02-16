@@ -66,7 +66,7 @@ const db = Database.instance();
 await db.user.findUnique({ where: { telegramId: BigInt(chatId) } });
 ```
 
-Migrations: `npm run migrate:deploy` (production) or `npm run migrate:new` (dev).
+Migrations: task `migrate:deploy` (production) or task `run migrate:new` (dev).
 
 ## Response Handling
 
@@ -81,14 +81,9 @@ Workflows call `sendAgentResponse(workflowId, message)` activity, which routes t
 
 ## Development Workflow
 
-```bash
-npm run dev          # Clean build + start (runs migrations)
-npm run validate     # Lint + type check (no build)
-npm test             # Run Vitest tests
-npm run start:cli    # Interactive CLI testing (no Telegram)
-```
+When needing to execution `npm` scripts, use the vscode `tasks` to execute them. Do not use `npm` or the terminal directly.
 
-**Critical**: Always run `npm run build` after changing tool definitions or workflow signatures. Temporal workers need compiled code.
+**Critical**: Always run `build`, `validate`, and `test` after changing tool definitions or workflow signatures. Temporal workers need compiled code.
 
 ## Configuration
 
