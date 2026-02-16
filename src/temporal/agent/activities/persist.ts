@@ -33,7 +33,7 @@ async function updateWorkflowMessageDatabase(input: BroadcastUserInput | Broadca
             workflowId: input.workflowId,
             content: input.message,
             type: "text",
-            name: input.name ? input.name : "assistant",
+            userId: input.name ? input.name : "assistant",
             role: input.type === "user-message" ? "user" : "assistant",
             datetime: new Date(),
         }
