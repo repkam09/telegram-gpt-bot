@@ -170,6 +170,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
             if (agentThought.__type == "empty") {
                 await continueCondition();
+                continue;
             }
 
 

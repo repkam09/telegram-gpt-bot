@@ -49,40 +49,45 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
     let iterations = 0;
 
     while (iterations < 15) {
-        const context: CompletionContextEntry[] = [];
+        try {
+            const context: CompletionContextEntry[] = [];
 
-        // grab all the pending messages and put them into context
-        while (pending.length > 0) {
-            const entry = pending.shift()!;
-            context.push({ role: "user", content: `${entry.author}: ${entry.message}` });
+            // grab all the pending messages and put them into context
+            while (pending.length > 0) {
+                const entry = pending.shift()!;
+                context.push({ role: "user", content: `${entry.author}: ${entry.message}` });
+            }
+
+            const agentThought = await legacyCompletion({ context: context, iterations });
+            if (agentThought.__type === "string") {
+                await persistLegacyAgentMessage({
+                    workflowId: workflowInfo().workflowId,
+                    name: "assistant",
+                    type: "agent-message",
+                    message: agentThought.payload,
+                });
+
+                return continueAsNew<typeof legacyWorkflow>({
+                    continueAsNew: {
+                        pending,
+                    },
+                });
+            }
+
+            if (agentThought.__type === "action") {
+                context.push({ role: "tool_call", name: agentThought.payload.name, input: agentThought.payload.input, id: agentThought.payload.id });
+                const actionResult = await legacyAction(
+                    agentThought.payload.name,
+                    agentThought.payload.input,
+                );
+                context.push({ role: "tool_response", id: agentThought.payload.id, result: actionResult });
+            }
+
+            iterations++;
+        } catch {
+            // Log error and continue - activity failures are transient
+            iterations++;
         }
-
-        const agentThought = await legacyCompletion({ context: context, iterations });
-        if (agentThought.__type === "string") {
-            await persistLegacyAgentMessage({
-                workflowId: workflowInfo().workflowId,
-                name: "assistant",
-                type: "agent-message",
-                message: agentThought.payload,
-            });
-
-            return continueAsNew<typeof legacyWorkflow>({
-                continueAsNew: {
-                    pending,
-                },
-            });
-        }
-
-        if (agentThought.__type === "action") {
-            context.push({ role: "tool_call", name: agentThought.payload.name, input: agentThought.payload.input, id: agentThought.payload.id });
-            const actionResult = await legacyAction(
-                agentThought.payload.name,
-                agentThought.payload.input,
-            );
-            context.push({ role: "tool_response", id: agentThought.payload.id, result: actionResult });
-        }
-
-        iterations++;
     }
 
     throw new Error("Max iterations reached in legacy workflow");

@@ -4,7 +4,7 @@
 
 import { ActivityFailure, condition, continueAsNew, defineSignal, proxyActivities, setHandler, workflowInfo } from "@temporalio/workflow";
 import { GemstoneAgentContext, GemstoneAgentWorkflowInput, PendingMessage } from "./interface";
-import * as activities from "./activities";
+import type * as activities from "./activities";
 
 const { persistGemstoneAgentMessage, gemstoneTokens } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
