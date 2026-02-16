@@ -1,43 +1,10 @@
 /*
   Warnings:
 
-  - You are about to drop the `FutureTask` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Group` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `HennosLink` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `KeyValueMemory` table. If the table is not empty, all the data it contains will be lost.
   - You are about to drop the column `userId` on the `WorkflowMessage` table. All the data in the column will be lost.
   - Added the required column `name` to the `WorkflowMessage` table without a default value. This is not possible if the table is not empty.
 
 */
--- DropIndex
-DROP INDEX "HennosLink_link_key";
-
--- DropIndex
-DROP INDEX "HennosLink_chatId_key";
-
--- DropIndex
-DROP INDEX "KeyValueMemory_chatId_key_key";
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "FutureTask";
-PRAGMA foreign_keys=on;
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "Group";
-PRAGMA foreign_keys=on;
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "HennosLink";
-PRAGMA foreign_keys=on;
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "KeyValueMemory";
-PRAGMA foreign_keys=on;
-
 -- CreateTable
 CREATE TABLE "WorkflowChat" (
     "id" TEXT NOT NULL PRIMARY KEY
