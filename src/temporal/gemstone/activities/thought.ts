@@ -50,7 +50,7 @@ type GemstoneThoughtPromptInput = {
 }
 
 export function gemstoneThoughtPromptTemplate({ currentDate }: GemstoneThoughtPromptInput): string {
-    const dayOfWeek = new Date().getDay();
+    const dayOfWeek = new Date(currentDate).getDay();
     const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 
     return `You are a conversational assistant named 'Gemcrab' that is an expert in answering questions about Oldschool RuneScape. Your job is to assist users by answering questions, providing information, and engaging in conversation around Oldschool RuneScape topics.

@@ -90,7 +90,7 @@ type ThoughtPromptInput = {
 }
 
 export function thoughtPromptTemplate({ availableActions, currentDate, previousSteps }: ThoughtPromptInput): string {
-    const dayOfWeek = new Date().getDay();
+    const dayOfWeek = new Date(currentDate).getDay();
     const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 
     return `You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly.

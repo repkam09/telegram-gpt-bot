@@ -52,7 +52,7 @@ type LegacyThoughtPromptInput = {
 }
 
 export function legacyThoughtPromptTemplate({ currentDate }: LegacyThoughtPromptInput): string {
-    const dayOfWeek = new Date().getDay();
+    const dayOfWeek = new Date(currentDate).getDay();
     const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 
     return `You are a conversational assistant named Hennos that assists users. The current date is ${currentDate}. It is a ${dayOfWeekString} today.
