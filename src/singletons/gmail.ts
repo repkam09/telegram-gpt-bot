@@ -31,30 +31,36 @@ export class GmailInstance {
         return google.gmail({ version: "v1", auth: GmailInstance._auth });
     }
 
-    public static async emails(since: Date): Promise<RawEmail[]> {
+    public static async fetchEmails(): Promise<string[]> {
+        const since = new Date(Date.now() - 4 * 60 * 60 * 1000);
         const afterTimestamp = Math.floor(since.getTime() / 1000);
 
         const listRes = await GmailInstance.api().users.messages.list({
-            userId: Config.GMAIL_ADDRESS,
+            userId: "me",
             q: `after:${afterTimestamp}`,
             maxResults: 50,
         });
 
         const messages = listRes.data.messages ?? [];
         if (messages.length === 0) return [];
+        return messages.map(msg => msg.id!);
+    }
+
+    public static async emails(): Promise<RawEmail[]> {
+        const messages = await GmailInstance.fetchEmails();
 
         const emails = await Promise.all(
-            messages.map(msg => GmailInstance.fetchEmailById(msg.id!))
+            messages.map(msg => GmailInstance.fetchEmailById(msg))
         );
 
         return emails.filter((e): e is RawEmail => e !== null);
     }
 
-    private static async fetchEmailById(
+    public static async fetchEmailById(
         messageId: string
     ): Promise<RawEmail | null> {
         const res = await GmailInstance.api().users.messages.get({
-            userId: Config.GMAIL_ADDRESS,
+            userId: "me",
             id: messageId,
             format: "full",
         });
@@ -68,7 +74,7 @@ export class GmailInstance {
         const body = GmailInstance.extractBody(msg.payload);
 
         const deliveredTo = get("Delivered-To");
-        if (deliveredTo && deliveredTo !== Config.GMAIL_ADDRESS) {
+        if (!deliveredTo || !deliveredTo.endsWith("@hennos.app")) {
             // This email was delivered to a different address (e.g. alias), skip it
             return null;
         }

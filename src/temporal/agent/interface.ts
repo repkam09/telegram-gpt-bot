@@ -51,6 +51,16 @@ export async function signalAgenticWorkflowAdminMessage(author: string, message:
     return signalAgenticWorkflowMessage(workflowId, author, message);
 }
 
+export async function signalAgenticWorkflowAdminExternalContext(author: string, message: string) {
+    if (!Config.TELEGRAM_BOT_ADMIN) {
+        Logger.info(undefined, `signalAgenticWorkflowAdminExternalContext: author=${author}, message=${message}`);
+        return;
+    }
+
+    const workflowId = createWorkflowId("telegram", Config.TELEGRAM_BOT_ADMIN);
+    return signalAgenticWorkflowExternalContext(workflowId, author, message);
+}
+
 export async function signalAgenticWorkflowExternalContext(workflowId: string, author: string, content: string) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {

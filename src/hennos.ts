@@ -6,6 +6,7 @@ import { DiscordInstance } from "./client/discord";
 import { WebhookInstance } from "./client/api";
 import { SlackInstance } from "./client/slack";
 import { Config } from "./singletons/config";
+import { createEmailScheduleWorkflow } from "./temporal/email/schedule";
 
 async function start() {
     Logger.info(undefined, "Starting Hennos...");
@@ -42,6 +43,9 @@ async function start() {
     } else {
         Logger.info(undefined, "API client is disabled. Skipping...");
     }
+
+    // Start Scheduled Workflows
+    startup.push(createEmailScheduleWorkflow());
 
     await Promise.all(startup);
 

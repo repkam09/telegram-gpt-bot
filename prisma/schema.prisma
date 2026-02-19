@@ -76,3 +76,20 @@ model WorkflowMessage {
   datetime   DateTime @default(now())
   role       String
 }
+
+model WorkflowSession {
+  id                   String                @id @default(uuid())
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  workflowSessionLinks WorkflowSessionLink[]
+}
+
+model WorkflowSessionLink {
+  id                String          @id @default(uuid())
+  workflowSessionId String
+  chatId            String
+  platform          String
+  workflowSession   WorkflowSession @relation(fields: [workflowSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, platform])
+}

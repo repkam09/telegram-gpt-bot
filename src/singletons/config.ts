@@ -298,14 +298,6 @@ export class Config {
         return process.env.GMAIL_REFRESH_TOKEN;
     }
 
-    static get GMAIL_ADDRESS(): string {
-        if (!process.env.GMAIL_ADDRESS) {
-            return "me";
-        }
-
-        return process.env.GMAIL_ADDRESS;
-    }
-
     static get OPEN_WEATHER_API(): string | false {
         if (!process.env.OPEN_WEATHER_API) {
             return false;
