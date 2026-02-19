@@ -16,15 +16,10 @@ export class TelegramInstance {
     private static _errors: number = 0;
 
     static async init(): Promise<void> {
-        if (!Config.TELEGRAM_BOT_KEY) {
-            console.error("TELEGRAM_BOT_KEY is not set in the environment variables.");
-            throw new Error("TELEGRAM_BOT_KEY is required to run TelegramInstance.");
-        }
-
         Logger.info(undefined, "Starting Hennos Telegram Integration...");
 
         const bot = new TelegramBot(Config.TELEGRAM_BOT_KEY);
-        if (Config.TELEGRAM_BOT_WEBHOOK_ENABLED) {
+        if (Config.HENNOS_API_ENABLED && Config.TELEGRAM_BOT_WEBHOOK_HOST) {
             Logger.info(undefined, `Starting Telegram Bot in Webhook mode: ${Config.TELEGRAM_BOT_WEBHOOK_HOST}/bot${Config.TELEGRAM_BOT_KEY}`);
 
             // This is the external URL that Telegram will use to send updates to our webhook.

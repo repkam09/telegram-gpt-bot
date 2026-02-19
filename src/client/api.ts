@@ -41,9 +41,6 @@ export class WebhookInstance {
     }
 
     static async init() {
-        if (!Config.TELEGRAM_BOT_WEBHOOK_ENABLED) {
-            return;
-        }
         Logger.info(undefined, "Starting Hennos Webhook API");
 
         const app = WebhookInstance.instance();
@@ -360,7 +357,7 @@ export class WebhookInstance {
             return res.status(200).json({ status: "ok" });
         });
 
-        if (Config.TELEGRAM_BOT_KEY) {
+        if (Config.HENNOS_TELEGRAM_ENABLED) {
             // Set up endpoints for Telegram Webhook mode
             app.post(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
                 const bot = TelegramInstance.instance();

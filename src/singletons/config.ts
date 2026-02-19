@@ -37,6 +37,38 @@ export class Config {
         return process.env.HENNOS_LLM_PROVIDER;
     }
 
+    static get HENNOS_TELEGRAM_ENABLED(): boolean {
+        if (!process.env.HENNOS_TELEGRAM_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_TELEGRAM_ENABLED === "true";
+    }
+
+    static get HENNOS_DISCORD_ENABLED(): boolean {
+        if (!process.env.HENNOS_DISCORD_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_DISCORD_ENABLED === "true";
+    }
+
+    static get HENNOS_SLACK_ENABLED(): boolean {
+        if (!process.env.HENNOS_SLACK_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_SLACK_ENABLED === "true";
+    }
+
+    static get HENNOS_API_ENABLED(): boolean {
+        if (!process.env.HENNOS_API_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_API_ENABLED === "true";
+    }
+
     static get TELEGRAM_BOT_WEBHOOK_PORT(): number | false {
         if (!process.env.TELEGRAM_BOT_WEBHOOK_PORT) {
             return false;
@@ -57,14 +89,6 @@ export class Config {
         }
 
         return process.env.TELEGRAM_BOT_WEBHOOK_HOST;
-    }
-
-    static get TELEGRAM_BOT_WEBHOOK_ENABLED(): boolean {
-        if (!Config.TELEGRAM_BOT_WEBHOOK_PORT || !Config.TELEGRAM_BOT_WEBHOOK_HOST) {
-            return false;
-        }
-
-        return true;
     }
 
     static get OPENAI_API_KEY(): string {
@@ -248,6 +272,38 @@ export class Config {
         }
 
         return process.env.TELEGRAM_BOT_ADMIN;
+    }
+
+    static get GMAIL_CLIENT_ID(): string {
+        if (!process.env.GMAIL_CLIENT_ID) {
+            throw new Error("Missing GMAIL_CLIENT_ID");
+        }
+
+        return process.env.GMAIL_CLIENT_ID;
+    }
+
+    static get GMAIL_CLIENT_SECRET(): string {
+        if (!process.env.GMAIL_CLIENT_SECRET) {
+            throw new Error("Missing GMAIL_CLIENT_SECRET");
+        }
+
+        return process.env.GMAIL_CLIENT_SECRET;
+    }
+
+    static get GMAIL_REFRESH_TOKEN(): string {
+        if (!process.env.GMAIL_REFRESH_TOKEN) {
+            throw new Error("Missing GMAIL_REFRESH_TOKEN");
+        }
+
+        return process.env.GMAIL_REFRESH_TOKEN;
+    }
+
+    static get GMAIL_ADDRESS(): string {
+        if (!process.env.GMAIL_ADDRESS) {
+            return "me";
+        }
+
+        return process.env.GMAIL_ADDRESS;
     }
 
     static get OPEN_WEATHER_API(): string | false {
