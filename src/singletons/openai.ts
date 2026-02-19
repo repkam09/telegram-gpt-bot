@@ -83,11 +83,11 @@ export class HennosOpenAIProvider {
     }
 
     public async completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse> {
-        Logger.info(workflowId, `OpenAI Invoke Start (${this.model.MODEL})`);
+        Logger.info(workflowId, `OpenAI Completion Start (${this.model.MODEL})`);
         const converted = tools ? convertHennosTools(tools) : undefined;
         const prompt = convertCompletionMessages(messages);
 
-        const convertedIterations = iterations > 10 ? converted : undefined;
+        const convertedIterations = iterations < 10 ? converted : undefined;
         const result = await this._completion(workflowId, prompt, convertedIterations);
 
         if (result.__type === "string") {
@@ -114,6 +114,8 @@ export class HennosOpenAIProvider {
     }
 
     private async _completion(workflowId: string, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], tools?: ChatCompletionTool[]): Promise<OpenAICompletionResponse> {
+        Logger.debug(workflowId, `Prompt Length: ${prompt.length}, Tools: ${tools ? tools.length : 0}`);
+
         const response: ChatCompletion = await this.client.chat.completions.create({
             model: this.model.MODEL,
             messages: prompt,
@@ -267,13 +269,15 @@ export function convertCompletionMessages(messages: CompletionContextEntry[]): O
 }
 
 export function convertHennosTools(tools: HennosTool[]): ChatCompletionTool[] {
-    return tools.map(tool => {
+    const names: string[] = [];
+    const result = tools.map(tool => {
         if (!tool.function || !tool.function.name) {
             throw new Error(`Invalid Tool Shape for OpenAI, Missing Function or Function Name, Tool: ${JSON.stringify(tool)}`);
         }
 
+        names.push(tool.function.name);
         return {
-            type: "function",
+            type: "function" as const,
             function: {
                 name: tool.function.name,
                 description: tool.function.description,
@@ -281,4 +285,7 @@ export function convertHennosTools(tools: HennosTool[]): ChatCompletionTool[] {
             }
         };
     });
+
+    Logger.debug(undefined, `Loaded ${result.length} tools for OpenAI: ${names.join(", ")}`);
+    return result;
 }

@@ -25,11 +25,12 @@ export function createWorkflowId(platform: string, chatId: string): string {
     const payload = JSON.stringify({
         platform,
         chatId,
+        type: "gemstone"
     });
     return payload;
 }
 
-export function parseWorkflowId(workflowId: string): { platform: string; chatId: string } {
+export function parseWorkflowId(workflowId: string): { platform: string; chatId: string; type: "gemstone" } {
     return JSON.parse(workflowId);
 }
 

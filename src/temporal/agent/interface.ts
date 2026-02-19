@@ -3,7 +3,6 @@ import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
 import { agentWorkflow, agentWorkflowClearContext, agentWorkflowExitSignal, agentWorkflowExternalContextSignal, agentWorkflowMessageSignal } from "./workflow";
 
-
 export type PendingMessage = {
     author: string;
     message: string;
@@ -22,11 +21,12 @@ export function createWorkflowId(platform: string, chatId: string): string {
     const payload = JSON.stringify({
         platform,
         chatId,
+        type: "agent"
     });
     return payload;
 }
 
-export function parseWorkflowId(workflowId: string): { platform: string; chatId: string } {
+export function parseWorkflowId(workflowId: string): { platform: string; chatId: string; type: "agent" } {
     return JSON.parse(workflowId);
 }
 

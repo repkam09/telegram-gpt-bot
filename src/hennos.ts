@@ -4,6 +4,7 @@ import { Database } from "./database";
 import { TelegramInstance } from "./client/telegram";
 import { DiscordInstance } from "./client/discord";
 import { WebhookInstance } from "./client/api";
+import { SlackInstance } from "./client/slack";
 
 async function start() {
     Logger.info(undefined, "Starting Hennos...");
@@ -13,7 +14,8 @@ async function start() {
     await Promise.all([
         TelegramInstance.init(),
         DiscordInstance.init(),
-        WebhookInstance.init()
+        WebhookInstance.init(),
+        SlackInstance.init()
     ]);
 
     Logger.info(undefined, "Starting Temporal worker...");

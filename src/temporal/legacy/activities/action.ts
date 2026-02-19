@@ -1,7 +1,7 @@
 import { processDefinedToolCalls } from "../../../tools/tools";
 import { ToolCallResponse } from "../../../tools/BaseTool";
 import { Context } from "@temporalio/activity";
-import { tools } from "../tools";
+import { availableTools } from "../tools";
 
 export async function legacyAction(
     toolName: string,
@@ -15,7 +15,8 @@ export async function legacyAction(
         }
     };
 
-    const results = await processDefinedToolCalls(workflowId, tools, [[toolCall, null]]);
+    const tools = availableTools(workflowId);
+    const results = await processDefinedToolCalls(workflowId, tools ? tools : [], [[toolCall, null]]);
 
     const stringified: string[] = [];
     results.forEach((result: ToolCallResponse) => {

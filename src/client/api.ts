@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { HennosRealtime } from "../realtime/sip";
 import { AgentResponseHandler } from "../response";
 import { signalGemstoneWorkflowMessage, createWorkflowId as createGemstoneWorkflowId } from "../temporal/gemstone/interface";
+import { signalLegacyWorkflowMessage, createWorkflowId as createLegacyWorkflowId } from "../temporal/legacy/interface";
 export class WebhookInstance {
     static _instance: Express;
     static _streams: Map<string, { stream: Response, uuid: string }[]> = new Map();
@@ -92,7 +93,7 @@ export class WebhookInstance {
                 return res.status(400).send("Invalid agent");
             }
 
-            const agents = ["hennos", "gemstone"];
+            const agents = ["hennos", "gemstone", "legacy"];
             if (!agents.includes(agent)) {
                 return res.status(400).send("Invalid agent");
             }
@@ -316,6 +317,43 @@ export class WebhookInstance {
             } catch (err: unknown) {
                 const error = err as Error;
                 Logger.error(workflowId, `Error signaling gemstone workflow message: ${error.message}`);
+                return res.status(500).json({ status: "error", message: "error sending message" });
+            }
+
+            return res.status(200).json({ status: "ok" });
+        });
+
+        app.post("/legacy/conversation/:sessionId/message", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
+            }
+
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
+            }
+
+            const workflowId = createLegacyWorkflowId("webhook", sessionId);
+
+            const message = req.body.message;
+            if (!message) {
+                Logger.error(workflowId, "Missing message");
+                return res.status(400).send("Missing message");
+            }
+
+            const author = req.body.author;
+            if (!author) {
+                Logger.error(workflowId, "Missing author");
+                return res.status(400).send("Missing author");
+            }
+
+            try {
+                await signalLegacyWorkflowMessage(workflowId, author, message);
+            } catch (err: unknown) {
+                const error = err as Error;
+                Logger.error(workflowId, `Error signaling legacy workflow message: ${error.message}`);
                 return res.status(500).json({ status: "error", message: "error sending message" });
             }
 

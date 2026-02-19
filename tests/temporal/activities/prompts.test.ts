@@ -20,7 +20,7 @@ describe("observationPromptTemplate", () => {
 describe("thoughtPromptTemplate", () => {
     it("should interpolate all input parameters", () => {
         const input = {
-            currentDate: "2026-02-16",
+            currentDate: new Date("2026-02-16"),
             previousSteps: "User: What's the weather?\nAssistant: Let me check",
             availableActions: "weather_lookup - Check current weather"
         };
@@ -38,7 +38,7 @@ describe("thoughtPromptTemplate", () => {
         const expectedDay = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
 
         const result = thoughtPromptTemplate({
-            currentDate: "2026-02-17",
+            currentDate: testDate,
             previousSteps: "",
             availableActions: ""
         });

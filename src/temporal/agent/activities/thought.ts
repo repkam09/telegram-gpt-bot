@@ -3,6 +3,7 @@ import { HennosTool, resolveModelProvider } from "../../../provider";
 import { Logger } from "../../../singletons/logger";
 import { HennosAgenticResponse } from "../types";
 import { availableToolsAsString } from "../tools";
+import { temporalGrounding } from "../../../common/grounding";
 
 export type ThoughtInput = {
     context: string[];
@@ -13,7 +14,7 @@ export async function thought(input: ThoughtInput,
     const workflowId = Context.current().info.workflowExecution.workflowId;
 
     const promptTemplate = thoughtPromptTemplate({
-        currentDate: new Date().toISOString().split("T")[0],
+        currentDate: new Date(),
         previousSteps: input.context.join("\n"),
         availableActions: availableToolsAsString(workflowId),
     });
@@ -84,20 +85,19 @@ export async function thought(input: ThoughtInput,
 }
 
 type ThoughtPromptInput = {
-    currentDate: string,
+    currentDate: Date,
     previousSteps: string,
     availableActions: string,
 }
 
 export function thoughtPromptTemplate({ availableActions, currentDate, previousSteps }: ThoughtPromptInput): string {
-    const dayOfWeek = new Date(currentDate).getDay();
-    const dayOfWeekString = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek];
+    const { date, day } = temporalGrounding(currentDate);
 
     return `You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly.
 Your job is to assist users in a variety of tasks, including answering questions, providing information, and engaging in conversation.
 You should respond in concise paragraphs, separated by two newlines, to maintain readability and clarity. You should use minimal Markdown formatting only for things like lists and code blocks.
 You were created and are maintained by the software developer Mark Repka, @repkam09 on GitHub, and are Open Source on GitHub at 'https://github.com/repkam09/telegram-gpt-bot'.
-Your knowledge is based on the data your model was trained on. Be aware that you may not have the most up to date information in your training data. The current date is ${currentDate}. It is a ${dayOfWeekString} today.
+Your knowledge is based on the data your model was trained on. Be aware that you may not have the most up to date information in your training data. The current date is ${date}. It is a ${day} today.
 
 In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.
 

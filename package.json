@@ -33,6 +33,8 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@mozilla/readability": "^0.6.0",
     "@prisma/client": "^6",
+    "@slack/bolt": "^4.6.0",
+    "@slack/web-api": "^7.14.1",
     "@temporalio/client": "^1.14.1",
     "@temporalio/worker": "^1.14.1",
     "@temporalio/workflow": "^1.14.1",

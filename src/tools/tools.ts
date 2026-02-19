@@ -12,6 +12,7 @@ export async function processDefinedToolCalls(workflowId: string, defined_tools:
                 return [`Unknown tool call: ${tool_call.function.name}`, metadata] as [string, ToolCallMetadata];
             }
 
+            Logger.info(workflowId, `Processing tool call: ${tool_call.function.name}`);
             return ToolMatch.callback(workflowId, tool_call.function.arguments, metadata);
         }));
 

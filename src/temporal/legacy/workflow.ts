@@ -1,16 +1,18 @@
 import {
+    allHandlersFinished,
     condition,
     continueAsNew,
     defineSignal,
     proxyActivities,
     setHandler,
-    workflowInfo,
 } from "@temporalio/workflow";
 import type * as activities from "./activities";
 import { LegacyWorkflowInput } from "./interface";
-import { CompletionContextEntry } from "../../provider";
+import { CompletionContextToolCallEntry, CompletionContextToolResponseEntry } from "../../provider";
 
-const { persistLegacyAgentMessage } = proxyActivities<typeof activities>({
+type WorkflowContextEntry = CompletionContextToolCallEntry | CompletionContextToolResponseEntry;
+
+const { persistLegacyAgentMessage, persistLegacyUserMessage, broadcastLegacyAgentMessage } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
         backoffCoefficient: 1,
@@ -48,25 +50,29 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
     await condition(() => pending.length > 0);
     let iterations = 0;
 
+    const context: WorkflowContextEntry[] = [];
     while (iterations < 15) {
         try {
-            const context: CompletionContextEntry[] = [];
-
-            // grab all the pending messages and put them into context
+            // grab all the pending messages and put them into the database
             while (pending.length > 0) {
                 const entry = pending.shift()!;
-                context.push({ role: "user", content: `${entry.author}: ${entry.message}` });
+                await persistLegacyUserMessage({
+                    name: entry.author,
+                    message: entry.message,
+                });
             }
 
             const agentThought = await legacyCompletion({ context: context, iterations });
             if (agentThought.__type === "string") {
                 await persistLegacyAgentMessage({
-                    workflowId: workflowInfo().workflowId,
-                    name: "assistant",
-                    type: "agent-message",
                     message: agentThought.payload,
                 });
 
+                await broadcastLegacyAgentMessage({
+                    message: agentThought.payload,
+                });
+
+                await allHandlersFinished();
                 return continueAsNew<typeof legacyWorkflow>({
                     continueAsNew: {
                         pending,

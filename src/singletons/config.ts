@@ -210,6 +210,30 @@ export class Config {
         return process.env.DISCORD_BOT_TOKEN;
     }
 
+    static get SLACK_BOT_TOKEN(): string {
+        if (!process.env.SLACK_BOT_TOKEN) {
+            throw new Error("Missing SLACK_BOT_TOKEN");
+        }
+
+        return process.env.SLACK_BOT_TOKEN;
+    }
+
+    static get SLACK_SIGNING_SECRET(): string {
+        if (!process.env.SLACK_SIGNING_SECRET) {
+            throw new Error("Missing SLACK_SIGNING_SECRET");
+        }
+
+        return process.env.SLACK_SIGNING_SECRET;
+    }
+
+    static get SLACK_APP_TOKEN(): string {
+        if (!process.env.SLACK_APP_TOKEN) {
+            throw new Error("Missing SLACK_APP_TOKEN");
+        }
+
+        return process.env.SLACK_APP_TOKEN;
+    }
+
     static get TELEGRAM_BOT_KEY(): string {
         if (!process.env.TELEGRAM_BOT_KEY) {
             throw new Error("Missing TELEGRAM_BOT_KEY");
@@ -338,22 +362,6 @@ export class Config {
         }
 
         return process.env.TEMPORAL_TASK_QUEUE;
-    }
-
-    static get LIFEFORCE_AUTH_TOKEN(): string {
-        if (!process.env.LIFEFORCE_AUTH_TOKEN) {
-            throw new Error("Missing LIFEFORCE_AUTH_TOKEN");
-        }
-
-        return process.env.LIFEFORCE_AUTH_TOKEN;
-    }
-
-    static get LIFEFORCE_BASE_URL(): string {
-        if (!process.env.LIFEFORCE_BASE_URL) {
-            return "https://api.repkam09.com";
-        }
-
-        return process.env.LIFEFORCE_BASE_URL;
     }
 
 
