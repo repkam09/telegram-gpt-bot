@@ -390,9 +390,10 @@ export class WebhookInstance {
             }
         });
 
-        app.listen(Config.TELEGRAM_BOT_WEBHOOK_PORT, () => {
-            Logger.info(undefined, `Hennos Webhook API server is listening on ${Config.TELEGRAM_BOT_WEBHOOK_PORT}`);
+        app.listen(Config.HENNOS_API_PORT, () => {
+            Logger.info(undefined, `Hennos Webhook API server is listening on ${Config.HENNOS_API_PORT}`);
         });
+
         return app;
     }
 }
