@@ -4,7 +4,7 @@ import { Config } from "../singletons/config";
 
 async function run() {
     const REDIRECT_URI = "https://api.repkam09.dev/callback";
-    const PORT = 16001;
+    const PORT = 16006;
 
 
     console.log("ID:", Config.GMAIL_CLIENT_ID);

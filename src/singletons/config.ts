@@ -71,7 +71,7 @@ export class Config {
 
     static get HENNOS_API_PORT(): number {
         if (!process.env.HENNOS_API_PORT) {
-            return 3000;
+            return 16006;
         }
 
         const port = parseInt(process.env.HENNOS_API_PORT);
