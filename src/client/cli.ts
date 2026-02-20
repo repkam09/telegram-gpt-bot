@@ -43,7 +43,7 @@ async function signalWithStartAgentWorkflow(input: string): Promise<void> {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(agentWorkflow, {
         taskQueue: Config.TEMPORAL_TASK_QUEUE,
-        workflowId: createWorkflowId("cli", "cli"),
+        workflowId: await createWorkflowId("cli", "cli"),
         args: [{}],
         signal: agentWorkflowMessageSignal,
         signalArgs: [input, "User", new Date().toISOString()],

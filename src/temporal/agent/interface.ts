@@ -1,3 +1,4 @@
+import { getLinkedSession, setActivePlatformForWorkflowSession } from "../../common/sessions";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
@@ -17,13 +18,24 @@ export type AgentWorkflowInput = {
     };
 };
 
-export function createWorkflowId(platform: string, chatId: string): string {
-    const payload = JSON.stringify({
+export async function createWorkflowId(platform: string, chatId: string): Promise<string> {
+    // Check in the database if this user has a 'unified' workflow. If so, use that workflowId instead of creating a telegram one.
+    const unified = await getLinkedSession(platform, chatId);
+    if (unified) {
+        // Update the WorkflowSession to set the activePlatform to the current platform
+        await setActivePlatformForWorkflowSession(unified, platform);
+        return JSON.stringify({
+            platform: "unified",
+            chatId: unified,
+            type: "agent"
+        });
+    }
+
+    return JSON.stringify({
         platform,
         chatId,
         type: "agent"
     });
-    return payload;
 }
 
 export function parseWorkflowId(workflowId: string): { platform: string; chatId: string; type: "agent" } {
@@ -47,7 +59,7 @@ export async function signalAgenticWorkflowAdminMessage(author: string, message:
         return;
     }
 
-    const workflowId = createWorkflowId("telegram", Config.TELEGRAM_BOT_ADMIN);
+    const workflowId = await createWorkflowId("telegram", Config.TELEGRAM_BOT_ADMIN);
     return signalAgenticWorkflowMessage(workflowId, author, message);
 }
 
@@ -57,7 +69,7 @@ export async function signalAgenticWorkflowAdminExternalContext(author: string, 
         return;
     }
 
-    const workflowId = createWorkflowId("telegram", Config.TELEGRAM_BOT_ADMIN);
+    const workflowId = await createWorkflowId("telegram", Config.TELEGRAM_BOT_ADMIN);
     return signalAgenticWorkflowExternalContext(workflowId, author, message);
 }
 

@@ -3,12 +3,13 @@ import path from "node:path";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { TelegramInstance } from "./telegram";
-import { createWorkflowId as createAgentWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExit, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
+import { createWorkflowId as createAgentWorkflowId, signalAgenticWorkflowExit, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { randomUUID } from "node:crypto";
 import { HennosRealtime } from "../realtime/sip";
 import { AgentResponseHandler } from "../response";
 import { signalGemstoneWorkflowMessage, createWorkflowId as createGemstoneWorkflowId } from "../temporal/gemstone/interface";
 import { signalLegacyWorkflowMessage, createWorkflowId as createLegacyWorkflowId } from "../temporal/legacy/interface";
+import { Database } from "../database";
 export class WebhookInstance {
     static _instance: Express;
     static _streams: Map<string, { stream: Response, uuid: string }[]> = new Map();
@@ -61,14 +62,33 @@ export class WebhookInstance {
                 return res.status(400).send("Invalid sessionId");
             }
 
-            const workflowId = createAgentWorkflowId("webhook", sessionId);
-            // TODO: This really should read from the Database of actual messages
-            //       the context is the (potentially compressed) working memory.
-            // 
-            //       This should also handle pagination for the user scrolling
-            //       way back in the conversation, etc.
-            const context = await queryAgenticWorkflowContext(workflowId);
-            return res.status(200).json(context);
+            const workflowId = await createAgentWorkflowId("webhook", sessionId);
+
+            const db = Database.instance();
+            const history = await db.workflowMessage.findMany({
+                where: {
+                    workflowId
+                },
+                select: {
+                    content: true,
+                    role: true,
+                    userId: true,
+                    datetime: true
+                },
+                orderBy: {
+                    datetime: "asc"
+                },
+                take: 250
+            });
+
+            const respnse = history.map((entry) => ({
+                content: entry.content,
+                role: entry.role,
+                user: entry.userId,
+                date: entry.datetime
+            }));
+
+            return res.status(200).json(respnse);
         });
 
         app.get("/:agent/conversation/:sessionId/stream", (req: Request, res: Response) => {
@@ -132,7 +152,7 @@ export class WebhookInstance {
                 return res.status(400).send("Invalid sessionId");
             }
 
-            const workflowId = createAgentWorkflowId("webhook", sessionId);
+            const workflowId = await createAgentWorkflowId("webhook", sessionId);
 
             const message = req.body.message;
             if (!message) {
@@ -169,7 +189,7 @@ export class WebhookInstance {
                 return res.status(400).send("Invalid sessionId");
             }
 
-            const workflowId = createAgentWorkflowId("webhook", sessionId);
+            const workflowId = await createAgentWorkflowId("webhook", sessionId);
 
             const author = req.body.author;
             if (!author) {
@@ -199,7 +219,7 @@ export class WebhookInstance {
                 return res.status(400).send("Invalid sessionId");
             }
 
-            const workflowId = createAgentWorkflowId("webhook", sessionId);
+            const workflowId = await createAgentWorkflowId("webhook", sessionId);
 
             if (Array.isArray(workflowId)) {
                 Logger.error(undefined, "Invalid workflowId");
@@ -229,7 +249,7 @@ export class WebhookInstance {
                 return res.status(400).send("Invalid sessionId");
             }
 
-            const workflowId = createAgentWorkflowId("webhook", sessionId);
+            const workflowId = await createAgentWorkflowId("webhook", sessionId);
 
             const message = req.body.message;
             if (!message) {

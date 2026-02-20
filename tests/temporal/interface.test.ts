@@ -1,5 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createWorkflowId, parseWorkflowId } from "../../src/temporal/agent/interface";
+import { Database } from "../../src/database";
+
+beforeAll(async () => {
+    await Database.init();
+});
+
+afterAll(async () => {
+    await Database.disconnect();
+});
 
 describe("Workflow ID serialization", () => {
     it("should be reversible for various chatId formats", () => {
@@ -10,8 +19,8 @@ describe("Workflow ID serialization", () => {
             { platform: "api", chatId: "custom-id-123" },
         ];
 
-        testCases.forEach(({ platform, chatId }) => {
-            const workflowId = createWorkflowId(platform, chatId);
+        testCases.forEach(async ({ platform, chatId }) => {
+            const workflowId = await createWorkflowId(platform, chatId);
             const parsed = parseWorkflowId(workflowId);
 
             expect(parsed.platform).toBe(platform);

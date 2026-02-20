@@ -86,7 +86,7 @@ export class DiscordInstance {
         client.on(Events.MessageCreate, async message => {
             if (message.author.bot) return; // Ignore messages from bots
 
-            const { author, workflowId } = DiscordInstance.workflowSignalArguments(message);
+            const { author, workflowId } = await DiscordInstance.workflowSignalArguments(message);
 
             if (message.attachments && message.attachments.size > 0) {
                 for (const attachment of message.attachments.values()) {
@@ -126,10 +126,10 @@ export class DiscordInstance {
         await client.login(Config.DISCORD_BOT_TOKEN);
     }
 
-    private static workflowSignalArguments(msg: OmitPartialGroupDMChannel<Message<boolean>>): { author: string; workflowId: string; } {
+    private static async workflowSignalArguments(msg: OmitPartialGroupDMChannel<Message<boolean>>): Promise<{ author: string; workflowId: string; }> {
         return {
             author: msg.author.globalName || msg.author.username,
-            workflowId: createWorkflowId("discord", String(msg.channelId)),
+            workflowId: await createWorkflowId("discord", String(msg.channelId)),
         };
     }
 

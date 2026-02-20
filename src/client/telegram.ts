@@ -124,10 +124,11 @@ export class TelegramInstance {
         return TelegramInstance._instance;
     }
 
-    private static workflowSignalArguments(msg: TelegramBot.Message): { author: string; workflowId: string; } {
+    private static async workflowSignalArguments(msg: TelegramBot.Message): Promise<{ author: string; workflowId: string; }> {
+        const workflowId = await createWorkflowId("telegram", String(msg.chat.id));
         return {
             author: msg.from!.last_name ? `${msg.from!.first_name} ${msg.from!.last_name}` : `${msg.from!.first_name}`,
-            workflowId: createWorkflowId("telegram", String(msg.chat.id)),
+            workflowId,
         };
     }
 
@@ -162,7 +163,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.document.file_id, Config.LOCAL_STORAGE(workflowId));
         if (!result) {
             Logger.error(workflowId, `Failed to download document with file_id: ${msg.document.file_id}`);
@@ -207,7 +208,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const largestPhoto = msg.photo.reduce((prev, current) => (prev.file_size && current.file_size && prev.file_size > current.file_size) ? prev : current);
 
         const result = await TelegramInstance.downloadTelegramFile(workflowId, largestPhoto.file_id, Config.LOCAL_STORAGE(workflowId));
@@ -227,7 +228,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
 
         const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.audio.file_id, Config.LOCAL_STORAGE(workflowId));
         if (!result) {
@@ -249,7 +250,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
 
         const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.voice.file_id, Config.LOCAL_STORAGE(workflowId));
         if (!result) {
@@ -269,7 +270,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const payload = `<contact><first_name>${msg.contact.first_name}</first_name><last_name>${msg.contact.last_name || ""}</last_name><user_id>${msg.contact.user_id || ""}</user_id><vcard>${msg.contact.vcard || ""}</vcard><phone_number>${msg.contact.phone_number}</phone_number></contact>`;
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
@@ -279,7 +280,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const payload = `<location><latitude>${msg.location.latitude}</latitude><longitude>${msg.location.longitude}</longitude></location>`;
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
@@ -297,7 +298,7 @@ export class TelegramInstance {
         // Check if the user is whitelisted in the database
         const isWhitelisted = await TelegramInstance.isUserWhitelisted(msg.from.id);
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         if (msg.forward_date) {
             const originaldate = new Date(msg.forward_date * 1000).toISOString();
             if (msg.forward_from) {
@@ -330,7 +331,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const payload = `<edited_message><edited_date>${new Date().toISOString()}</edited_date><new_text>${msg.text}</new_text></edited_message>`;
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
@@ -340,7 +341,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { author, workflowId } = TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const payload = `<edited_caption><edited_date>${new Date().toISOString()}</edited_date><new_caption>${msg.caption}</new_caption></edited_caption>`;
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
@@ -357,7 +358,7 @@ export class TelegramInstance {
         const command = msg.text.split(" ")[0].substring(1).toLowerCase().trim();
         Logger.debug(undefined, `Received Telegram command message: ${msg.text} from ${msg.from?.first_name} ${msg.from?.last_name || ""}`);
         if (command === "debug") {
-            const { workflowId } = TelegramInstance.workflowSignalArguments(msg);
+            const { workflowId } = await TelegramInstance.workflowSignalArguments(msg);
             const context = await queryAgenticWorkflowContext(workflowId);
 
             const filePath = path.join(Config.LOCAL_STORAGE(workflowId), `debug_context_${Date.now()}.xml`);

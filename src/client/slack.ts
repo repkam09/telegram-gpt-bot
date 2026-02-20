@@ -91,7 +91,7 @@ export class SlackInstance {
         const author = event.user ? await SlackInstance.getUserFriendlyName(event.user) : event.user_profile ? event.user_profile.display_name : event.username || "unknown";
         return {
             author,
-            workflowId: createWorkflowId("slack", event.channel),
+            workflowId: await createWorkflowId("slack", event.channel),
         };
     }
 
@@ -99,7 +99,7 @@ export class SlackInstance {
         const author = await SlackInstance.getUserFriendlyName(event.user);
         return {
             author,
-            workflowId: createWorkflowId("slack", event.channel),
+            workflowId: await createWorkflowId("slack", event.channel),
         };
     }
 
