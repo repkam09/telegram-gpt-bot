@@ -2,6 +2,7 @@ import { Tool } from "ollama";
 import { Config } from "./singletons/config";
 import { HennosOllamaSingleton } from "./singletons/ollama";
 import { HennosOpenAISingleton } from "./singletons/openai";
+import { HennosAnthropicSingleton } from "./singletons/anthropic";
 
 export type HennosTool = Tool;
 export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeToolResponse;
@@ -70,13 +71,20 @@ export function resolveModelProvider(level: "high" | "low"): InvokableModelProvi
     switch (Config.HENNOS_LLM_PROVIDER) {
         case "openai": {
             if (level === "high") {
-                return HennosOpenAISingleton.instance();
+                return HennosOpenAISingleton.high();
             }
-            return HennosOpenAISingleton.mini();
+            return HennosOpenAISingleton.low();
+        }
+
+        case "anthropic": {
+            if (level === "high") {
+                return HennosAnthropicSingleton.high();
+            }
+            return HennosAnthropicSingleton.low();
         }
 
         case "ollama": {
-            return HennosOllamaSingleton.instance();
+            return HennosOllamaSingleton.high();
         }
 
         default: {

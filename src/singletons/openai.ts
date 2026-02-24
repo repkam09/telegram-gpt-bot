@@ -8,14 +8,14 @@ export class HennosOpenAISingleton {
     private static _instance: HennosOpenAIProvider | null = null;
     private static _mini: HennosOpenAIProvider | null = null;
 
-    public static instance(): HennosOpenAIProvider {
+    public static high(): HennosOpenAIProvider {
         if (!HennosOpenAISingleton._instance) {
             HennosOpenAISingleton._instance = new HennosOpenAIProvider(Config.OPENAI_LLM);
         }
         return HennosOpenAISingleton._instance;
     }
 
-    public static mini(): HennosOpenAIProvider {
+    public static low(): HennosOpenAIProvider {
         if (!HennosOpenAISingleton._mini) {
             HennosOpenAISingleton._mini = new HennosOpenAIProvider(Config.OPENAI_MINI_LLM);
         }

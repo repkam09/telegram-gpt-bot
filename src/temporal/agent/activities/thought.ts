@@ -16,7 +16,7 @@ export async function thought(input: ThoughtInput,
     const promptTemplate = thoughtPromptTemplate({
         currentDate: new Date(),
         previousSteps: input.context.join("\n"),
-        availableActions: availableToolsAsString(workflowId),
+        availableActions: await availableToolsAsString(workflowId),
     });
 
     const model = resolveModelProvider("high");

@@ -140,7 +140,7 @@ export class Config {
 
     static get OPENAI_MINI_LLM(): HennosModelConfig {
         return {
-            MODEL: "gpt-5-nano",
+            MODEL: "gpt-5-mini",
             CTX: 16000,
         };
     }
@@ -166,12 +166,23 @@ export class Config {
     static get ANTHROPIC_LLM(): HennosModelConfig {
         if (!process.env.ANTHROPIC_LLM) {
             return {
-                MODEL: "claude-3-haiku-20240307",
+                MODEL: "claude-opus-4-6",
                 CTX: 16000
             };
         }
 
         return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
+    }
+
+    static get ANTHROPIC_MINI_LLM(): HennosModelConfig {
+        if (!process.env.ANTHROPIC_MINI_LLM) {
+            return {
+                MODEL: "claude-haiku-4-5",
+                CTX: 16000,
+            };
+        }
+
+        return parseHennosModelString(process.env.ANTHROPIC_MINI_LLM, "ANTHROPIC_MINI_LLM");
     }
 
     static get OLLAMA_HOST(): string {

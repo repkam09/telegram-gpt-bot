@@ -10,6 +10,8 @@ import { AgentResponseHandler } from "../response";
 import { signalGemstoneWorkflowMessage, createWorkflowId as createGemstoneWorkflowId } from "../temporal/gemstone/interface";
 import { signalLegacyWorkflowMessage, createWorkflowId as createLegacyWorkflowId } from "../temporal/legacy/interface";
 import { Database } from "../database";
+import { workflowSessionMcpClient } from "../singletons/mcp";
+
 export class WebhookInstance {
     static _instance: Express;
     static _streams: Map<string, { stream: Response, uuid: string }[]> = new Map();
@@ -175,6 +177,130 @@ export class WebhookInstance {
             }
 
             return res.status(200).json({ status: "ok" });
+        });
+
+        app.post("/hennos/conversation/:sessionId/tools", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
+            }
+
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
+            }
+
+            const body = req.body;
+            try {
+                const client = await workflowSessionMcpClient(sessionId);
+                await client.validate(body);
+            } catch (err: unknown) {
+                const error = err as Error;
+                Logger.error(undefined, `Error validating MCP server: ${error.message}`);
+                return res.status(400).json({ status: "error", message: "error validating MCP server", details: error.message });
+            }
+
+            // This endpoint is used for adding mcp-servers to this conversation
+            const db = Database.instance();
+
+            try {
+                await db.workflowSession.upsert({
+                    where: {
+                        id: sessionId as string
+                    },
+                    create: {
+                        activePlatform: "webhook",
+                        id: sessionId as string,
+                        mcpservers: {
+                            create: {
+                                name: body.name,
+                                url: body.url,
+                                transport: body.transport,
+                                mcpserverHeaders: {
+                                    create: body.headers.map((h: { key: string; value: string }) => ({
+                                        key: h.key,
+                                        value: h.value
+                                    }))
+                                }
+                            }
+                        }
+                    },
+                    update: {
+                        activePlatform: "webhook",
+                        mcpservers: {
+                            create: {
+                                name: body.name,
+                                url: body.url,
+                                transport: body.transport,
+                                mcpserverHeaders: {
+                                    create: body.headers.map((h: { key: string; value: string }) => ({
+                                        key: h.key,
+                                        value: h.value
+                                    }))
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return res.status(200).json({ status: "ok" });
+            } catch (err: unknown) {
+                const error = err as Error;
+                Logger.error(undefined, `Error adding MCP server: ${error.message}`);
+                return res.status(500).json({ status: "error", message: "error adding MCP server", details: error.message });
+            }
+        });
+
+        app.get("/hennos/conversation/:sessionId/tools", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
+            }
+
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
+            }
+
+            // This endpoint is used for listing the mcp-servers associated with this conversation
+            const db = Database.instance();
+            const servers = await db.modelContextProtocolServer.findMany({
+                where: {
+                    workflowSessionId: sessionId
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    transport: true,
+                    url: true,
+                    createdAt: true,
+                    mcpserverHeaders: {
+                        select: {
+                            key: true,
+                            value: true
+                        }
+                    }
+                }
+            });
+
+            return res.status(200).json({ mcp: servers });
+        });
+
+        app.delete("/hennos/conversation/:sessionId/tools/:toolId", async (req: Request, res: Response) => {
+            const sessionId = req.params.sessionId;
+            if (!sessionId) {
+                Logger.error(undefined, "Missing sessionId");
+                return res.status(400).send("Missing sessionId");
+            }
+
+            if (Array.isArray(sessionId)) {
+                Logger.error(undefined, "Invalid sessionId");
+                return res.status(400).send("Invalid sessionId");
+            }
+
+            // This endpoint is used for removing mcp-servers from this conversation
         });
 
         app.post("/hennos/conversation/:sessionId/artifact", async (req: Request, res: Response) => {

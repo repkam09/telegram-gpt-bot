@@ -1,8 +1,8 @@
 import { Context } from "@temporalio/activity";
-import { HennosOpenAISingleton } from "../../../singletons/openai";
 import { BraveSearch } from "../../../tools/BraveSearch";
 import { SearchWorkflowInput } from "../types";
 import { temporalGrounding } from "../../../common/grounding";
+import { resolveModelProvider } from "../../../provider";
 
 export async function summarizeResults(input: SearchWorkflowInput, results: Array<object>): Promise<string | null> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
@@ -13,7 +13,7 @@ export async function summarizeResults(input: SearchWorkflowInput, results: Arra
         currentDate: new Date(),
     });
 
-    const instance = HennosOpenAISingleton.mini();
+    const instance = resolveModelProvider("low");
     const response = await instance.invoke(workflowId, [{ role: "user", content: promptTemplate, type: "text" }]);
 
     if (!response || response.__type !== "string") {

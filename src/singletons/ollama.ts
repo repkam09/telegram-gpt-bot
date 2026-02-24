@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 export class HennosOllamaSingleton {
     private static _instance: HennosOllamaProvider | null = null;
 
-    public static instance(): HennosOllamaProvider {
+    public static high(): HennosOllamaProvider {
         if (!HennosOllamaSingleton._instance) {
             HennosOllamaSingleton._instance = new HennosOllamaProvider();
         }
@@ -101,7 +101,7 @@ export class HennosOllamaProvider {
 
     public async moderation(workflowId: string, input: string): Promise<boolean> {
         Logger.info(workflowId, "Ollama Moderation Start");
-        return HennosOpenAISingleton.instance().moderation(workflowId, input);
+        return HennosOpenAISingleton.high().moderation(workflowId, input);
     }
 }
 
