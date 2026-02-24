@@ -37,6 +37,22 @@ export class Config {
         return process.env.HENNOS_LLM_PROVIDER;
     }
 
+    static get HENNOS_GMAIL_ENABLED(): boolean {
+        if (!process.env.HENNOS_GMAIL_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_GMAIL_ENABLED === "true";
+    }
+
+    static get HENNOS_BLUESKY_ENABLED(): boolean {
+        if (!process.env.HENNOS_BLUESKY_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_BLUESKY_ENABLED === "true";
+    }
+
     static get HENNOS_TELEGRAM_ENABLED(): boolean {
         if (!process.env.HENNOS_TELEGRAM_ENABLED) {
             return false;
@@ -296,6 +312,30 @@ export class Config {
         }
 
         return process.env.GMAIL_REFRESH_TOKEN;
+    }
+
+    static get AT_PROTO_SERVICE(): string {
+        if (!process.env.AT_PROTO_SERVICE) {
+            return "https://bsky.social";
+        }
+
+        return process.env.AT_PROTO_SERVICE;
+    }
+
+    static get AT_PROTO_USERNAME(): string {
+        if (!process.env.AT_PROTO_USERNAME) {
+            throw new Error("Missing AT_PROTO_USERNAME");
+        }
+
+        return process.env.AT_PROTO_USERNAME;
+    }
+
+    static get AT_PROTO_PASSWORD(): string {
+        if (!process.env.AT_PROTO_PASSWORD) {
+            throw new Error("Missing AT_PROTO_PASSWORD");
+        }
+
+        return process.env.AT_PROTO_PASSWORD;
     }
 
     static get OPEN_WEATHER_API(): string | false {

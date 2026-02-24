@@ -6,7 +6,8 @@ import { DiscordInstance } from "./client/discord";
 import { WebhookInstance } from "./client/api";
 import { SlackInstance } from "./client/slack";
 import { Config } from "./singletons/config";
-import { createEmailScheduleWorkflow } from "./temporal/email/schedule";
+import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
+import { createBlueskyScheduleWorkflow, deleteBlueskyScheduleWorkflow } from "./temporal/bluesky/schedule";
 
 async function start() {
     Logger.info(undefined, "Starting Hennos...");
@@ -45,7 +46,21 @@ async function start() {
     }
 
     // Start Scheduled Workflows
-    startup.push(createEmailScheduleWorkflow());
+    if (Config.HENNOS_GMAIL_ENABLED) {
+        Logger.info(undefined, "Initializing Email Schedule Workflow...");
+        startup.push(createEmailScheduleWorkflow());
+    } else {
+        Logger.info(undefined, "Email Schedule Workflow is disabled. Skipping...");
+        startup.push(deleteEmailScheduleWorkflow());
+    }
+
+    if (Config.HENNOS_BLUESKY_ENABLED) {
+        Logger.info(undefined, "Initializing Bluesky Schedule Workflow...");
+        startup.push(createBlueskyScheduleWorkflow());
+    } else {
+        Logger.info(undefined, "Bluesky Schedule Workflow is disabled. Skipping...");
+        startup.push(deleteBlueskyScheduleWorkflow());
+    }
 
     await Promise.all(startup);
 

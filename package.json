@@ -14,6 +14,7 @@
     "start": "npm run migrate:deploy && node build/hennos.js",
     "start:cli": "node build/client/cli.js",
     "script:email": "npm run build && node build/scripts/email.js",
+    "script:bsky": "npm run build && node build/scripts/bsky.js",
     "script:token": "npm run build && node build/scripts/token.js",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:reset": "prisma migrate reset",
@@ -29,6 +30,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
+    "@atproto/api": "^0.19.0",
     "@axiomhq/pino": "^1.4.0",
     "@llamaindex/openai": "^0.4.22",
     "@llamaindex/readers": "^3.1.21",
