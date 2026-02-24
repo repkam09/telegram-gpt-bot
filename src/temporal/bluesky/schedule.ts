@@ -1,23 +1,23 @@
+import { BlueskyInstance } from "../../singletons/bluesky";
 import { Config } from "../../singletons/config";
-import { GmailInstance } from "../../singletons/gmail";
 import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
-import { reviewEmailWorkflow } from "./workflow";
+import { reviewBlueskyWorkflow } from "./workflow";
 
-const scheduleId = "email-schedule";
+const scheduleId = "bluesky-schedule";
 
-export async function createEmailScheduleWorkflow() {
-    GmailInstance.init(); // Ensure Gmail is initialized before creating the schedule
+export async function createBlueskyScheduleWorkflow() {
+    BlueskyInstance.init(); // Ensure Bluesky is initialized before creating the schedule
 
     const client = await createTemporalClient();
 
-    Logger.info(scheduleId, "Creating email schedule workflow...");
-    await deleteEmailScheduleWorkflow(); // Ensure no duplicate schedules
+    Logger.info(scheduleId, "Creating bluesky schedule workflow...");
+    await deleteBlueskyScheduleWorkflow(); // Ensure no duplicate schedules
 
     await client.schedule.create({
         action: {
             type: "startWorkflow",
-            workflowType: reviewEmailWorkflow,
+            workflowType: reviewBlueskyWorkflow,
             args: [],
             taskQueue: Config.TEMPORAL_TASK_QUEUE
         },
@@ -29,10 +29,10 @@ export async function createEmailScheduleWorkflow() {
         }
     });
 
-    Logger.info(scheduleId, "Email schedule workflow created successfully.");
+    Logger.info(scheduleId, "Bluesky schedule workflow created successfully.");
 }
 
-export async function deleteEmailScheduleWorkflow() {
+export async function deleteBlueskyScheduleWorkflow() {
     const client = await createTemporalClient();
 
     const schedules = [];
