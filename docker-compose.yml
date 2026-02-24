@@ -8,8 +8,3 @@ services:
     volumes:
       - ".env:/app/hennos/.env"
       - "./data/:/app/hennos/data/"
-  terrarium:
-    container_name: terrarium
-    image: ghcr.io/khoj-ai/terrarium:latest
-    ports:
-      - "16007:8080"

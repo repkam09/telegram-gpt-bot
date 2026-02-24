@@ -111,7 +111,7 @@ export async function fetchPageContent(workflowId: string, url: string): Promise
         Logger.trace(workflowId, `fetchPageContent puppeteer: ${url}`);
         const browser = await puppeteer.launch({
             args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            headless: Config.PUPPETEER_HEADLESS
+            headless: true
         });
 
         const page = await browser.newPage();

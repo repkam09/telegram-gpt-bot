@@ -404,19 +404,7 @@ export class Config {
 
         return process.env.JELLYFIN_BASE_URL;
     }
-
-    static get PUPPETEER_HEADLESS(): boolean {
-        if (!process.env.PUPPETEER_HEADLESS) {
-            return true;
-        }
-
-        if (process.env.PUPPETEER_HEADLESS === "false") {
-            return false;
-        }
-
-        return true;
-    }
-
+    
     static get PUPPETEER_WAIT_UNTIL(): PuppeteerLifeCycleEvent {
         if (!process.env.PUPPETEER_WAIT_UNTIL) {
             return "networkidle2";
