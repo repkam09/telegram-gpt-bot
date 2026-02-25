@@ -37,6 +37,22 @@ export class Config {
         return process.env.HENNOS_LLM_PROVIDER;
     }
 
+    static get HENNOS_MCP_ENABLED(): boolean {
+        if (!process.env.HENNOS_MCP_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_MCP_ENABLED === "true";
+    }
+
+    static get HENNOS_A2A_ENABLED(): boolean {
+        if (!process.env.HENNOS_A2A_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_A2A_ENABLED === "true";
+    }
+
     static get HENNOS_GMAIL_ENABLED(): boolean {
         if (!process.env.HENNOS_GMAIL_ENABLED) {
             return false;
@@ -404,7 +420,7 @@ export class Config {
 
         return process.env.JELLYFIN_BASE_URL;
     }
-    
+
     static get PUPPETEER_WAIT_UNTIL(): PuppeteerLifeCycleEvent {
         if (!process.env.PUPPETEER_WAIT_UNTIL) {
             return "networkidle2";

@@ -13,6 +13,10 @@
                 "authorization": "${input:lifeforce_token}"
             }
         },
+        "hennos": {
+            "type": "http",
+            "url": "http://localhost:16002/hennos/mcp",
+        },        
         "io.github.github/github-mcp-server": {
             "type": "stdio",
             "command": "docker",

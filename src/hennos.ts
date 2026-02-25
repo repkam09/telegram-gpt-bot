@@ -8,6 +8,8 @@ import { SlackInstance } from "./client/slack";
 import { Config } from "./singletons/config";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
 import { createBlueskyScheduleWorkflow, deleteBlueskyScheduleWorkflow } from "./temporal/bluesky/schedule";
+import { ModelContextProtocolServer } from "./client/mcp";
+import { Agent2AgentProtocolServer } from "./client/a2a";
 
 async function start() {
     Logger.info(undefined, "Starting Hennos...");
@@ -15,54 +17,64 @@ async function start() {
 
     Logger.info(undefined, "Initializing clients...");
 
-    const startup = [];
 
     if (Config.HENNOS_TELEGRAM_ENABLED) {
         Logger.info(undefined, "Initializing Telegram client...");
-        startup.push(TelegramInstance.init());
+        await TelegramInstance.init();
     } else {
         Logger.info(undefined, "Telegram client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_DISCORD_ENABLED) {
         Logger.info(undefined, "Initializing Discord client...");
-        startup.push(DiscordInstance.init());
+        await DiscordInstance.init();
     } else {
         Logger.info(undefined, "Discord client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_SLACK_ENABLED) {
         Logger.info(undefined, "Initializing Slack client...");
-        startup.push(SlackInstance.init());
+        await SlackInstance.init();
     } else {
         Logger.info(undefined, "Slack client is disabled. Skipping...");
     }
 
+    if (Config.HENNOS_MCP_ENABLED) {
+        Logger.info(undefined, "Initializing Model Context Protocol Server...");
+        await ModelContextProtocolServer.run();
+    } else {
+        Logger.info(undefined, "Model Context Protocol Server is disabled. Skipping...");
+    }
+
+    if (Config.HENNOS_A2A_ENABLED) {
+        Logger.info(undefined, "Initializing Agent2Agent Protocol Server...");
+        await Agent2AgentProtocolServer.init();
+    } else {
+        Logger.info(undefined, "Agent2Agent Protocol Server is disabled. Skipping...");
+    }
+
     if (Config.HENNOS_API_ENABLED) {
         Logger.info(undefined, "Initializing API client...");
-        startup.push(WebhookInstance.init());
+        await WebhookInstance.init();
     } else {
         Logger.info(undefined, "API client is disabled. Skipping...");
     }
 
-    // Start Scheduled Workflows
     if (Config.HENNOS_GMAIL_ENABLED) {
         Logger.info(undefined, "Initializing Email Schedule Workflow...");
-        startup.push(createEmailScheduleWorkflow());
+        await createEmailScheduleWorkflow();
     } else {
         Logger.info(undefined, "Email Schedule Workflow is disabled. Skipping...");
-        startup.push(deleteEmailScheduleWorkflow());
+        await deleteEmailScheduleWorkflow();
     }
 
     if (Config.HENNOS_BLUESKY_ENABLED) {
         Logger.info(undefined, "Initializing Bluesky Schedule Workflow...");
-        startup.push(createBlueskyScheduleWorkflow());
+        await createBlueskyScheduleWorkflow();
     } else {
         Logger.info(undefined, "Bluesky Schedule Workflow is disabled. Skipping...");
-        startup.push(deleteBlueskyScheduleWorkflow());
+        await deleteBlueskyScheduleWorkflow();
     }
-
-    await Promise.all(startup);
 
     Logger.info(undefined, "Starting Temporal worker...");
     return HennosTemporalWorker.init();

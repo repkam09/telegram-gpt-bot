@@ -11,6 +11,11 @@ export class AgentResponseHandler {
         this.listeners.set(type, callback);
     }
 
+    public static unregisterListener(type: string): void {
+        Logger.info(undefined, `Unregistering listener for platform: ${type}`);
+        this.listeners.delete(type);
+    }
+
     public static registerArtifactListener(type: string, callback: (filePath: string, chatId: string, description?: string) => Promise<void>): void {
         Logger.info(undefined, `Registering artifact listener for platform: ${type}`);
         this.artifactListeners.set(type, callback);

@@ -7,10 +7,13 @@ import { createWorkflowId as createAgentWorkflowId, signalAgenticWorkflowExit, s
 import { randomUUID } from "node:crypto";
 import { HennosRealtime } from "../realtime/sip";
 import { AgentResponseHandler } from "../response";
-import { signalGemstoneWorkflowMessage, createWorkflowId as createGemstoneWorkflowId } from "../temporal/gemstone/interface";
 import { signalLegacyWorkflowMessage, createWorkflowId as createLegacyWorkflowId } from "../temporal/legacy/interface";
 import { Database } from "../database";
 import { workflowSessionMcpClient } from "../singletons/mcp";
+import { ModelContextProtocolServer } from "./mcp";
+import { GemstoneMiddleware } from "../temporal/gemstone/middleware";
+import { Agent2AgentProtocolServer } from "./a2a";
+import { AGENT_CARD_PATH } from "@a2a-js/sdk";
 
 export class WebhookInstance {
     static _instance: Express;
@@ -36,6 +39,7 @@ export class WebhookInstance {
 
     static instance(): Express {
         if (!WebhookInstance._instance) {
+            Logger.info(undefined, "Creating new Express instance for Webhook API");
             const app = express();
             app.use(express.json());
             WebhookInstance._instance = app;
@@ -45,6 +49,11 @@ export class WebhookInstance {
 
     static async init() {
         Logger.info(undefined, "Starting Hennos Webhook API");
+
+        if (!Config.HENNOS_API_ENABLED) {
+            Logger.info(undefined, "Hennos Webhook API is disabled. Skipping initialization.");
+            return;
+        }
 
         const app = WebhookInstance.instance();
         app.use(express.static(path.join(__dirname, "../../public")));
@@ -301,6 +310,8 @@ export class WebhookInstance {
             }
 
             // This endpoint is used for removing mcp-servers from this conversation
+
+            throw new Error("Not Implemented");
         });
 
         app.post("/hennos/conversation/:sessionId/artifact", async (req: Request, res: Response) => {
@@ -400,71 +411,20 @@ export class WebhookInstance {
             return res.status(200).json({ status: "ok" });
         });
 
-        app.post("/hennos/realtime/sip", async (req: Request, res: Response) => {
-            if (!req.body) {
-                Logger.error(undefined, "Missing request body");
-                return res.status(400).send("Missing request body");
-            }
+        app.post("/hennos/realtime/sip", HennosRealtime.middleware());
 
-            if (!req.body.type) {
-                Logger.error(undefined, "Missing request type");
-                return res.status(400).send("Missing request type");
-            }
+        if (Config.HENNOS_MCP_ENABLED) {
+            app.post("/hennos/mcp", ModelContextProtocolServer.middleware());
+            app.get("/hennos/mcp", ModelContextProtocolServer.handleSessionRequest());
+            app.delete("/hennos/mcp", ModelContextProtocolServer.handleSessionRequest());
+        }
 
-            if (req.body.type !== "realtime.call.incoming") {
-                Logger.error(undefined, `Unsupported request type: ${req.body.type}`);
-                return res.status(400).send(`Unsupported request type: ${req.body.type}`);
-            }
+        if (Config.HENNOS_A2A_ENABLED) {
+            app.use(`/${AGENT_CARD_PATH}`, Agent2AgentProtocolServer.agentCardHandler());
+            app.use("/a2a/rest", Agent2AgentProtocolServer.agentRestHandler());
+        }
 
-            const callId = req.body.data?.call_id;
-            if (!callId) {
-                Logger.error(undefined, "Missing call_id");
-                return res.status(400).send("Missing call_id");
-            }
-
-            // TODO: Some way of looking up the phone number to associate with a workflowId
-            const workflowId = undefined;
-
-            await HennosRealtime.createRealtimeSIPSession(workflowId, req.body);
-            return res.status(200).json({ status: "ok" });
-        });
-
-        app.post("/gemstone/conversation/:sessionId/message", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const workflowId = createGemstoneWorkflowId("webhook", sessionId);
-
-            const message = req.body.message;
-            if (!message) {
-                Logger.error(workflowId, "Missing message");
-                return res.status(400).send("Missing message");
-            }
-
-            const author = req.body.author;
-            if (!author) {
-                Logger.error(workflowId, "Missing author");
-                return res.status(400).send("Missing author");
-            }
-
-            try {
-                await signalGemstoneWorkflowMessage(workflowId, author, message);
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(workflowId, `Error signaling gemstone workflow message: ${error.message}`);
-                return res.status(500).json({ status: "error", message: "error sending message" });
-            }
-
-            return res.status(200).json({ status: "ok" });
-        });
+        app.post("/gemstone/conversation/:sessionId/message", GemstoneMiddleware.postMessage());
 
         app.post("/legacy/conversation/:sessionId/message", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
@@ -536,6 +496,7 @@ export class WebhookInstance {
             }
         });
 
+        Logger.info(undefined, "Hennos Webhook API initialized");
         app.listen(Config.HENNOS_API_PORT, () => {
             Logger.info(undefined, `Hennos Webhook API server is listening on ${Config.HENNOS_API_PORT}`);
         });

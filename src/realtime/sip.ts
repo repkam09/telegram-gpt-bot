@@ -4,6 +4,7 @@ import { Logger } from "../singletons/logger";
 import { WebSocket } from "ws";
 import { TerminateCall } from "./terminate";
 import { BraveSearch } from "../tools/BraveSearch";
+import { Request, Response } from "express";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -69,6 +70,37 @@ export class HennosRealtime {
         expiredTokens.forEach((chatId) =>
             HennosRealtime.tokens.delete(chatId)
         );
+    }
+
+    public static middleware() {
+        return async (req: Request, res: Response) => {
+            if (!req.body) {
+                Logger.error(undefined, "Missing request body");
+                return res.status(400).send("Missing request body");
+            }
+
+            if (!req.body.type) {
+                Logger.error(undefined, "Missing request type");
+                return res.status(400).send("Missing request type");
+            }
+
+            if (req.body.type !== "realtime.call.incoming") {
+                Logger.error(undefined, `Unsupported request type: ${req.body.type}`);
+                return res.status(400).send(`Unsupported request type: ${req.body.type}`);
+            }
+
+            const callId = req.body.data?.call_id;
+            if (!callId) {
+                Logger.error(undefined, "Missing call_id");
+                return res.status(400).send("Missing call_id");
+            }
+
+            // TODO: Some way of looking up the phone number to associate with a workflowId
+            const workflowId = undefined;
+
+            await HennosRealtime.createRealtimeSIPSession(workflowId, req.body);
+            return res.status(200).json({ status: "ok" });
+        };
     }
 
     public static async createRealtimeSIPSession(workflowId: string | undefined, data: {
