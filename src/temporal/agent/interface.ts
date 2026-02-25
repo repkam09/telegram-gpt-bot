@@ -53,6 +53,18 @@ export async function signalAgenticWorkflowMessage(workflowId: string, author: s
     });
 }
 
+export async function signalAgenticWorkflowImageMessage(workflowId: string, author: string, path: string) {
+    const content = `<not_implemented>Unsupported: Telegram Photo Messages: ${path}}</not_implemented>`;
+    const client = await createTemporalClient();
+    await client.workflow.signalWithStart(agentWorkflow, {
+        taskQueue: Config.TEMPORAL_TASK_QUEUE,
+        workflowId: workflowId,
+        args: [{}],
+        signal: agentWorkflowMessageSignal,
+        signalArgs: [content, author, new Date().toISOString()],
+    });
+}
+
 export async function signalAgenticWorkflowAdminMessage(author: string, message: string) {
     if (!Config.TELEGRAM_BOT_ADMIN) {
         Logger.info(undefined, `signalAgenticWorkflowAdminMessage: author=${author}, message=${message}`);

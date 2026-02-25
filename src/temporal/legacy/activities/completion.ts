@@ -1,5 +1,6 @@
+import fs from "fs/promises";
 import { ApplicationFailure, Context } from "@temporalio/activity";
-import { CompletionContextEntry, resolveModelProvider } from "../../../provider";
+import { CompletionContextEncodedImage, CompletionContextEntry, CompletionContextImage, CompletionContextImageEntry, CompletionContextTextEntry, resolveModelProvider } from "../../../provider";
 import { Logger } from "../../../singletons/logger";
 import { LegacyAgenticResponse } from "../types";
 import { availableTools } from "../tools";
@@ -82,7 +83,7 @@ async function getChatContext(workflowId: string, limit: number = 100): Promise<
     const flow = parseWorkflowId(workflowId);
 
     const db = Database.instance();
-    const result = await db.messages.findMany({
+    const entries = await db.messages.findMany({
         where: {
             chatId: Number(flow.chatId),
         },
@@ -98,19 +99,35 @@ async function getChatContext(workflowId: string, limit: number = 100): Promise<
         take: limit
     });
 
+    Logger.debug(workflowId, `Retrieved ${entries.length} messages from the database for chatId: ${flow.chatId}`);
+
     const messages: CompletionContextEntry[] = [];
-    for (const message of result) {
-        if (message.type === "text") {
+    for (const entry of entries) {
+        if (entry.type === "text") {
             messages.push({
-                role: message.role as "user" | "assistant" | "system",
-                content: message.content
+                role: entry.role as "user" | "assistant" | "system",
+                content: entry.content
             });
-        } else if (message.type === "image") {
-            Logger.debug(workflowId, `Skipping image message in conversation context, chatId: ${flow.chatId}, messageId: ${message.id}`);
+        } else if (entry.type === "image") {
+            const image = JSON.parse(entry.content) as CompletionContextImage;
+            const encoded = await loadCompletionContextImage(image);
+            if (encoded) {
+                Logger.debug(workflowId, `Loaded image from disk: ${image.local}`);
+                messages.push({
+                    role: entry.role as "user" | "assistant" | "system",
+                    image,
+                    encoded
+                });
+            } else {
+                Logger.warn(workflowId, `Failed to load image from disk: ${image.local}`);
+            }
+
         } else {
-            Logger.warn(workflowId, `Unknown message type in conversation context, chatId: ${flow.chatId}, messageId: ${message.id}, type: ${message.type}`);
+            Logger.warn(workflowId, `Unknown message type in conversation context, chatId: ${flow.chatId}, messageId: ${entry.id}, type: ${entry.type}`);
         }
     }
+
+    Logger.debug(workflowId, `Total messages processed for chatId ${flow.chatId}: ${messages.length}`);
 
     return messages.reverse();
 }
@@ -124,7 +141,6 @@ async function getSizedChatContext(workflowId: string, system: CompletionContext
             throw new Error("Chat context cleanup failed, unable to remove enough tokens to create a valid request.");
         }
 
-        // Logger.debug(workflowId, `getSizedChatContext removing message from context, current total tokens: ${totalTokens}`);
         prompt.shift();
         totalTokens = getChatContextTokenCount(prompt) + systemPromptTokens;
     }
@@ -137,8 +153,17 @@ function getChatContextTokenCount(context: CompletionContextEntry[]): number {
     const encoder = encoding_for_model("gpt-4o-mini");
     const total = context.reduce((acc: number, val: CompletionContextEntry) => {
         if (val.role === "user" || val.role === "assistant" || val.role === "system") {
-            const tokens = encoder.encode(val.content).length;
-            return acc + tokens;
+            const textVal = val as CompletionContextTextEntry;
+            if (textVal.content) {
+                const tokens = encoder.encode(textVal.content).length;
+                return acc + tokens;
+            }
+
+            const imageVal = val as CompletionContextImageEntry;
+            if (imageVal.encoded) {
+                const tokens = 1028; // Estimated token count for an image
+                return acc + tokens;
+            }
         }
         return acc;
 
@@ -146,4 +171,19 @@ function getChatContextTokenCount(context: CompletionContextEntry[]): number {
 
     encoder.free();
     return total;
+}
+
+export async function loadCompletionContextImage(image: CompletionContextImage): Promise<CompletionContextEncodedImage | null> {
+    try {
+        Logger.debug(undefined, `Loading image from ${image.local} Start`);
+        const raw = await fs.readFile(image.local);
+        const data = Buffer.from(raw).toString("base64");
+        Logger.debug(undefined, `Loading image from ${image.local} Finish: ${data.length} bytes`);
+        return { __type: "b64_image", data };
+    } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        Logger.error(undefined, `Failed to load image from ${image.local}: ${error.message}`);
+        return null;
+    }
+
 }

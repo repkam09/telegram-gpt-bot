@@ -1,7 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
 import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
-import { signalLegacyWorkflowMessage } from "../temporal/legacy/interface";
 import { Logger } from "../singletons/logger";
 import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
@@ -10,6 +9,7 @@ import fs from "fs/promises";
 import { generateTranscription } from "../singletons/transcription";
 import { AgentResponseHandler } from "../response";
 import { Database } from "../database";
+import { TelegramLegacyInstance } from "./legacy";
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
@@ -53,15 +53,15 @@ export class TelegramInstance {
             }
         });
 
-        bot.on("text", TelegramInstance.handleTextMessage);
-        bot.on("location", TelegramInstance.handleLocationMessage);
-        bot.on("contact", TelegramInstance.handleContactMessage);
-        bot.on("audio", TelegramInstance.handleAudioMessage);
-        bot.on("photo", TelegramInstance.handlePhotoMessage);
-        bot.on("document", TelegramInstance.handleDocumentMessage);
-        bot.on("voice", TelegramInstance.handleVoiceMessage);
-        bot.on("edited_message_caption", TelegramInstance.handleEditCaptionMessage);
-        bot.on("edited_message_text", TelegramInstance.handleEditTextMessage);
+        bot.on("text", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleTextMessage));
+        bot.on("location", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleLocationMessage));
+        bot.on("contact", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleContactMessage));
+        bot.on("audio", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleAudioMessage));
+        bot.on("photo", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handlePhotoMessage));
+        bot.on("document", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleDocumentMessage));
+        bot.on("voice", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleVoiceMessage));
+        bot.on("edited_message_caption", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleEditCaptionMessage));
+        bot.on("edited_message_text", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleEditTextMessage));
 
         bot.on("polling_error", (error: Error) => {
             Logger.error(undefined, `Telegram polling error: ${error.message}`, error);
@@ -75,6 +75,21 @@ export class TelegramInstance {
         });
 
         Logger.debug(undefined, "Registered Telegram message handlers.");
+    }
+
+    private static async validateWhitelist(msg: TelegramBot.Message, handler: (msg: TelegramBot.Message) => Promise<void>): Promise<void> {
+        if (!msg.from) {
+            return;
+        }
+
+        // Check if the user is whitelisted in the database
+        const isWhitelisted = await TelegramInstance.isUserWhitelisted(msg.from.id);
+        if (!isWhitelisted) {
+            Logger.debug(undefined, `User ${msg.from.id} is not whitelisted`);
+            return;
+        }
+
+        return handler(msg);
     }
 
     private static async sendMessageWrapper(chatId: string, content: string, options: TelegramBot.SendMessageOptions = {}) {
@@ -141,6 +156,16 @@ export class TelegramInstance {
         return user?.whitelisted ?? false;
     }
 
+    private static async isAgenticUser(userId: number): Promise<boolean> {
+        Logger.debug(undefined, `Checking if user ${userId} is agentic.`);
+        // if (Config.TELEGRAM_BOT_ADMIN === String(userId)) {
+        //     return true;
+        // }
+
+        // Eventually this should check again some DB table        
+        return false;
+    }
+
     private static async downloadTelegramFile(workflowId: string, fileId: string, downloadPath: string): Promise<string | null> {
         const bot = TelegramInstance.instance();
         try {
@@ -161,6 +186,11 @@ export class TelegramInstance {
     private static async handleDocumentMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.document) {
             return;
+        }
+
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleDocumentMessage(msg);
         }
 
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
@@ -208,6 +238,11 @@ export class TelegramInstance {
             return;
         }
 
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handlePhotoMessage(msg);
+        }
+
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const largestPhoto = msg.photo.reduce((prev, current) => (prev.file_size && current.file_size && prev.file_size > current.file_size) ? prev : current);
 
@@ -226,6 +261,11 @@ export class TelegramInstance {
     private static async handleAudioMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.audio) {
             return;
+        }
+
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleAudioMessage(msg);
         }
 
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
@@ -250,6 +290,11 @@ export class TelegramInstance {
             return;
         }
 
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleVoiceMessage(msg);
+        }
+
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
 
         const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.voice.file_id, Config.LOCAL_STORAGE(workflowId));
@@ -270,6 +315,12 @@ export class TelegramInstance {
             return;
         }
 
+
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleContactMessage(msg);
+        }
+
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         const payload = `<contact><first_name>${msg.contact.first_name}</first_name><last_name>${msg.contact.last_name || ""}</last_name><user_id>${msg.contact.user_id || ""}</user_id><vcard>${msg.contact.vcard || ""}</vcard><phone_number>${msg.contact.phone_number}</phone_number></contact>`;
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
@@ -278,6 +329,11 @@ export class TelegramInstance {
     private static async handleLocationMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.location) {
             return;
+        }
+
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleLocationMessage(msg);
         }
 
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
@@ -295,8 +351,10 @@ export class TelegramInstance {
             return TelegramInstance.handleTextCommandMessage(msg);
         }
 
-        // Check if the user is whitelisted in the database
-        const isWhitelisted = await TelegramInstance.isUserWhitelisted(msg.from.id);
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleTextMessage(msg);
+        }
 
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
         if (msg.forward_date) {
@@ -318,17 +376,17 @@ export class TelegramInstance {
             }
         }
 
-        // Route to appropriate workflow based on whitelist status
-        if (isWhitelisted) {
-            return signalAgenticWorkflowMessage(workflowId, author, msg.text);
-        } else {
-            return signalLegacyWorkflowMessage(workflowId, author, msg.text);
-        }
+        return signalAgenticWorkflowMessage(workflowId, author, msg.text);
     }
 
     private static async handleEditTextMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
+        }
+
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleLegacyNoOpMessage(msg);
         }
 
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
@@ -339,6 +397,11 @@ export class TelegramInstance {
     private static async handleEditCaptionMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.caption) {
             return;
+        }
+
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleLegacyNoOpMessage(msg);
         }
 
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
@@ -353,6 +416,12 @@ export class TelegramInstance {
     private static async handleTextCommandMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
+        }
+
+
+        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
+        if (!isAgenticUser) {
+            return TelegramLegacyInstance.handleTextCommandMessage(msg);
         }
 
         const command = msg.text.split(" ")[0].substring(1).toLowerCase().trim();

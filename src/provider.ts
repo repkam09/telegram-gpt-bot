@@ -26,11 +26,27 @@ export type HennosMessage = {
     content: string;
 }
 
-export type CompletionContextEntry = CompletionContextTextEntry | CompletionContextToolCallEntry | CompletionContextToolResponseEntry;
+export type CompletionContextEntry = CompletionContextTextEntry | CompletionContextToolCallEntry | CompletionContextToolResponseEntry | CompletionContextImageEntry;
 
 export type CompletionContextTextEntry = {
     role: "user" | "assistant" | "system";
     content: string;
+}
+
+export type CompletionContextImage = {
+    local: string;
+    mime: string;
+}
+
+export type CompletionContextEncodedImage = {
+    __type: "b64_image";
+    data: string;
+}
+
+export type CompletionContextImageEntry = {
+    role: "user" | "assistant" | "system";
+    image: CompletionContextImage;
+    encoded: CompletionContextEncodedImage;
 }
 
 export type CompletionContextToolCallEntry = {

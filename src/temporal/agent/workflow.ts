@@ -121,6 +121,15 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
     // Wait for the first message to arrive
     await continueCondition();
 
+    // There is a potential edge case here where many external context messages
+    // are added before any user messages, which could cause the context to grow significantly.
+    const tokenCount = await tokens(context);
+    const passedTokenLimit = tokenCount.tokenCount > tokenCount.tokenLimit;
+
+    if (workflowInfo().continueAsNewSuggested || passedTokenLimit) {
+        return compactAndContinueAsNew();
+    }
+
     // eslint-disable-next-line no-constant-condition
     while (true) {
         try {

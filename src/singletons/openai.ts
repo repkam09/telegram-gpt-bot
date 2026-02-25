@@ -2,7 +2,7 @@ import { Config, HennosModelConfig } from "./config";
 import OpenAI from "openai";
 import { Logger } from "./logger";
 import { ChatCompletion, ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionTool, ChatCompletionUserMessageParam } from "openai/resources";
-import { CompletionContextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
+import { CompletionContextEntry, CompletionContextImageEntry, CompletionContextTextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 
 export class HennosOpenAISingleton {
     private static _instance: HennosOpenAIProvider | null = null;
@@ -236,10 +236,32 @@ export function convertHennosMessages(messages: HennosMessage[]): OpenAI.Chat.Co
 export function convertCompletionMessages(messages: CompletionContextEntry[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     return messages.reduce((acc, val) => {
         if (val.role === "user" || val.role === "assistant" || val.role === "system") {
-            acc.push({
-                role: val.role satisfies ChatCompletionRole,
-                content: val.content
-            });
+            const textVal = val as CompletionContextTextEntry;
+            if (textVal.content) {
+                acc.push({
+                    role: textVal.role satisfies ChatCompletionRole,
+                    content: textVal.content
+                });
+            }
+
+            const imageVal = val as CompletionContextImageEntry;
+            if (imageVal.encoded) {
+                acc.push({
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: `Image ${imageVal.image.local} created by the ${imageVal.role}`
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                detail: "auto",
+                                url: `data:${imageVal.image.mime};base64,${imageVal.encoded.data}`
+                            }
+                        }]
+                });
+            }
         }
 
         if (val.role === "tool_response") {

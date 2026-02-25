@@ -2,7 +2,7 @@ import { Config } from "./config";
 import { ChatResponse, Message, Ollama } from "ollama";
 import { Logger } from "./logger";
 import { HennosOpenAISingleton } from "./openai";
-import { CompletionContextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
+import { CompletionContextEntry, CompletionContextTextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 import { randomUUID } from "node:crypto";
 
 export class HennosOllamaSingleton {
@@ -120,10 +120,13 @@ function convertHennosMessages(messages: HennosMessage[]): Message[] {
 function convertCompletionMessages(messages: CompletionContextEntry[]): Message[] {
     return messages.reduce((acc, val) => {
         if (val.role === "user" || val.role === "assistant" || val.role === "system") {
-            acc.push({
-                role: val.role,
-                content: val.content
-            });
+            const textVal = val as CompletionContextTextEntry;
+            if (textVal.content) {
+                acc.push({
+                    role: textVal.role,
+                    content: textVal.content
+                });
+            }
         }
 
         if (val.role === "tool_response") {
