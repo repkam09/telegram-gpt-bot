@@ -3,7 +3,6 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import OpenAI from "openai";
 import { Config } from "../singletons/config";
-import { HennosConsumer } from "../singletons/consumer";
 
 type PerplexityResponse = OpenAI.Chat.Completions.ChatCompletion & {
     citations: string[]
@@ -20,7 +19,7 @@ export class PerplexitySearch extends BaseTool {
             function: {
                 name: "perplexity_web_search",
                 description: [
-                    "This core tool performs web searches through Perplexity, an AI-powered search engine. It can be used to get information, answers, and insights from the web along with verified sources.",
+                    "This tool performs web searches through Perplexity, an AI-powered search engine. It can be used to get information, answers, and insights from the web along with verified sources.",
                     "You should prompt Perplexity with a question or search query, and it will return the most relevant information. You can then use this information to answer the user's question or provide additional context.",
                 ].join(" "),
                 parameters: {
@@ -37,10 +36,10 @@ export class PerplexitySearch extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `PerplexitySearch callback. ${JSON.stringify({ query: args.query })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `PerplexitySearch callback. ${JSON.stringify({ query: args.query })}`);
         if (!args.query) {
-            return ["Error: Invalid Request, missing 'query'.", metadata];
+            return [JSON.stringify({ error: "Invalid Request, missing 'query'." }), metadata];
         }
 
         try {
@@ -75,28 +74,27 @@ You should respond using only plain text with no markdown or code blocks.
             }) as PerplexityResponse;
 
             if (!result.choices || result.choices.length === 0) {
-                Logger.warn(req, `Perplexity returned no choices. ${JSON.stringify({ query: args.query })}`);
-                return ["Error: Perplexity returned an unexpected response.", metadata];
+                Logger.warn(workflowId, `Perplexity returned no choices. ${JSON.stringify({ query: args.query })}`);
+                return [JSON.stringify({ error: "Perplexity returned an unexpected response." }), metadata];
             }
 
             if (!result.choices[0].message || !result.choices[0].message.content) {
-                Logger.warn(req, `Perplexity returned no content. ${JSON.stringify({ query: args.query })}`);
-                return ["Error: Perplexity returned an unexpected response.", metadata];
+                Logger.warn(workflowId, `Perplexity returned no content. ${JSON.stringify({ query: args.query })}`);
+                return [JSON.stringify({ error: "Perplexity returned an unexpected response." }), metadata];
             }
 
             const resultCitations = result.citations && result.citations.length > 0 ? result.citations : [];
-            const citations = resultCitations.map((citation, index) => `[${index + 1}]  ${citation}`).join("\n");
 
             const content = result.choices[0].message.content;
 
-            const response = `${content}\n\nSources:\n${citations}`;
-            Logger.debug(req, `PerplexitySearch response. ${JSON.stringify({ response })}`);
+            const response = JSON.stringify({ content, sources: resultCitations });
+            Logger.debug(workflowId, `PerplexitySearch response. ${JSON.stringify({ response })}`);
 
             return [response, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `Perplexity callback error. ${JSON.stringify({ query: args.query, error: error.message })}`, error);
-            return ["An Unhandled Error occured while attempting to use Perplexity.", metadata];
+            Logger.error(workflowId, `Perplexity callback error. ${JSON.stringify({ query: args.query, error: error.message })}`, error);
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 }

@@ -12,10 +12,11 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "preLaunchTask": "tsc",
+            "preLaunchTask": "npm: build",
             "program": "${workspaceFolder}/build/hennos.js",
             "console": "integratedTerminal",
-            "sourceMaps": true
+            "sourceMaps": true,
+            "runtimeExecutable": "node"
         }
     ]
 }

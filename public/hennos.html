@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hennos Test</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #16213e;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        header h1 {
+            font-size: 18px;
+            color: #e94560;
+        }
+
+        .config {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .config label {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .config input {
+            background: #0f3460;
+            border: 1px solid #1a1a4e;
+            color: #e0e0e0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 180px;
+        }
+
+        .config button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .config button:hover {
+            background: #c73652;
+        }
+
+        .config button.disconnect {
+            background: #555;
+        }
+
+        .config button.disconnect:hover {
+            background: #777;
+        }
+
+        #status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        #status.connected {
+            background: #1b5e20;
+            color: #a5d6a7;
+        }
+
+        #status.disconnected {
+            background: #4a1a1a;
+            color: #ef9a9a;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #0f3460;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message .meta {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        #input-area {
+            background: #16213e;
+            padding: 12px 20px;
+            border-top: 1px solid #0f3460;
+            display: flex;
+            gap: 8px;
+        }
+
+        #input-area textarea {
+            flex: 1;
+            background: #0f3460;
+            border: 1px solid #1a1a4e;
+            color: #e0e0e0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            height: 44px;
+        }
+
+        #input-area textarea:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        #input-area button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #input-area button:hover {
+            background: #c73652;
+        }
+
+        #input-area button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Hennos</h1>
+        <div class="config">
+            <label>Session ID</label>
+            <input type="text" id="workflowId" readonly />
+            <label>Author</label>
+            <input type="text" id="author" value="tester" />
+            <span id="status" class="disconnected">disconnected</span>
+        </div>
+    </header>
+    <div id="messages"></div>
+    <div id="input-area">
+        <textarea id="messageInput" placeholder="Type a message..." onkeydown="handleKey(event)"></textarea>
+        <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let reconnectTimeout = null;
+        let reconnectDelay = 1000;
+        let manualDisconnect = false;
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function getOrCreateSessionId() {
+            const storageKey = 'hennos-session-id';
+            let sessionId = localStorage.getItem(storageKey);
+
+            if (!sessionId) {
+                sessionId = generateUUID();
+                localStorage.setItem(storageKey, sessionId);
+            }
+
+            return sessionId;
+        }
+
+        function getWorkflowId() { return document.getElementById("workflowId").value.trim(); }
+        function getAuthor() { return document.getElementById("author").value.trim(); }
+
+        function connect() {
+            const wfId = getWorkflowId();
+            if (!wfId) {
+                if (!manualDisconnect) {
+                    appendSystem("Enter a Workflow ID to connect");
+                }
+                return;
+            }
+
+            // Clear any pending reconnect
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+
+            // Update UI to show connecting state
+            document.getElementById("status").textContent = "connecting...";
+            document.getElementById("status").className = "disconnected";
+
+            eventSource = new EventSource(`/hennos/conversation/${encodeURIComponent(wfId)}/stream`);
+
+            eventSource.onopen = () => {
+                reconnectDelay = 1000; // Reset backoff on successful connection
+                document.getElementById("status").textContent = "connected";
+                document.getElementById("status").className = "connected";
+                document.getElementById("sendBtn").disabled = false;
+                appendSystem("Connected to stream");
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.event) {
+                        console.log(data.event);
+                        return;
+                    }
+
+                    appendMessage(data.role || "assistant", data.content);
+                } catch {
+                    appendMessage("assistant", event.data);
+                }
+            };
+
+            eventSource.onerror = () => {
+                appendSystem("SSE connection error");
+                disconnect();
+
+                // Auto-reconnect unless manually disconnected
+                if (!manualDisconnect) {
+                    scheduleReconnect();
+                }
+            };
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimeout) return;
+
+            appendSystem(`Reconnecting in ${reconnectDelay / 1000}s...`);
+            reconnectTimeout = setTimeout(() => {
+                reconnectTimeout = null;
+                connect();
+            }, reconnectDelay);
+
+            // Exponential backoff, max 30s
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+        }
+
+        function disconnect() {
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+
+            document.getElementById("status").textContent = "disconnected";
+            document.getElementById("status").className = "disconnected";
+            document.getElementById("sendBtn").disabled = true;
+        }
+
+        // Auto-connect on page load
+        window.addEventListener("DOMContentLoaded", () => {
+            // Set the session ID from localStorage or generate a new one
+            const sessionId = getOrCreateSessionId();
+            document.getElementById("workflowId").value = sessionId;
+
+            manualDisconnect = false;
+            connect();
+        });
+
+        async function sendMessage() {
+            const wfId = getWorkflowId();
+            const author = getAuthor();
+            const input = document.getElementById("messageInput");
+            const message = input.value.trim();
+            if (!message || !wfId || !author) return;
+
+            input.value = "";
+            appendMessage("user", message, author);
+
+            try {
+                const res = await fetch(`/hennos/conversation/${encodeURIComponent(wfId)}/message`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message, author })
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    appendSystem(`Error ${res.status}: ${text}`);
+                }
+            } catch (err) {
+                appendSystem(`Fetch error: ${err.message}`);
+            }
+        }
+
+        function appendMessage(role, content, author) {
+            const container = document.getElementById("messages");
+            const div = document.createElement("div");
+            div.className = `message ${role}`;
+            if (author) {
+                const meta = document.createElement("div");
+                meta.className = "meta";
+                meta.textContent = author;
+                div.appendChild(meta);
+            }
+            div.appendChild(document.createTextNode(content));
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function appendSystem(text) {
+            const container = document.getElementById("messages");
+            const div = document.createElement("div");
+            div.style.cssText = "text-align:center;font-size:12px;color:#666;padding:4px;";
+            div.textContent = `— ${text} —`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleKey(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+
+</html>

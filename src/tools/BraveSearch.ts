@@ -1,7 +1,6 @@
 import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { HennosConsumer } from "../singletons/consumer";
 import { Config } from "../singletons/config";
 
 export class BraveSearch extends BaseTool {
@@ -45,24 +44,24 @@ export class BraveSearch extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `Brave callback, query=${args.query}, resource=${args.resource}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `Brave callback, query=${args.query}, resource=${args.resource}`);
         if (!args.query) {
-            return ["brave_search, query not provided", metadata];
+            return [JSON.stringify({ error: "query not provided" }), metadata];
         }
 
         const resource = args.resource || "web";
         if (!["web", "images", "news", "videos"].includes(resource)) {
-            return [`brave_search, invalid resource '${resource}' provided. Expected one of: web, images, news, videos`, metadata];
+            return [JSON.stringify({ error: `invalid resource '${resource}' provided. Expected one of: web, images, news, videos` }), metadata];
         }
 
         try {
             const body = await BraveSearch.searchResults({ query: args.query, resource: resource });
-            return [`brave_search, query '${args.query}', returned the following results: ${JSON.stringify(body)}`, metadata];
+            return [JSON.stringify({ results: body }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `BraveSearch callback error, query=${args.query}`, error);
-            return [`brave_search, query '${args.query}', encountered an error while fetching results`, metadata];
+            Logger.error(workflowId, `BraveSearch callback error, query=${args.query}`, error);
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 

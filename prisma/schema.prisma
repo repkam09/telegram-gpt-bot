@@ -76,3 +76,46 @@ model WorkflowMessage {
   datetime   DateTime @default(now())
   role       String
 }
+
+model WorkflowSession {
+  id                   String                       @id @default(uuid())
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  activePlatform       String?
+  workflowSessionLinks WorkflowSessionLink[]
+  mcpservers           ModelContextProtocolServer[]
+}
+
+model WorkflowSessionLink {
+  id                String          @id @default(uuid())
+  workflowSessionId String
+  chatId            String
+  platform          String
+  workflowSession   WorkflowSession @relation(fields: [workflowSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, platform])
+}
+
+model ModelContextProtocolServer {
+  id                Int                                 @id @default(autoincrement())
+  workflowSessionId String
+  name              String
+  url               String
+  transport         String
+  createdAt         DateTime                            @default(now())
+  updatedAt         DateTime                            @updatedAt
+  workflowSession   WorkflowSession                     @relation(fields: [workflowSessionId], references: [id], onDelete: Cascade)
+  mcpserverHeaders  ModelContextProtocolServerHeaders[]
+
+  @@unique([name, workflowSessionId])
+}
+
+model ModelContextProtocolServerHeaders {
+  id        Int                        @id @default(autoincrement())
+  serverId  Int
+  key       String
+  value     String
+  mcpServer ModelContextProtocolServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, key])
+}
