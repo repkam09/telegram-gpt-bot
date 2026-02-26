@@ -11,7 +11,7 @@ import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 
 export class HennosRetrieveArtifact extends BaseTool {
     public static isEnabled(): boolean {
-        return true;
+        return false;
     }
 
     public static definition(): Tool {

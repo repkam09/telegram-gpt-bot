@@ -36,7 +36,7 @@ export async function legacyCompletion(input: LegacyCompletionInput,
     ], input.iterations, tools ? tools.map((tool) => tool.definition()) : []);
 
     if (response.__type === "string") {
-        Logger.debug(workflowId, `Received string response from model provider: ${response.payload}`);
+        Logger.debug(workflowId, "Received string response from model provider");
         return {
             __type: "string",
             payload: response.payload,
