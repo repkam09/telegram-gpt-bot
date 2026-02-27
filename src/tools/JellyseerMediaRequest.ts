@@ -126,7 +126,7 @@ export class JellyseerMediaSearch extends BaseTool {
                     type: "object",
                     properties: {
                         mediaType: {
-                            type: "number",
+                            type: "string",
                             description: "The type of media being searched. This can be 'tv' or 'movie'.",
                         },
                         title: {
