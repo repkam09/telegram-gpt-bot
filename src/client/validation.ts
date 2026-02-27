@@ -4,6 +4,12 @@ import { Logger } from "../singletons/logger";
 
 /**
  * Middleware factory for validating request bodies using Zod schemas
+ * 
+ * NOTE: This middleware mutates req.body by replacing it with the validated result.
+ * This ensures that downstream handlers receive properly typed and validated data.
+ * 
+ * @param schema - Zod schema to validate the request body against
+ * @returns Express middleware function
  */
 export function validateBody(schema: ZodSchema) {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -30,6 +36,12 @@ export function validateBody(schema: ZodSchema) {
 
 /**
  * Middleware factory for validating request parameters using Zod schemas
+ * 
+ * NOTE: This middleware mutates req.params by replacing it with the validated result.
+ * Type assertion is required due to Express's ParamsDictionary type constraints.
+ * 
+ * @param schema - Zod schema to validate the request parameters against
+ * @returns Express middleware function
  */
 export function validateParams(schema: ZodSchema) {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -56,6 +68,12 @@ export function validateParams(schema: ZodSchema) {
 
 /**
  * Middleware factory for validating both params and body
+ * 
+ * NOTE: This middleware mutates req.params and/or req.body by replacing them with validated results.
+ * This ensures that downstream handlers receive properly typed and validated data.
+ * 
+ * @param options - Object containing optional params and body schemas
+ * @returns Express middleware function
  */
 export function validate(options: { params?: ZodSchema; body?: ZodSchema }) {
     return (req: Request, res: Response, next: NextFunction) => {

@@ -10,6 +10,8 @@ hennos.sqlite
 hennos.sqlite-journal
 tests/fixtures/*.oga.wav
 tests/examples/*
+scripts/*.js
+scripts/*.js.map
 
 # Test coverage
 coverage

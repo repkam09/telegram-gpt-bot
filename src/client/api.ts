@@ -263,9 +263,14 @@ export class WebhookInstance {
             return res.status(200).json({ mcp: servers });
         });
 
-        app.delete("/hennos/conversation/:sessionId/tools/:toolId", async () => {
+        app.delete("/hennos/conversation/:sessionId/tools/:toolId", async (req: Request, res: Response) => {
             // This endpoint is used for removing mcp-servers from this conversation
-            throw new Error("Not Implemented");
+            // Validate params manually since validation middleware would run before this throws
+            const sessionId = req.params.sessionId;
+            const toolId = req.params.toolId;
+            
+            Logger.error(undefined, `Tool removal not implemented for session ${sessionId}, tool ${toolId}`);
+            return res.status(501).send("Not Implemented");
         });
 
         app.post("/hennos/conversation/:sessionId/artifact", validate({ params: sessionIdParamSchema, body: artifactBodySchema }), async (req: Request, res: Response) => {
