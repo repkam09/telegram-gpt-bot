@@ -546,11 +546,7 @@ export class Config {
     }
 
     static get TEMPORAL_ENABLED(): boolean {
-        if (!process.env.TEMPORAL_ENABLED) {
-            return false;
-        }
-
-        return process.env.TEMPORAL_ENABLED === "true";
+        return false;
     }
 
     static get TEMPORAL_HOST(): string {
