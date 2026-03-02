@@ -20,17 +20,8 @@ const { persistUserMessage, persistAgentMessage, tokens } = proxyActivities<type
     },
 });
 
-const { thought, action } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
-    retry: {
-        backoffCoefficient: 1,
-        initialInterval: "3 seconds",
-        maximumAttempts: 5,
-    },
-});
-
-const { compact, observation } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
+const { thought, action, compact, observation } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes", // LLMs, especially Local ones, can be slow
     retry: {
         backoffCoefficient: 1,
         initialInterval: "3 seconds",

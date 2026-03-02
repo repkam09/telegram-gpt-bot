@@ -76,9 +76,18 @@ export async function thought(input: ThoughtInput,
                     input: input
                 }
             };
+        } else {
+            Logger.debug(workflowId, `Model provider indicated to perform an unknown tool: ${response.payload.name}, attempting to process.`);
+            const input = JSON.parse(response.payload.input) as Record<string, string>;
+            return {
+                __type: "action",
+                payload: {
+                    name: response.payload.name,
+                    reason: `${response.payload.name} with input ${response.payload.input}`,
+                    input: input
+                }
+            };
         }
-
-        throw new ApplicationFailure(`Invalid tool response from model provider, unrecognized tool name: ${response.payload.name}`, "InvalidModelResponse");
     }
 
     throw new ApplicationFailure("Invalid response from model provider, expected string or tool response", "InvalidModelResponse");

@@ -5,6 +5,7 @@ import { HennosBaseTool, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 export async function processDefinedToolCalls(workflowId: string, defined_tools: HennosBaseTool[], tool_calls: [ToolCall, ToolCallMetadata][]): Promise<ToolCallResponse[]> {
     try {
         const results = await Promise.all(tool_calls.map(async ([tool_call, metadata]) => {
+            Logger.debug(workflowId, `Processing tool call: ${tool_call.function.name} with args: ${JSON.stringify(tool_call.function.arguments)}`);
             const ToolMatch = defined_tools.find((Tool) => Tool.definition().function.name === tool_call.function.name);
             if (!ToolMatch) {
                 Logger.info(workflowId, `Unknown tool call: ${tool_call.function.name}`);

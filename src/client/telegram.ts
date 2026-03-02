@@ -158,9 +158,9 @@ export class TelegramInstance {
 
     private static async isAgenticUser(userId: number): Promise<boolean> {
         Logger.debug(undefined, `Checking if user ${userId} is agentic.`);
-        // if (Config.TELEGRAM_BOT_ADMIN === String(userId)) {
-        //     return true;
-        // }
+        if (Config.TELEGRAM_BOT_ADMIN === String(userId)) {
+            return true;
+        }
 
         // Eventually this should check again some DB table        
         return false;
