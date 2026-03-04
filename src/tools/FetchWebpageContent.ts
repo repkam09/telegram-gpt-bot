@@ -3,7 +3,7 @@ import path from "node:path";
 
 import puppeteer from "puppeteer";
 import { JSDOM } from "jsdom";
-import { Readability } from "@mozilla/readability";
+import { isProbablyReaderable, Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
 import { AxiosError } from "axios";
 import { HTMLReader } from "@llamaindex/readers/html";
@@ -128,9 +128,9 @@ export async function fetchPageContent(workflowId: string, url: string): Promise
 
         const html = await page.content();
 
-        let article: string | undefined;
+        let article: string | null = null;
         try {
-            article = extractReadable(html, url);
+            article = extractReadable(workflowId, html, url);
         } catch (err: unknown) {
             const e = err as Error;
             Logger.debug(workflowId, `readability extraction failed. Error: ${e.message}`);
@@ -145,7 +145,7 @@ export async function fetchPageContent(workflowId: string, url: string): Promise
         Logger.error(workflowId, `fetchPageContent error url=${url} error=${error.message}`, error);
         try {
             const fallback = await BaseTool.fetchTextData(url);
-            const extracted = extractReadable(fallback, url) || fallback;
+            const extracted = extractReadable(workflowId, fallback, url) || fallback;
             return extracted;
         } catch {
             return BaseTool.fetchTextData(url);
@@ -154,19 +154,32 @@ export async function fetchPageContent(workflowId: string, url: string): Promise
 }
 
 // Extract main article content similar to Firefox Reader Mode. Returns plain text with title and byline.
-function extractReadable(html: string, url: string): string | undefined {
+function extractReadable(workflowId: string, html: string, url: string): string | null {
     const dom = new JSDOM(html, { url });
-    const reader = new Readability(dom.window.document);
-    const article = reader.parse();
-    if (!article) return undefined;
-    const parts = [article.title, article.byline, article.textContent]
+    if (!isProbablyReaderable(dom.window.document)) {
+        return null;
+    }
+
+    const readable = new Readability(dom.window.document);
+    const parsed = readable.parse();
+    if (!parsed) {
+        return null;
+    }
+
+    const parts = [parsed.title, parsed.byline, parsed.textContent]
         .filter(Boolean)
-        .map(s => (s as string).trim());
-    const text = parts.join("\n\n");
+        .join("\n\n");
+
     // Basic sanity: require some length
-    if (text.split(/\s+/).length < 50) return undefined; // too short, maybe extraction failed
-    return text;
+    if (parts.split(/\s+/).length < 50) return null; // too short, maybe extraction failed
+
+    Logger.debug(workflowId,
+        `Extracted readable content length: ${parts.length} characters.`,
+    );
+
+    return parts;
 }
+
 
 export async function handleDocument(workflowId: string, path: string, uuid: string, reader: BaseReader, prompt?: string): Promise<string> {
     Logger.info(workflowId, `Processing document at path: ${path} with UUID: ${uuid}.`);

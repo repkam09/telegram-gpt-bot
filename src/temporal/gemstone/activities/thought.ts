@@ -4,12 +4,14 @@ import { Logger } from "../../../singletons/logger";
 import { GemstoneAgenticResponse } from "../types";
 import { tools } from "../tools";
 import { temporalGrounding } from "../../../common/grounding";
+import { withActivityHeartbeat } from "../../heartbeat";
 
 export type GemstoneThoughtInput = {
     context: { role: "user" | "assistant" | "system"; content: string }[];
 }
 
-export async function gemstoneThought(input: GemstoneThoughtInput,
+export const gemstoneThought = withActivityHeartbeat(_gemstoneThought);
+async function _gemstoneThought(input: GemstoneThoughtInput,
 ): Promise<GemstoneAgenticResponse> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
 

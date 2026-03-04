@@ -52,6 +52,10 @@ export class HennosAnthropicProvider {
         this.model = model;
     }
 
+    public limit(): number {
+        return this.model.CTX;
+    }
+
     public async invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
         Logger.info(workflowId, `Anthropic Invoke Start (${this.model.MODEL})`);
         const converted = tools ? convertHennosTools(tools) : undefined;

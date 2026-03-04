@@ -4,12 +4,14 @@ import { Logger } from "../../../singletons/logger";
 import { HennosAgenticResponse } from "../types";
 import { availableToolsAsString } from "../tools";
 import { temporalGrounding } from "../../../common/grounding";
+import { withActivityHeartbeat } from "../../heartbeat";
 
 export type ThoughtInput = {
     context: string[];
 }
 
-export async function thought(input: ThoughtInput,
+export const thought = withActivityHeartbeat(_thought);
+async function _thought(input: ThoughtInput,
 ): Promise<HennosAgenticResponse> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
 

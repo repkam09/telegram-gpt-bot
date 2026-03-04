@@ -54,6 +54,10 @@ export class HennosOpenAIProvider {
         this.moderationModel = "omni-moderation-latest";
     }
 
+    public limit(): number {
+        return this.model.CTX;
+    }
+
     public async invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
         Logger.info(workflowId, `OpenAI Invoke Start (${this.model.MODEL})`);
         const converted = tools ? convertHennosTools(tools) : undefined;

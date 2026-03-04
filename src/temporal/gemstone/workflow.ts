@@ -15,8 +15,8 @@ const { persistGemstoneAgentMessage, gemstoneTokens } = proxyActivities<typeof a
     },
 });
 
-const { gemstoneThought, gemstoneAction } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
+const { gemstoneThought, gemstoneAction, gemstoneCompact, gemstoneObservation } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
     retry: {
         backoffCoefficient: 1,
         initialInterval: "3 seconds",
@@ -24,14 +24,6 @@ const { gemstoneThought, gemstoneAction } = proxyActivities<typeof activities>({
     },
 });
 
-const { gemstoneCompact, gemstoneObservation } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-    retry: {
-        backoffCoefficient: 1,
-        initialInterval: "3 seconds",
-        maximumAttempts: 5,
-    },
-});
 
 export const gemstoneAgentWorkflowMessageSignal = defineSignal<[string, string, string]>(
     "gemstoneAgentWorkflowMessage",

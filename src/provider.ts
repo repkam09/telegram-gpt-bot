@@ -78,6 +78,7 @@ export type CompletionResponseTool = {
 }
 
 type InvokableModelProvider = {
+    limit(): number;
     invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse>;
     completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse>;
     moderation(workflowId: string, input: string): Promise<boolean>;

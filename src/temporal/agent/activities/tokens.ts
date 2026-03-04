@@ -1,6 +1,7 @@
 import { Logger } from "../../../singletons/logger";
 import { encoding_for_model } from "tiktoken";
 import { Context } from "@temporalio/activity";
+import { resolveModelProvider } from "../../../provider";
 
 export async function tokens(
     context: string[],
@@ -9,12 +10,18 @@ export async function tokens(
     tokenLimit: number;
 }> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
-    
+
     const result = await getChatContextTokenCount(context);
-    Logger.debug(workflowId, `Counting tokens for ${context.length} messages, tokenCount: ${result}, tokenLimit: 16000`);
+
+    const provider = resolveModelProvider("high");
+    const limit = provider.limit();
+    
+    Logger.debug(workflowId, `Counting tokens for ${context.length} messages, tokenCount: ${result}, tokenLimit: ${limit}`);
+
+
     return {
         tokenCount: result,
-        tokenLimit: 16000,
+        tokenLimit: limit,
     };
 }
 

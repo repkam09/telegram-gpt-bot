@@ -8,13 +8,15 @@ import { lastActiveDateString, temporalGrounding } from "../../../common/groundi
 import { parseWorkflowId } from "../interface";
 import { Database } from "../../../database";
 import { encoding_for_model } from "tiktoken";
+import { withActivityHeartbeat } from "../../heartbeat";
 
 export type LegacyCompletionInput = {
     context: CompletionContextEntry[];
     iterations: number;
 }
 
-export async function legacyCompletion(input: LegacyCompletionInput,
+export const legacyCompletion = withActivityHeartbeat(_legacyCompletion);
+async function _legacyCompletion(input: LegacyCompletionInput,
 ): Promise<LegacyAgenticResponse> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
 
@@ -22,13 +24,14 @@ export async function legacyCompletion(input: LegacyCompletionInput,
         currentDate: new Date()
     });
 
+    const model = resolveModelProvider("high");
+
     // Load this from the database
     const complete = await getChatContext(workflowId);
-    const conversation = await getSizedChatContext(workflowId, [{ role: "system", content: systemPrompt }], complete, 16000);
+    const conversation = await getSizedChatContext(workflowId, [{ role: "system", content: systemPrompt }], complete, model.limit());
 
     const tools = availableTools(workflowId);
 
-    const model = resolveModelProvider("high");
     const response = await model.completion(workflowId, [
         { role: "system", content: systemPrompt },
         ...conversation,

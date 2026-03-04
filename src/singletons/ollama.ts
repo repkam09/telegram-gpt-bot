@@ -24,6 +24,10 @@ export class HennosOllamaProvider {
         });
     }
 
+    public limit(): number {
+        return Config.OLLAMA_LLM.CTX;
+    }
+
     public async invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
         Logger.info(workflowId, `Ollama Invoke Start (${Config.OLLAMA_LLM.MODEL})`);
         const prompt = convertHennosMessages(messages);

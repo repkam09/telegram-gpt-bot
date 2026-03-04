@@ -180,8 +180,8 @@ export class Config {
     static get OLLAMA_LLM(): HennosModelConfig {
         if (!process.env.OLLAMA_LLM) {
             return {
-                MODEL: "qwen2.5:14b",
-                CTX: 16000,
+                MODEL: "repkam09/hennos-qwen3.5:latest",
+                CTX: 102400,
             };
         }
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
