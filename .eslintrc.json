@@ -28,6 +28,7 @@
         ]
     },
     "ignorePatterns": [
-        "build"
+        "build",
+        "scripts"
     ]
 }

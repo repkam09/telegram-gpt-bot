@@ -45,3 +45,12 @@ If you want to run the bot locally, you can start it with the following command:
 ```shell
 npm run dev
 ```
+
+## API Documentation
+
+Hennos includes comprehensive REST API documentation via OpenAPI 3.0 and Swagger UI. When running in development mode (`HENNOS_DEVELOPMENT_MODE=true`), the following documentation endpoints are available:
+
+- **OpenAPI JSON Spec**: `http://localhost:16006/openapi.json`
+- **Interactive Swagger UI**: `http://localhost:16006/api-docs`
+
+All API endpoints use Zod for request validation, ensuring type-safe and well-documented APIs. See [docs/OPENAPI.md](docs/OPENAPI.md) for detailed API usage and examples.
