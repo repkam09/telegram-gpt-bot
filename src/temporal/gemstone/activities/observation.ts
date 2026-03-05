@@ -1,6 +1,7 @@
 import { resolveModelProvider } from "../../../provider";
 import { Context } from "@temporalio/activity";
 import { GemstoneAgentContext } from "../interface";
+import { withActivityHeartbeat } from "../../heartbeat";
 
 export type GemstoneObservationInput = {
     context: GemstoneAgentContext[],
@@ -11,7 +12,8 @@ export type GemstoneObservationResult = {
     observations: string;
 }
 
-export async function gemstoneObservation(input: GemstoneObservationInput
+export const gemstoneObservation = withActivityHeartbeat(_gemstoneObservation);
+async function _gemstoneObservation(input: GemstoneObservationInput
 ): Promise<GemstoneObservationResult> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
     const model = resolveModelProvider("low");

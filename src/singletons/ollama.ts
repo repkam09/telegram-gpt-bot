@@ -67,7 +67,8 @@ export class HennosOllamaProvider {
             stream: false,
             model: Config.OLLAMA_LLM.MODEL,
             messages: prompt,
-            tools: tools
+            tools: tools,
+            keep_alive: 30
         });
 
         Logger.info(workflowId, `Ollama Invoke Success, Usage: ${response.eval_count}`);

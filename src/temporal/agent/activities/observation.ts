@@ -1,5 +1,6 @@
 import { resolveModelProvider } from "../../../provider";
 import { Context } from "@temporalio/activity";
+import { withActivityHeartbeat } from "../../heartbeat";
 
 export type ObservationInput = {
     context: string[],
@@ -10,7 +11,8 @@ export type ObservationResult = {
     observations: string;
 }
 
-export async function observation(input: ObservationInput
+export const observation = withActivityHeartbeat(_observation);
+async function _observation(input: ObservationInput
 ): Promise<ObservationResult> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
     const model = resolveModelProvider("low");
