@@ -28,6 +28,7 @@ export class JellyseerMediaRequest extends BaseTool {
                     properties: {
                         mediaType: {
                             type: "string",
+                            enum: ["tv", "movie"],
                             description: "The type of media being requested. This can be 'tv' or 'movie'.",
                         },
                         mediaId: {
@@ -48,15 +49,30 @@ export class JellyseerMediaRequest extends BaseTool {
     public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(workflowId, `jellyseer_media_request. ${JSON.stringify({ args })}`);
         if (!args.mediaType) {
+            Logger.info(workflowId, "jellyseer_media_request error: mediaType not provided");
             return [JSON.stringify({ error: "mediaType must be provided" }), metadata];
         }
 
         if (!["tv", "movie"].includes(args.mediaType)) {
+            Logger.info(workflowId, "jellyseer_media_request error: invalid mediaType");
             return [JSON.stringify({ error: "mediaType must be one of 'tv' or 'movie'" }), metadata];
         }
 
         if (!args.mediaId) {
+            Logger.info(workflowId, "jellyseer_media_request error: mediaId not provided");
             return [JSON.stringify({ error: "mediaId must be provided" }), metadata];
+        }
+
+        if (args.mediaType === "movie") {
+            args.seasons = undefined;
+        }
+
+        // If seasons is provided, validate that it's either 'all' or a comma separated list of numbers.
+        if (args.seasons) {
+            if (args.seasons !== "all" && !/^(\d+,)*\d+$/.test(args.seasons)) {
+                Logger.info(workflowId, "jellyseer_media_request error: invalid seasons format");
+                return [JSON.stringify({ error: "seasons must be 'all' or a comma separated list of numbers. Ex. '1,2,3'" }), metadata];
+            }
         }
 
         try {
@@ -66,8 +82,10 @@ export class JellyseerMediaRequest extends BaseTool {
 
             if (data.mediaInfo) {
                 if (Config.JELLYFIN_BASE_URL) {
+                    Logger.info(workflowId, `media is already available for streaming at ${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}`);
                     return [JSON.stringify({ error: "media is already available for streaming", stream_url: `${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}` }), metadata];
                 }
+                Logger.info(workflowId, "media is already available for streaming");
                 return [JSON.stringify({ error: "media is already available for streaming" }), metadata];
             }
         } catch (err: unknown) {
@@ -77,17 +95,17 @@ export class JellyseerMediaRequest extends BaseTool {
         }
 
 
-        Logger.debug(workflowId, `jellyseer_media_request. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId })}`);
+        Logger.info(workflowId, `jellyseer_media_request. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId })}`);
         try {
             const results = await BaseTool.postJSONData<JellyseerSearchResults>(`${Config.JELLYSEER_BASE_URL}/api/v1/request`, {
                 "mediaType": args.mediaType,
                 "mediaId": Number(args.mediaId),
-                "seasons": "all",
+                "seasons": args.seasons
             }, {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             });
 
-            Logger.debug(workflowId, `jellyseer_media_request. ${JSON.stringify(results)}`);
+            Logger.info(workflowId, `jellyseer_media_request. ${JSON.stringify(results)}`);
 
             // @TOOD: Figure out how to notify the admin of the request.
             Logger.info(workflowId, `${workflowId} has requested ${args.mediaType} with id ${args.mediaId}`);
@@ -128,7 +146,8 @@ export class JellyseerMediaSearch extends BaseTool {
                     type: "object",
                     properties: {
                         mediaType: {
-                            type: "number",
+                            type: "string",
+                            enum: ["tv", "movie"],
                             description: "The type of media being searched. This can be 'tv' or 'movie'.",
                         },
                         title: {
