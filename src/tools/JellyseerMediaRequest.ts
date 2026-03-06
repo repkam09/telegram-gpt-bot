@@ -29,6 +29,7 @@ export class JellyseerMediaRequest extends BaseTool {
                     properties: {
                         mediaType: {
                             type: "string",
+                            enum: ["tv", "movie"],
                             description: "The type of media being requested. This can be 'tv' or 'movie'.",
                         },
                         mediaId: {
@@ -49,14 +50,30 @@ export class JellyseerMediaRequest extends BaseTool {
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(req, `jellyseer_media_request. ${JSON.stringify({ args })}`);
         if (!args.mediaType) {
+            Logger.error(req, "jellyseer_media_request failed, mediaType must be provided");
             return ["jellyseer_media_request failed, mediaType must be provided", metadata];
         }
 
         if (!["tv", "movie"].includes(args.mediaType)) {
+            Logger.error(req, "jellyseer_media_request failed, mediaType must be one of 'tv' or 'movie'");
             return ["jellyseer_media_request failed, mediaType must be one of 'tv' or 'movie'", metadata];
         }
 
+        if (args.mediaType === "tv" && args.seasons && args.seasons !== "all") {
+            const seasonsArray = args.seasons.split(",").map((season: string) => season.trim());
+            if (!seasonsArray.every((season: string) => /^\d+$/.test(season))) {
+                Logger.error(req, "jellyseer_media_request failed, seasons must be 'all' or a comma separated list of numbers");
+                return ["jellyseer_media_request failed, seasons must be 'all' or a comma separated list of numbers", metadata];
+            }
+        }
+
+        if (args.mediaType === "movie" && args.seasons) {
+            Logger.warn(req, "jellyseer_media_request: seasons parameter is not applicable for movies, ignoring seasons parameter");
+            args.seasons = undefined;
+        }
+
         if (!args.mediaId) {
+            Logger.error(req, "jellyseer_media_request failed, mediaId must be provided");
             return ["jellyseer_media_request failed, mediaId must be provided", metadata];
         }
 
@@ -66,6 +83,7 @@ export class JellyseerMediaRequest extends BaseTool {
             });
 
             if (data.mediaInfo) {
+                Logger.info(req, `jellyseer_media_request: media is already available for streaming. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId, jellyfinMediaId: data.mediaInfo.jellyfinMediaId })}`);
                 if (Config.JELLYFIN_BASE_URL) {
                     return [`jellyseer_media_request failed, the media is already available for streaming. Stream URL: ${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}`, metadata];
                 }
@@ -78,19 +96,19 @@ export class JellyseerMediaRequest extends BaseTool {
         }
 
 
-        Logger.debug(req, `jellyseer_media_request. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId })}`);
+        Logger.info(req, `jellyseer_media_request. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId })}`);
         try {
+            await TelegramBotInstance.sendAdminMessage(`${req.displayName} has requested ${args.mediaType} with id ${args.mediaId}`);
             const results = await BaseTool.postJSONData<JellyseerSearchResults>(`${Config.JELLYSEER_BASE_URL}/api/v1/request`, {
                 "mediaType": args.mediaType,
                 "mediaId": Number(args.mediaId),
-                "seasons": "all",
+                "seasons": args.seasons,
             }, {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             });
 
-            Logger.debug(req, `jellyseer_media_request. ${JSON.stringify(results)}`);
+            Logger.info(req, `jellyseer_media_request. ${JSON.stringify(results)}`);
 
-            await TelegramBotInstance.sendAdminMessage(`${req.displayName} has requested ${args.mediaType} with id ${args.mediaId}`);
             return ["jellyseer_media_request, success", metadata];
         } catch (err: unknown) {
             const error = err as Error;
@@ -127,6 +145,7 @@ export class JellyseerMediaSearch extends BaseTool {
                     properties: {
                         mediaType: {
                             type: "string",
+                            enum: ["tv", "movie"],
                             description: "The type of media being searched. This can be 'tv' or 'movie'.",
                         },
                         title: {
@@ -143,18 +162,21 @@ export class JellyseerMediaSearch extends BaseTool {
     public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
         Logger.info(req, `jellyseer_media_search. ${JSON.stringify({ args })}`);
         if (!args.mediaType) {
+            Logger.error(req, "jellyseer_media_search failed, mediaType must be provided");
             return ["jellyseer_media_search failed, mediaType must be provided", metadata];
         }
 
         if (!["tv", "movie"].includes(args.mediaType)) {
+            Logger.error(req, "jellyseer_media_search failed, mediaType must be one of 'tv' or 'movie'");
             return ["jellyseer_media_search failed, mediaType must be one of 'tv' or 'movie'", metadata];
         }
 
         if (!args.title) {
+            Logger.error(req, "jellyseer_media_search failed, title must be provided");
             return ["jellyseer_media_search failed, title must be provided", metadata];
         }
 
-        Logger.debug(req, `jellyseer_media_search. ${JSON.stringify({ mediaType: args.mediaType, title: args.title })}`);
+        Logger.info(req, `jellyseer_media_search. ${JSON.stringify({ mediaType: args.mediaType, title: args.title })}`);
 
         const urlEncodedTitle = encodeURIComponent(args.title);
         try {
@@ -162,10 +184,13 @@ export class JellyseerMediaSearch extends BaseTool {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             });
 
+            Logger.info(req, `jellyseer_media_search results. ${JSON.stringify(results)}`);
+
             const mediaInfoPromises = results.results.filter((result) => result.mediaType === args.mediaType).map((result) => BaseTool.fetchJSONData<JellyseerMedia>(`${Config.JELLYSEER_BASE_URL}/api/v1/${result.mediaType}/${result.id}`, {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             }));
 
+            Logger.info(req, `jellyseer_media_search fetching media info for ${mediaInfoPromises.length} results`);
             const mediaInfo = await Promise.all(mediaInfoPromises);
             const data: MediaResult[] = mediaInfo.map((result: JellyseerMedia) => ({
                 mediaType: args.mediaType,
@@ -178,7 +203,7 @@ export class JellyseerMediaSearch extends BaseTool {
                 available: result.mediaInfo ? true : false
             })).filter((result) => result.mediaType === args.mediaType);
 
-            Logger.debug(req, `jellyseer_media_search: ${JSON.stringify(data)}`);
+            Logger.info(req, `jellyseer_media_search: ${JSON.stringify(data)}`);
 
             return [`jellyseer_media_search: ${JSON.stringify(data)}`, metadata];
         } catch (err: unknown) {
