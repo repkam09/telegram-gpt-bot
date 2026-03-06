@@ -111,8 +111,7 @@ export class HennosUser {
                     return HennosBedrockSingleton.instance();
                 }
                 default: {
-                    Logger.warn(this, `Unknown provider ${this.provider}, defaulting to OpenAI`);
-                    return HennosOpenAISingleton.instance();
+                    return HennosAnthropicSingleton.instance();
                 }
             }
         }
