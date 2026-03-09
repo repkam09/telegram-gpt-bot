@@ -6,8 +6,6 @@ import { ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { SearXNGSearch } from "./SearXNGSearchTool";
 import { MetaBugReport, MetaFeatureRequest, MetaFeedbackTool, MetaSetBotPreferredName, MetaSetLLMProvider, MetaSetUserPreferredName } from "./HennosMetaTools";
 import { WolframAlpha } from "./WolframAlpha";
-import { AcknowledgeWithoutResponse } from "./AcknowledgeWithoutResponse";
-import { HomeAssistantEntitiesTool, HomeAssistantStatesTool } from "./HomeAssistantTool";
 import { ImageGenerationTool } from "./ImageGenerationTool";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "./JellyseerMediaRequest";
 import { PythonSandbox } from "./PythonSandbox";
@@ -32,7 +30,6 @@ const WHITELIST_TOOLS = [
     OpenWeatherMapLookupTool,
     WolframAlpha,
     PythonSandbox,
-    AcknowledgeWithoutResponse,
     ImageGenerationTool,
     CreateArtifact,
     SendImageFromURL,
@@ -50,8 +47,6 @@ const EXPERIMENTAL_AVAILABLE_TOOLS = [
 ];
 
 const ADMIN_TOOLS = [
-    HomeAssistantEntitiesTool,
-    HomeAssistantStatesTool,
     HennosRetrieveArtifact
 ];
 
