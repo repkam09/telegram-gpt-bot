@@ -531,23 +531,6 @@ export class Config {
         return process.env.TEMPORAL_TASK_QUEUE;
     }
 
-
-    static get PERPLEXITY_API_KEY(): string | false {
-        if (!process.env.PERPLEXITY_API_KEY) {
-            return false;
-        }
-
-        return process.env.PERPLEXITY_API_KEY;
-    }
-
-    static get PERPLEXITY_MODEL(): string {
-        if (!process.env.PERPLEXITY_MODEL) {
-            return "sonar";
-        }
-
-        return process.env.PERPLEXITY_MODEL;
-    }
-
     static get AXIOM_API_KEY(): string | false {
         if (!process.env.AXIOM_API_KEY) {
             return false;

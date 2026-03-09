@@ -8,7 +8,6 @@ import { MetaFeedbackTool, MetaFeatureRequest, MetaBugReport } from "../../tools
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "../../tools/JellyseerMediaRequest";
 import { AudiobookRequest, EbookRequest } from "../../tools/MiscFileRequestTool";
 import { OpenWeatherMapLookupTool } from "../../tools/OpenWeatherMapLookupTool";
-import { PerplexitySearch } from "../../tools/PerplexitySearch";
 import { PythonSandbox } from "../../tools/PythonSandbox";
 import { WolframAlpha } from "../../tools/WolframAlpha";
 import { parseWorkflowId } from "./interface";
@@ -19,7 +18,6 @@ export const AgentTools: HennosBaseTool[] = [
     MetaFeatureRequest,
     MetaBugReport,
     FetchWebpageContent,
-    PerplexitySearch,
     OpenWeatherMapLookupTool,
     WolframAlpha,
     PythonSandbox,
