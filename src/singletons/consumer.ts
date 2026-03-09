@@ -111,7 +111,7 @@ export class HennosUser {
                     return HennosBedrockSingleton.instance();
                 }
                 default: {
-                    return HennosAnthropicSingleton.instance();
+                    return HennosOpenAISingleton.instance();
                 }
             }
         }
