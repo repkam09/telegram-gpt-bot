@@ -19,17 +19,42 @@ import {
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
+import { Ollama, OllamaEmbedding } from "@llamaindex/ollama";
 
-Settings.embedModel = new OpenAIEmbedding({
-    model: Config.OPENAI_LLM_EMBED.MODEL,
-    apiKey: Config.OPENAI_API_KEY
-});
 
-Settings.llm = new OpenAI({
-    model: Config.OPENAI_MINI_LLM.MODEL,
-    apiKey: Config.OPENAI_API_KEY,
-    temperature: 1
-});
+if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
+    Logger.info("Initializing Ollama embedding model for document processing");
+    Settings.embedModel = new OllamaEmbedding({
+        model: Config.OLLAMA_LLM_EMBED.MODEL,
+        config: {
+            host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
+        }
+    });
+} else {
+    Logger.info("Initializing OpenAI embedding model for document processing");
+    Settings.embedModel = new OpenAIEmbedding({
+        model: Config.OPENAI_LLM_EMBED.MODEL,
+        apiKey: Config.OPENAI_API_KEY
+    });
+
+}
+
+if (Config.HENNOS_DOCUMENT_LLM_PROVIDER === "ollama") {
+    Logger.info("Initializing Ollama LLM model for document processing");
+    Settings.llm = new Ollama({
+        model: Config.OLLAMA_LLM.MODEL,
+        config: {
+            host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
+        }
+    });
+} else {
+    Logger.info("Initializing OpenAI LLM model for document processing");
+    Settings.llm = new OpenAI({
+        model: Config.OPENAI_MINI_LLM.MODEL,
+        apiKey: Config.OPENAI_API_KEY,
+        temperature: 1
+    });
+}
 
 Settings.chunkOverlap = 256;
 Settings.chunkSize = 2048;
@@ -81,8 +106,8 @@ export class FetchWebpageContent extends BaseTool {
         try {
             const html = await fetchPageContent(workflowId, args.url);
 
-            // If the HTML is smaller than 32000 tokens (~128k characters), we can just return the whole thing
-            if (!args.query && html.length < 128000) {
+            // If the HTML is smaller than 32000 chars we can just return the whole thing
+            if (!args.query && html.length < 32000) {
                 return [html, metadata];
             }
 
@@ -90,7 +115,7 @@ export class FetchWebpageContent extends BaseTool {
 
             await fs.writeFile(filePath, html, { encoding: "utf-8" });
 
-            const query = args.query ? args.query : "Could you provide a summary of this webpage content?";
+            const query = args.query ? args.query : "Provide a summary of this document.";
             const result = await handleDocument(workflowId, filePath, args.url, new HTMLReader(), query);
             return [JSON.stringify({ summary: result }), metadata];
         } catch (err: unknown) {
@@ -174,7 +199,7 @@ function extractReadable(workflowId: string, html: string, url: string): string 
     if (parts.split(/\s+/).length < 50) return null; // too short, maybe extraction failed
 
     Logger.debug(workflowId,
-        `Extracted readable content length: ${parts.length} characters.`,
+        `Extracted readable content length: ${parts.length} characters. Contents: ${parts.substring(0, 500)}...`,
     );
 
     return parts;
@@ -204,6 +229,10 @@ export async function handleDocument(workflowId: string, path: string, uuid: str
 
     Logger.debug(workflowId, `Queried the query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
     const summary = response.toString();
+
+    Logger.debug(workflowId,
+        `Extracted summary content length: ${summary.length} characters. Contents: ${summary.substring(0, 500)}...`,
+    );
 
     Logger.info(workflowId, `Completed processing document at path: ${path} with UUID: ${uuid}.`);
     return summary;

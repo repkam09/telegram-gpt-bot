@@ -91,7 +91,7 @@ export class HennosOpenAIProvider {
         const converted = tools ? convertHennosTools(tools) : undefined;
         const prompt = convertCompletionMessages(messages);
 
-        const convertedIterations = iterations < 10 ? converted : undefined;
+        const convertedIterations = iterations < Config.HENNOS_TOOL_DEPTH ? converted : undefined;
         const result = await this._completion(workflowId, prompt, convertedIterations);
 
         if (result.__type === "string") {

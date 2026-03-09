@@ -5,9 +5,11 @@ import { HennosAgenticResponse } from "../types";
 import { availableToolsAsString } from "../tools";
 import { temporalGrounding } from "../../../common/grounding";
 import { withActivityHeartbeat } from "../../heartbeat";
+import { Config } from "../../../singletons/config";
 
 export type ThoughtInput = {
     context: string[];
+    iterations: number;
 }
 
 export const thought = withActivityHeartbeat(_thought);
@@ -52,9 +54,12 @@ async function _thought(input: ThoughtInput,
         }
     ];
 
+    // Force the model to answer if we've reached the maximum tool depth to prevent infinite loops.
+    const _tools = input.iterations < Config.HENNOS_TOOL_DEPTH ? tools : [];
+
     const response = await model.invoke(workflowId, [
         { role: "user", content: promptTemplate, type: "text" },
-    ], tools);
+    ], _tools);
 
     if (response.__type === "string") {
         Logger.debug(workflowId, `Received string response from model provider: ${response.payload}`);

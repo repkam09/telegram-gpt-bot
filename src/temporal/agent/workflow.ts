@@ -121,6 +121,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
         return compactAndContinueAsNew();
     }
 
+    let iterations = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
         try {
@@ -146,7 +147,7 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                 context.push(`<user_message date="${entry.date}" author="${entry.author}">\n${entry.message}\n</user_message>`);
             }
 
-            const agentThought = await thought({ context });
+            const agentThought = await thought({ context, iterations });
             if (agentThought.__type === "string") {
                 await persistAgentMessage({
                     workflowId: workflowInfo().workflowId,
@@ -164,6 +165,9 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                     return compactAndContinueAsNew();
                 }
 
+                // Set iterations to 0 after an answer.
+                iterations = 0;
+
                 // wait for new messages or exit signal
                 await continueCondition();
             }
@@ -179,13 +183,21 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                     `<action>\n<name>${agentThought.payload.name}</name>\n<input>${JSON.stringify(agentThought.payload.input)}</input>\n<reason>${agentThought.payload.reason}</reason>\n</action>`,
                 );
 
+                // Increase the iteration count for each action. We don't want the agent to get stuck in a loop forever.
+                iterations = iterations + 1;
+
                 const actionResult = await action(
                     agentThought.payload.name,
                     agentThought.payload.input,
                 );
 
                 const agentObservation = await observation(
-                    { context: context.slice(-5), actionResult },
+                    {
+                        actionName: agentThought.payload.name,
+                        actionInput: agentThought.payload.input,
+                        reason: agentThought.payload.reason,
+                        actionResult
+                    },
                 );
 
                 context.push(

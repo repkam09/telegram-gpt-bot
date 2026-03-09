@@ -38,7 +38,7 @@ export class HennosOllamaProvider {
         Logger.info(workflowId, `Ollama Invoke Start (${Config.OLLAMA_LLM.MODEL})`);
         const prompt = convertCompletionMessages(messages);
 
-        const converted = iterations > 10 ? tools : undefined;
+        const converted = iterations > Config.HENNOS_TOOL_DEPTH ? tools : undefined;
         const result = await this._invoke(workflowId, prompt, converted);
 
         if (result.__type === "string") {

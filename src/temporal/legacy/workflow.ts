@@ -48,10 +48,13 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
     });
 
     await condition(() => pending.length > 0);
-    let iterations = 0;
 
     const context: WorkflowContextEntry[] = [];
-    while (iterations < 15) {
+
+    let iterations = 0;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
         try {
             // grab all the pending messages and put them into the database
             while (pending.length > 0) {
@@ -95,7 +98,5 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
             iterations++;
         }
     }
-
-    throw new Error("Max iterations reached in legacy workflow");
 }
 

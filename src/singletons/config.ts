@@ -12,6 +12,14 @@ export type HennosModelConfig = {
     CTX: number
 }
 
+export type HennosEmbedModelConfig = {
+    MODEL: any,
+    LENGTH: number
+}
+
+type HennosModelProvider = "ollama" | "openai" | "anthropic";
+type HennosEmbedProvider = "ollama" | "openai";
+
 export class Config {
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
@@ -29,12 +37,57 @@ export class Config {
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
     }
 
-    static get HENNOS_LLM_PROVIDER(): string {
+    static get HENNOS_LLM_PROVIDER(): HennosModelProvider {
         if (!process.env.HENNOS_LLM_PROVIDER) {
-            return "openai";
+            return "ollama";
         }
 
-        return process.env.HENNOS_LLM_PROVIDER;
+        // Validate ollama, openai or anthropic
+        if (["ollama", "openai", "anthropic"].indexOf(process.env.HENNOS_LLM_PROVIDER) === -1) {
+            throw new Error("Invalid HENNOS_LLM_PROVIDER value");
+        }
+
+        return process.env.HENNOS_LLM_PROVIDER as HennosModelProvider;
+    }
+
+    static get HENNOS_DOCUMENT_EMBED_PROVIDER(): HennosEmbedProvider {
+        if (!process.env.HENNOS_DOCUMENT_EMBED_PROVIDER) {
+            return "ollama";
+        }
+
+        // Validate ollama or openai
+        if (["ollama", "openai"].indexOf(process.env.HENNOS_DOCUMENT_EMBED_PROVIDER) === -1) {
+            throw new Error("Invalid HENNOS_DOCUMENT_EMBED_PROVIDER value");
+        }
+
+        return process.env.HENNOS_DOCUMENT_EMBED_PROVIDER as HennosEmbedProvider;
+    }
+
+    static get HENNOS_DOCUMENT_LLM_PROVIDER(): HennosModelProvider {
+        if (!process.env.HENNOS_DOCUMENT_LLM_PROVIDER) {
+            return "ollama";
+        }
+
+        // Validate ollama, openai or anthropic
+        if (["ollama", "openai", "anthropic"].indexOf(process.env.HENNOS_DOCUMENT_LLM_PROVIDER) === -1) {
+            throw new Error("Invalid HENNOS_DOCUMENT_LLM_PROVIDER value");
+        }
+
+        return process.env.HENNOS_DOCUMENT_LLM_PROVIDER as HennosModelProvider;
+    }
+
+    static get HENNOS_TOOL_DEPTH(): number {
+        if (!process.env.HENNOS_TOOL_DEPTH) {
+            return 6;
+        }
+
+        const depth = parseInt(process.env.HENNOS_TOOL_DEPTH);
+
+        if (Number.isNaN(depth)) {
+            throw new Error("Invalid HENNOS_TOOL_DEPTH value");
+        }
+
+        return depth;
     }
 
     static get HENNOS_MCP_ENABLED(): boolean {
@@ -158,22 +211,21 @@ export class Config {
         return process.env.OPENAI_TEXT_TO_SPEECH_MODEL;
     }
 
-    static get OPENAI_LLM_EMBED(): { MODEL: string } {
+    static get OPENAI_LLM_EMBED(): HennosEmbedModelConfig {
         if (!process.env.OPENAI_LLM_EMBED) {
             return {
-                MODEL: "text-embedding-3-small"
+                MODEL: "text-embedding-3-small",
+                LENGTH: 8191,
             };
         }
 
-        return {
-            MODEL: process.env.OPENAI_LLM_EMBED,
-        };
+        return parseHennosEmbedModelString(process.env.OPENAI_LLM_EMBED, "OPENAI_LLM_EMBED");
     }
 
     static get OPENAI_MINI_LLM(): HennosModelConfig {
         return {
-            MODEL: "gpt-5-mini",
-            CTX: 16000,
+            MODEL: "gpt-5-nano",
+            CTX: 32000,
         };
     }
 
@@ -186,6 +238,18 @@ export class Config {
         }
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
     }
+
+    static get OLLAMA_LLM_EMBED(): HennosEmbedModelConfig {
+        if (!process.env.OLLAMA_LLM_EMBED) {
+            return {
+                MODEL: "nomic-embed-text:latest",
+                LENGTH: 512
+            };
+        }
+
+        return parseHennosEmbedModelString(process.env.OLLAMA_LLM_EMBED, "OLLAMA_LLM_EMBED");
+    }
+
 
     static get ANTHROPIC_API_KEY(): string {
         if (!process.env.ANTHROPIC_API_KEY) {
@@ -540,5 +604,24 @@ function parseHennosModelString(value: string, env: string): HennosModelConfig {
     return {
         MODEL: parts[0],
         CTX: ctxInLength,
+    };
+}
+
+function parseHennosEmbedModelString(value: string, env: string): HennosEmbedModelConfig {
+    const parts = value.split(",");
+
+    if (parts.length !== 2) {
+        throw new Error(`Invalid value for ${env}`);
+    }
+
+    const length = parseInt(parts[1]);
+
+    if (Number.isNaN(length)) {
+        throw new Error("Invalid length value for " + env);
+    }
+
+    return {
+        MODEL: parts[0],
+        LENGTH: length,
     };
 }
