@@ -1,12 +1,129 @@
 {
+	"version": "2.0.0",
 	"tasks": [
+		{
+			"type": "npm",
+			"script": "clean",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "npm: clean",
+			"detail": "rimraf ./build"
+		},
 		{
 			"type": "npm",
 			"script": "build",
 			"group": "build",
 			"problemMatcher": [],
-			"label": "tsc",
-			"detail": "npm-run-all clean lint:fix tsc"
+			"label": "npm: build",
+			"detail": "npm-run-all clean prisma:generate lint tsc:emit"
+		},
+		{
+			"type": "npm",
+			"script": "validate",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "npm: validate",
+			"detail": "npm-run-all lint tsc:noemit"
+		},
+		{
+			"type": "npm",
+			"script": "tsc:emit",
+			"group": "build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"label": "npm: tsc:emit",
+			"detail": "tsc"
+		},
+		{
+			"type": "npm",
+			"script": "tsc:noemit",
+			"group": "build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"label": "npm: tsc:noemit",
+			"detail": "tsc --noEmit"
+		},
+		{
+			"type": "npm",
+			"script": "tsc:noemit:watch",
+			"group": "build",
+			"problemMatcher": [
+				"$tsc-watch"
+			],
+			"isBackground": true,
+			"label": "npm: tsc:noemit:watch",
+			"detail": "tsc --noEmit --watch"
+		},
+		{
+			"type": "npm",
+			"script": "lint",
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"label": "npm: lint",
+			"detail": "eslint --fix ."
+		},
+		{
+			"type": "npm",
+			"script": "start",
+			"isBackground": true,
+			"problemMatcher": [],
+			"label": "npm: start",
+			"detail": "npm run migrate:deploy && node build/hennos.js"
+		},
+		{
+			"type": "npm",
+			"script": "start:cli",
+			"isBackground": true,
+			"problemMatcher": [],
+			"label": "npm: start:cli",
+			"detail": "node build/client/cli.js"
+		},
+		{
+			"type": "npm",
+			"script": "migrate:deploy",
+			"problemMatcher": [],
+			"label": "npm: migrate:deploy",
+			"detail": "prisma migrate deploy"
+		},
+		{
+			"type": "npm",
+			"script": "migrate:reset",
+			"problemMatcher": [],
+			"label": "npm: migrate:reset",
+			"detail": "prisma migrate reset"
+		},
+		{
+			"type": "npm",
+			"script": "migrate:new",
+			"problemMatcher": [],
+			"label": "npm: migrate:new",
+			"detail": "prisma migrate dev --create-only"
+		},
+		{
+			"type": "npm",
+			"script": "prisma:generate",
+			"problemMatcher": [],
+			"label": "npm: prisma:generate",
+			"detail": "prisma generate"
+		},
+		{
+			"type": "npm",
+			"script": "dev",
+			"isBackground": true,
+			"problemMatcher": [],
+			"label": "npm: dev",
+			"detail": "npm-run-all build start"
+		},
+		{
+			"type": "npm",
+			"script": "test",
+			"group": "test",
+			"problemMatcher": [],
+			"label": "npm: test",
+			"detail": "vitest run"
 		}
 	]
 }

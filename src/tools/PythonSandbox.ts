@@ -2,7 +2,6 @@ import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
-import { HennosConsumer } from "../singletons/consumer";
 
 export class PythonSandbox extends BaseTool {
     public static isEnabled(): boolean {
@@ -34,19 +33,19 @@ export class PythonSandbox extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `PythonSandbox callback. ${JSON.stringify({ source: args.source })}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `PythonSandbox callback. ${JSON.stringify({ source: args.source })}`);
         try {
             const result = await BaseTool.postJSONData<PythonSandboxResult>(`http://${Config.TERRARIUM_HOST}:${Config.TERRARIUM_PORT}/`, {
                 code: args.source
             });
 
-            Logger.debug(req, `PythonSandbox, results: ${JSON.stringify(result)}`);
-            return [`PythonSandbox: ${JSON.stringify(result)}`, metadata];
+            Logger.debug(workflowId, `PythonSandbox, results: ${JSON.stringify(result)}`);
+            return [JSON.stringify(result), metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, `PythonSandbox error: ${error.message}`, error);
-            return [`PythonSandbox unable to execute. Error: ${error.message}`, metadata];
+            Logger.error(workflowId, `PythonSandbox error: ${error.message}`, error);
+            return [JSON.stringify({ error: error.message }), metadata];
         }
     }
 }

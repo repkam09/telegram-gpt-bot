@@ -21,6 +21,9 @@ RUN npm ci
 # Copy the rest of the application code
 COPY src src
 
+# Copy the public directory
+COPY public public
+
 # Run the typescript build
 RUN npm run build
 

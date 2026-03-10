@@ -4,8 +4,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { TelegramBotInstance } from "../services/telegram/telegram";
-import { HennosConsumer } from "../singletons/consumer";
+import { AgentResponseHandler } from "../response";
 
 /**
  * CreateArtifact allows the model to create a text-based file artifact (code, HTML, Markdown, JSON, etc.)
@@ -21,6 +20,10 @@ export class CreateArtifact extends BaseTool {
         ".ts", ".tsx", ".jsx", ".json", ".yml", ".yaml", ".xml", ".csv", ".py", ".sh",
         ".bash", ".zsh", ".sql", ".ini", ".cfg", ".conf", ".toml", ".env"
     ]);
+
+    public static isEnabled(): boolean {
+        return true;
+    }
 
     public static definition(): Tool {
         return {
@@ -55,22 +58,22 @@ export class CreateArtifact extends BaseTool {
         };
     }
 
-    public static async callback(req: HennosConsumer, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
-        Logger.info(req, `CreateArtifact callback. filename=${args.filename}, contentLength=${args.content?.length}`);
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `CreateArtifact callback. filename=${args.filename}, contentLength=${args.content?.length}`);
 
         // Basic validation
         if (!args.filename || !args.content) {
-            return ["create_artifact error: 'filename' and 'content' are required", metadata];
+            return [JSON.stringify({ error: "'filename' and 'content' are required" }), metadata];
         }
 
         const filename = sanitizeFilename(String(args.filename));
         if (!filename) {
-            return ["create_artifact error: invalid filename after sanitization", metadata];
+            return [JSON.stringify({ error: "invalid filename after sanitization" }), metadata];
         }
 
         if (args.content.length > CreateArtifact.MAX_CONTENT_LENGTH) {
             return [
-                `create_artifact error: content length (${args.content.length}) exceeds limit of ${CreateArtifact.MAX_CONTENT_LENGTH} characters. Please summarize or split into smaller files.`,
+                JSON.stringify({ error: `content length (${args.content.length}) exceeds limit of ${CreateArtifact.MAX_CONTENT_LENGTH} characters. Please summarize or split into smaller files.` }),
                 metadata
             ];
         }
@@ -78,16 +81,16 @@ export class CreateArtifact extends BaseTool {
         const ext = path.extname(filename).toLowerCase();
         if (!CreateArtifact.ALLOWED_EXTENSIONS.has(ext)) {
             // Allow but warn; you could also reject. We'll allow to keep flexibility.
-            Logger.warn(req, `CreateArtifact: extension ${ext} not in ALLOWED_EXTENSIONS, proceeding anyway.`);
+            Logger.warn(workflowId, `CreateArtifact: extension ${ext} not in ALLOWED_EXTENSIONS, proceeding anyway.`);
         }
 
         // Write file
-        const artifactDir = path.join(Config.LOCAL_STORAGE(req), "artifacts");
+        const artifactDir = path.join(Config.LOCAL_STORAGE(workflowId), "artifacts");
         try {
             await fs.mkdir(artifactDir, { recursive: true });
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "CreateArtifact: unable to ensure artifact directory. Error: " + error.message, error);
+            Logger.error(workflowId, "CreateArtifact: unable to ensure artifact directory. Error: " + error.message, error);
         }
 
         let targetPath = path.join(artifactDir, filename);
@@ -102,22 +105,20 @@ export class CreateArtifact extends BaseTool {
             await fs.writeFile(targetPath, args.content, { encoding: "utf-8" });
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "CreateArtifact write error. Error: " + error.message, error);
+            Logger.error(workflowId, "CreateArtifact write error. Error: " + error.message, error);
             return [
-                `create_artifact error: failed to write file '${filename}'. ${error.message}`,
+                JSON.stringify({ error: `failed to write file '${filename}'. ${error.message}` }),
                 metadata
             ];
         }
 
         let sent = false;
         try {
-            await TelegramBotInstance.sendDocumentWrapper(req, targetPath, {
-                caption: args.description ? args.description.slice(0, 900) : `Artifact: ${path.basename(targetPath)}`
-            });
+            await AgentResponseHandler.handleArtifact(workflowId, targetPath, args.description);
             sent = true;
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(req, "CreateArtifact send error", error);
+            Logger.error(workflowId, "CreateArtifact send error", error);
         }
 
         return [
