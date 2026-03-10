@@ -58,6 +58,19 @@ export class JellyseerMediaRequest extends BaseTool {
             return [JSON.stringify({ error: "mediaType must be one of 'tv' or 'movie'" }), metadata];
         }
 
+        if (args.mediaType === "tv" && args.seasons && args.seasons !== "all") {
+            const seasonsArray = args.seasons.split(",").map((season: string) => season.trim());
+            if (!seasonsArray.every((season: string) => /^\d+$/.test(season))) {
+                Logger.error(workflowId, "jellyseer_media_request failed, seasons must be 'all' or a comma separated list of numbers");
+                return ["jellyseer_media_request failed, seasons must be 'all' or a comma separated list of numbers", metadata];
+            }
+        }
+
+        if (args.mediaType === "movie" && args.seasons) {
+            Logger.warn(workflowId, "jellyseer_media_request: seasons parameter is not applicable for movies, ignoring seasons parameter");
+            args.seasons = undefined;
+        }
+
         if (!args.mediaId) {
             Logger.info(workflowId, "jellyseer_media_request error: mediaId not provided");
             return [JSON.stringify({ error: "mediaId must be provided" }), metadata];
@@ -81,6 +94,7 @@ export class JellyseerMediaRequest extends BaseTool {
             });
 
             if (data.mediaInfo) {
+                Logger.info(workflowId, `jellyseer_media_request: media is already available for streaming. ${JSON.stringify({ mediaType: args.mediaType, mediaId: args.mediaId, jellyfinMediaId: data.mediaInfo.jellyfinMediaId })}`);
                 if (Config.JELLYFIN_BASE_URL) {
                     Logger.info(workflowId, `media is already available for streaming at ${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}`);
                     return [JSON.stringify({ error: "media is already available for streaming", stream_url: `${Config.JELLYFIN_BASE_URL}/web/index.html#/details?id=${data.mediaInfo.jellyfinMediaId}` }), metadata];
@@ -106,9 +120,6 @@ export class JellyseerMediaRequest extends BaseTool {
             });
 
             Logger.info(workflowId, `jellyseer_media_request. ${JSON.stringify(results)}`);
-
-            // @TOOD: Figure out how to notify the admin of the request.
-            Logger.info(workflowId, `${workflowId} has requested ${args.mediaType} with id ${args.mediaId}`);
 
             await signalAgenticWorkflowAdminMessage(workflowId, `User has requested ${args.mediaType} with id ${args.mediaId}. Please review the request within the Jellyfin/Jellyseer system.`);
             return [JSON.stringify({ status: "requested" }), metadata];
@@ -183,10 +194,13 @@ export class JellyseerMediaSearch extends BaseTool {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             });
 
+            Logger.info(workflowId, `jellyseer_media_search results. ${JSON.stringify(results)}`);
+
             const mediaInfoPromises = results.results.filter((result) => result.mediaType === args.mediaType).map((result) => BaseTool.fetchJSONData<JellyseerMedia>(`${Config.JELLYSEER_BASE_URL}/api/v1/${result.mediaType}/${result.id}`, {
                 "X-Api-Key": Config.JELLYSEER_API_KEY as string
             }));
 
+            Logger.info(workflowId, `jellyseer_media_search fetching media info for ${mediaInfoPromises.length} results`);
             const mediaInfo = await Promise.all(mediaInfoPromises);
             const data: MediaResult[] = mediaInfo.map((result: JellyseerMedia) => ({
                 mediaType: args.mediaType,

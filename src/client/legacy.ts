@@ -10,10 +10,14 @@ import { handleDocument } from "../tools/FetchWebpageContent";
 import { generateTranscription } from "../singletons/transcription";
 
 
-
 export class TelegramLegacyInstance {
     public static async handleDocumentMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.document) {
+            return;
+        }
+
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -63,6 +67,11 @@ export class TelegramLegacyInstance {
             return;
         }
 
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
+        }
+
         const { author, workflowId } = await TelegramLegacyInstance.workflowLegacySignalArguments(msg);
         const largestPhoto = msg.photo.reduce((prev, current) => (prev.file_size && current.file_size && prev.file_size > current.file_size) ? prev : current);
 
@@ -85,6 +94,10 @@ export class TelegramLegacyInstance {
             return;
         }
 
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
+        }
 
         const { author, workflowId } = await TelegramLegacyInstance.workflowLegacySignalArguments(msg);
 
@@ -108,6 +121,10 @@ export class TelegramLegacyInstance {
             return;
         }
 
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
+        }
 
         const { author, workflowId } = await TelegramLegacyInstance.workflowLegacySignalArguments(msg);
 
@@ -129,6 +146,11 @@ export class TelegramLegacyInstance {
             return;
         }
 
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
+        }
+
         const { author, workflowId } = await TelegramLegacyInstance.workflowLegacySignalArguments(msg);
         const payload = `<contact><first_name>${msg.contact.first_name}</first_name><last_name>${msg.contact.last_name || ""}</last_name><user_id>${msg.contact.user_id || ""}</user_id><vcard>${msg.contact.vcard || ""}</vcard><phone_number>${msg.contact.phone_number}</phone_number></contact>`;
         return signalLegacyWorkflowExternalContext(workflowId, author, payload);
@@ -140,6 +162,11 @@ export class TelegramLegacyInstance {
             return;
         }
 
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
+        }
+
         const { author, workflowId } = await TelegramLegacyInstance.workflowLegacySignalArguments(msg);
         const payload = `<location><latitude>${msg.location.latitude}</latitude><longitude>${msg.location.longitude}</longitude></location>`;
         return signalLegacyWorkflowExternalContext(workflowId, author, payload);
@@ -147,6 +174,11 @@ export class TelegramLegacyInstance {
 
     public static async handleTextMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.text) {
+            return;
+        }
+
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -178,11 +210,21 @@ export class TelegramLegacyInstance {
             return;
         }
 
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
+        }
+
         Logger.debug(undefined, `Handling text command message: ${msg.text}`);
     }
 
     public static async handleLegacyNoOpMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from) {
+            return;
+        }
+
+        if (msg.chat.type !== "private") {
+            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
