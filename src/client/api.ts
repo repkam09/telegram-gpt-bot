@@ -56,7 +56,11 @@ export class WebhookInstance {
         }
 
         const app = WebhookInstance.instance();
-        app.use(express.static(path.join(__dirname, "../../public")));
+
+        if (Config.HENNOS_DEVELOPMENT_MODE) {
+            Logger.info(undefined, "Hennos Webhook API running in development mode. Serving static files from /public.");
+            app.use(express.static(path.join(__dirname, "../../public")));
+        }
 
         app.get("/healthz", (req: Request, res: Response) => {
             return res.status(200).send("OK");
