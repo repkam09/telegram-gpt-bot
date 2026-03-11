@@ -187,7 +187,7 @@ export class Config {
     static get OPENAI_LLM(): HennosModelConfig {
         if (!process.env.OPENAI_LLM) {
             return {
-                MODEL: "gpt-5-nano",
+                MODEL: "gpt-5",
                 CTX: 32000,
             };
         }
@@ -223,10 +223,25 @@ export class Config {
     }
 
     static get OPENAI_MINI_LLM(): HennosModelConfig {
-        return {
-            MODEL: "gpt-5-nano",
-            CTX: 32000,
-        };
+        if (!process.env.OPENAI_MINI_LLM) {
+            return {
+                MODEL: "gpt-5-mini",
+                CTX: 24000,
+            };
+        }
+
+        return parseHennosModelString(process.env.OPENAI_MINI_LLM, "OPENAI_MINI_LLM");
+    }
+
+    static get OPENAI_NANO_LLM(): HennosModelConfig {
+        if (!process.env.OPENAI_NANO_LLM) {
+            return {
+                MODEL: "gpt-5-nano",
+                CTX: 4096,
+            };
+        }
+
+        return parseHennosModelString(process.env.OPENAI_NANO_LLM, "OPENAI_NANO_LLM");
     }
 
     static get OLLAMA_LLM(): HennosModelConfig {

@@ -84,20 +84,37 @@ type InvokableModelProvider = {
     moderation(workflowId: string, input: string): Promise<boolean>;
 }
 
-export function resolveModelProvider(level: "high" | "low"): InvokableModelProvider {
+export function resolveModelProvider(level: "high" | "low" | "nano"): InvokableModelProvider {
     switch (Config.HENNOS_LLM_PROVIDER) {
         case "openai": {
             if (level === "high") {
                 return HennosOpenAISingleton.high();
             }
-            return HennosOpenAISingleton.low();
+
+            if (level === "low") {
+                return HennosOpenAISingleton.low();
+            }
+
+            if (level === "nano") {
+                return HennosOpenAISingleton.nano();
+            }
+            throw new Error(`Unsupported model tier for OpenAI provider: ${level}`);
         }
 
         case "anthropic": {
             if (level === "high") {
                 return HennosAnthropicSingleton.high();
             }
-            return HennosAnthropicSingleton.low();
+
+            if (level === "low") {
+                return HennosAnthropicSingleton.low();
+            }
+
+            if (level === "nano") {
+                // For simplicity, just use the OpenAI nano model here as well
+                return HennosOpenAISingleton.nano();
+            }
+            throw new Error(`Unsupported model tier for Anthropic provider: ${level}`);
         }
 
         case "ollama": {

@@ -9,28 +9,33 @@ import { parseWorkflowId } from "../interface";
 import { Database } from "../../../database";
 import { encoding_for_model } from "tiktoken";
 import { withActivityHeartbeat } from "../../heartbeat";
+import { PromptComplexityResult } from "./classifier";
 
 export type LegacyCompletionInput = {
     context: CompletionContextEntry[];
     iterations: number;
+    classification: PromptComplexityResult;
 }
 
 export const legacyCompletion = withActivityHeartbeat(_legacyCompletion);
 async function _legacyCompletion(input: LegacyCompletionInput,
 ): Promise<LegacyAgenticResponse> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
+    const { classification } = input;
+
+    Logger.debug(workflowId, `Completion using classification '${classification.complexity}': contextLimit=${classification.contextLimit}, useTools=${classification.useTools}, modelTier=${classification.modelTier}`);
 
     const systemPrompt = legacyCompletionPromptTemplate({
         currentDate: new Date()
     });
 
-    const model = resolveModelProvider("high");
+    const model = resolveModelProvider(classification.modelTier);
 
-    // Load this from the database
-    const complete = await getChatContext(workflowId);
+    // Load context from the database, sized according to complexity
+    const complete = await getChatContext(workflowId, classification.contextLimit);
     const conversation = await getSizedChatContext(workflowId, [{ role: "system", content: systemPrompt }], complete, model.limit());
 
-    const tools = availableTools(workflowId);
+    const tools = classification.useTools ? availableTools(workflowId) : undefined;
 
     const response = await model.completion(workflowId, [
         { role: "system", content: systemPrompt },

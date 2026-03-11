@@ -21,6 +21,15 @@ const { persistLegacyAgentMessage, persistLegacyUserMessage, broadcastLegacyAgen
     },
 });
 
+const { classifyPromptComplexity } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "1 minute",
+    retry: {
+        backoffCoefficient: 1,
+        initialInterval: "3 seconds",
+        maximumAttempts: 3,
+    },
+});
+
 const { legacyCompletion, legacyAction } = proxyActivities<typeof activities>({
     startToCloseTimeout: "5 minutes",
     retry: {
@@ -65,7 +74,12 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
                 });
             }
 
-            const agentThought = await legacyCompletion({ context: context, iterations });
+            const classification = await classifyPromptComplexity({
+                iterations,
+                hasToolContext: context.length > 0,
+            });
+
+            const agentThought = await legacyCompletion({ context: context, iterations, classification });
             if (agentThought.__type === "string") {
                 await persistLegacyAgentMessage({
                     message: agentThought.payload,

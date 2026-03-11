@@ -7,6 +7,7 @@ import { CompletionContextEntry, CompletionContextImageEntry, CompletionContextT
 export class HennosOpenAISingleton {
     private static _instance: HennosOpenAIProvider | null = null;
     private static _mini: HennosOpenAIProvider | null = null;
+    private static _nano: HennosOpenAIProvider | null = null;
 
     public static high(): HennosOpenAIProvider {
         if (!HennosOpenAISingleton._instance) {
@@ -20,6 +21,13 @@ export class HennosOpenAISingleton {
             HennosOpenAISingleton._mini = new HennosOpenAIProvider(Config.OPENAI_MINI_LLM);
         }
         return HennosOpenAISingleton._mini;
+    }
+
+        public static nano(): HennosOpenAIProvider {
+        if (!HennosOpenAISingleton._nano) {
+            HennosOpenAISingleton._nano = new HennosOpenAIProvider(Config.OPENAI_NANO_LLM);
+        }
+        return HennosOpenAISingleton._nano;
     }
 }
 
