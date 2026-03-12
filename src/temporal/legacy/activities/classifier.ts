@@ -47,8 +47,9 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
         ], tools);
 
         if (response.__type === "tool") {
-            const toolName = response.payload.name;
-            Logger.debug(workflowId, `Prompt classified by LLM tool call: ${toolName} (input: ${response.payload.input})`);
+            const payload = response.payload[0];
+            const toolName = payload.name;
+            Logger.debug(workflowId, `Prompt classified by LLM tool call: ${toolName} (input: ${payload.input})`);
 
             if (toolName === CLASSIFY_SIMPLE_TOOL) {
                 return simpleResult();

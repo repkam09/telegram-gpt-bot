@@ -6,7 +6,7 @@ export type HennosActionResponse = {
         name: string;
         input: Record<string, string>;
         reason: string;
-    };
+    }[];
 }
 
 export type HennosStringResponse = {

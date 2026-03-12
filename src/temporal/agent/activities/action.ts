@@ -2,8 +2,10 @@ import { ToolCallResponse } from "../../../tools/BaseTool";
 import { Context } from "@temporalio/activity";
 import { processDefinedToolCalls } from "../../../tools/tools";
 import { availableTools } from "../tools";
+import { withActivityHeartbeat } from "../../heartbeat";
 
-export async function action(
+export const action = withActivityHeartbeat(_action);
+async function _action(
     toolName: string,
     input: Record<string, string>
 ): Promise<string> {

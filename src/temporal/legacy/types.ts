@@ -6,7 +6,7 @@ export type LegacyActionResponse = {
         name: string;
         input: Record<string, string>;
         id: string;
-    };
+    }[];
 }
 
 export type LegacyStringResponse = {

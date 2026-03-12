@@ -98,12 +98,16 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
             }
 
             if (agentThought.__type === "action") {
-                context.push({ role: "tool_call", name: agentThought.payload.name, input: agentThought.payload.input, id: agentThought.payload.id });
-                const actionResult = await legacyAction(
-                    agentThought.payload.name,
-                    agentThought.payload.input,
-                );
-                context.push({ role: "tool_response", id: agentThought.payload.id, result: actionResult });
+                const pending = agentThought.payload.map(async (payload) => {
+                    context.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
+                    const actionResult = await legacyAction(
+                        payload.name,
+                        payload.input,
+                    );
+                    context.push({ role: "tool_response", id: payload.id, result: actionResult });
+                });
+
+                await Promise.all(pending);
             }
 
             iterations++;

@@ -98,6 +98,14 @@ export class Config {
         return process.env.HENNOS_MCP_ENABLED === "true";
     }
 
+    static get HENNOS_MEMORY_ENABLED(): boolean {
+        if (!process.env.HENNOS_MEMORY_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_MEMORY_ENABLED === "true";
+    }
+
     static get HENNOS_GEMSTONE_ENABLED(): boolean {
         if (!process.env.HENNOS_GEMSTONE_ENABLED) {
             return false;

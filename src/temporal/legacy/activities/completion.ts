@@ -55,11 +55,11 @@ async function _legacyCompletion(input: LegacyCompletionInput,
         Logger.debug(workflowId, `Received tool response from model provider: ${JSON.stringify(response.payload)}`);
         return {
             __type: "action",
-            payload: {
-                name: response.payload.name,
-                id: response.payload.id,
-                input: response.payload.input
-            }
+            payload: response.payload.map((payload) => ({
+                name: payload.name,
+                id: payload.id,
+                input: payload.input
+            }))
         };
     }
 

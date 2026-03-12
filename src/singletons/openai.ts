@@ -23,7 +23,7 @@ export class HennosOpenAISingleton {
         return HennosOpenAISingleton._mini;
     }
 
-        public static nano(): HennosOpenAIProvider {
+    public static nano(): HennosOpenAIProvider {
         if (!HennosOpenAISingleton._nano) {
             HennosOpenAISingleton._nano = new HennosOpenAIProvider(Config.OPENAI_NANO_LLM);
         }
@@ -44,7 +44,7 @@ type OpenAICompletionResponseTool = {
         name: string;
         input: string;
         id: string;
-    };
+    }[];
 }
 
 export class HennosOpenAIProvider {
@@ -84,10 +84,10 @@ export class HennosOpenAIProvider {
         if (result.__type === "tool") {
             return {
                 __type: "tool",
-                payload: {
-                    name: result.payload.name,
-                    input: result.payload.input,
-                }
+                payload: result.payload.map((payload) => ({
+                    name: payload.name,
+                    input: payload.input,
+                }))
             };
         }
 
@@ -114,11 +114,11 @@ export class HennosOpenAIProvider {
             Logger.info(workflowId, "OpenAI Completion Success, Resulted in Tool Response");
             return {
                 __type: "tool",
-                payload: {
-                    name: result.payload.name,
-                    input: JSON.parse(result.payload.input),
-                    id: result.payload.id
-                }
+                payload: result.payload.map((payload) => ({
+                    name: payload.name,
+                    input: JSON.parse(payload.input),
+                    id: payload.id
+                }))
             };
         }
 
@@ -134,7 +134,7 @@ export class HennosOpenAIProvider {
             safety_identifier: `${workflowId}`,
             tool_choice: tools ? "auto" : undefined,
             tools: tools,
-            parallel_tool_calls: tools ? false : undefined
+            parallel_tool_calls: tools ? true : undefined
         });
 
         Logger.info(workflowId, `OpenAI Invoke Success, Usage: ${calculateUsage(response.usage)}`);
@@ -174,22 +174,22 @@ export class HennosOpenAIProvider {
 
         if (choice.finish_reason === "tool_calls") {
             Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Tool Call");
-            if (!choice.message.tool_calls || choice.message.tool_calls.length !== 1) {
+            if (!choice.message.tool_calls || choice.message.tool_calls.length === 0) {
                 throw new Error("Invalid OpenAI Response Shape, Missing Expected Tool Calls on Tool Calls Finish Reason");
             }
 
-            const toolCall = choice.message.tool_calls[0];
-            if (toolCall.type === "custom") {
+            const filtered = choice.message.tool_calls.filter(call => call.type === "function");
+            if (filtered.length === 0) {
                 throw new Error("OpenAI Invoke Failed, Custom Tool Calls are not supported in Hennos at this time");
             }
 
             return {
                 __type: "tool",
-                payload: {
+                payload: filtered.map((toolCall) => ({
                     name: toolCall.function.name,
                     input: toolCall.function.arguments,
                     id: toolCall.id
-                }
+                }))
             };
         }
 

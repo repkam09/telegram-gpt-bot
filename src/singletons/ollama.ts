@@ -51,11 +51,11 @@ export class HennosOllamaProvider {
         if (result.__type === "tool") {
             return {
                 __type: "tool",
-                payload: {
-                    name: result.payload.name,
-                    input: JSON.parse(result.payload.input),
+                payload: result.payload.map((toolCall) => ({
+                    name: toolCall.name,
+                    input: JSON.parse(toolCall.input),
                     id: `ollama-${randomUUID()}`
-                }
+                }))
             };
         }
 
@@ -87,13 +87,12 @@ export class HennosOllamaProvider {
 
         if (response.message.tool_calls && response.message.tool_calls.length > 0) {
             Logger.info(workflowId, "Ollama Completion Success, Resulted in Tool Call");
-            const toolCall = response.message.tool_calls[0];
             return {
                 __type: "tool",
-                payload: {
+                payload: response.message.tool_calls.map((toolCall) => ({
                     name: toolCall.function.name,
                     input: toolCall.function.arguments ? JSON.stringify(toolCall.function.arguments) : ""
-                }
+                }))
             };
         }
 

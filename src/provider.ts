@@ -12,7 +12,7 @@ export type HennosInvokeToolResponse = {
     payload: {
         name: string;
         input: string;
-    };
+    }[];
 }
 
 export type HennosInvokeStringResponse = {
@@ -74,7 +74,7 @@ export type CompletionResponseTool = {
         name: string;
         input: Record<string, string>;
         id: string;
-    };
+    }[];
 }
 
 type InvokableModelProvider = {

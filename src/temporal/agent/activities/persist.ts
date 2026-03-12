@@ -1,5 +1,7 @@
 import { Database } from "../../../database";
 import { AgentResponseHandler } from "../../../response";
+import { persistMemoryEvent } from "../../memory/interface";
+import { parseWorkflowId } from "../interface";
 
 type BroadcastUserInput = {
     type: "user-message"
@@ -16,13 +18,19 @@ type BroadcastAgentInput = {
 }
 
 export async function persistUserMessage(input: BroadcastUserInput) {
-    await updateWorkflowMessageDatabase(input);
+    const info = parseWorkflowId(input.workflowId);
+    await Promise.all([
+        updateWorkflowMessageDatabase(input),
+        persistMemoryEvent(input.workflowId, info.chatId, "user", input.message)
+    ]);
 }
 
 export async function persistAgentMessage(input: BroadcastAgentInput) {
+    const info = parseWorkflowId(input.workflowId);
     await Promise.all([
         updateWorkflowMessageDatabase(input),
-        AgentResponseHandler.handle(input.workflowId, input.message)
+        AgentResponseHandler.handle(input.workflowId, input.message),
+        persistMemoryEvent(input.workflowId, info.chatId, "assistant", input.message)
     ]);
 }
 

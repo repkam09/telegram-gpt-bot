@@ -5,7 +5,7 @@ export type GemstoneActionResponse = {
     payload: {
         name: string;
         input: Record<string, string>;
-    };
+    }[];
 }
 
 export type GemstoneStringResponse = {

@@ -180,29 +180,33 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
 
             if (agentThought.__type === "action") {
                 context.push(
-                    `<action>\n<name>${agentThought.payload.name}</name>\n<input>${JSON.stringify(agentThought.payload.input)}</input>\n<reason>${agentThought.payload.reason}</reason>\n</action>`,
+                    `<actions>\n${agentThought.payload.map((payload) => (`<action>\n<name>${payload.name}</name>\n<input>${JSON.stringify(payload.input)}</input>\n<reason>${payload.reason}</reason>\n</action>`))}\n</actions>`,
                 );
 
                 // Increase the iteration count for each action. We don't want the agent to get stuck in a loop forever.
                 iterations = iterations + 1;
 
-                const actionResult = await action(
-                    agentThought.payload.name,
-                    agentThought.payload.input,
-                );
+                const pending = agentThought.payload.map(async (payload) => {
+                    const actionResult = await action(
+                        payload.name,
+                        payload.input,
+                    );
 
-                const agentObservation = await observation(
-                    {
-                        actionName: agentThought.payload.name,
-                        actionInput: agentThought.payload.input,
-                        reason: agentThought.payload.reason,
-                        actionResult
-                    },
-                );
+                    const agentObservation = await observation(
+                        {
+                            actionName: payload.name,
+                            actionInput: payload.input,
+                            reason: payload.reason,
+                            actionResult
+                        },
+                    );
 
-                context.push(
-                    `<observation>\n${agentObservation.observations}\n</observation>`,
-                );
+                    context.push(
+                        `<observation>\n${agentObservation.observations}\n</observation>`,
+                    );
+                });
+
+                await Promise.all(pending);
             }
         } catch (error: unknown) {
             if (error instanceof ActivityFailure) {

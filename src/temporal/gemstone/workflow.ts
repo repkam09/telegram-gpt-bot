@@ -123,21 +123,25 @@ export async function gemstoneAgentWorkflow(input: GemstoneAgentWorkflowInput): 
 
             if (agentThought.__type === "action") {
                 context.push(
-                    { role: "assistant", content: `<action>\n<name>${agentThought.payload.name}</name>\n<input>${JSON.stringify(agentThought.payload.input)}</input>\n</action>` },
+                    { role: "assistant", content: `<actions>\n${agentThought.payload.map((payload) => (`<action>\n<name>${payload.name}</name>\n<input>${JSON.stringify(payload.input)}</input>\n</action>`))}\n</actions>` },
                 );
 
-                const actionResult = await gemstoneAction(
-                    agentThought.payload.name,
-                    agentThought.payload.input,
-                );
+                const pending = agentThought.payload.map(async (payload) => {
+                    const actionResult = await gemstoneAction(
+                        payload.name,
+                        payload.input,
+                    );
 
-                const agentObservation = await gemstoneObservation(
-                    { context: context.slice(-5), actionResult },
-                );
+                    const agentObservation = await gemstoneObservation(
+                        { context: context.slice(-5), actionResult },
+                    );
 
-                context.push(
-                    { role: "assistant", content: `<observation>\n${agentObservation.observations}\n</observation>` },
-                );
+                    context.push(
+                        { role: "assistant", content: `<observation>\n${agentObservation.observations}\n</observation>` },
+                    );
+                });
+
+                await Promise.all(pending);
             }
         } catch (error: unknown) {
             if (error instanceof ActivityFailure) {

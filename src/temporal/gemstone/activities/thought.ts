@@ -38,10 +38,10 @@ async function _gemstoneThought(input: GemstoneThoughtInput,
         Logger.debug(workflowId, `Received tool response from model provider: ${JSON.stringify(response.payload)}`);
         return {
             __type: "action",
-            payload: {
-                name: response.payload.name,
-                input: JSON.parse(response.payload.input)
-            }
+            payload: response.payload.map((payload) => ({
+                name: payload.name,
+                input: JSON.parse(payload.input)
+            }))
         };
     }
 

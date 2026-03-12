@@ -74,10 +74,10 @@ export class HennosAnthropicProvider {
         if (result.__type === "tool") {
             return {
                 __type: "tool",
-                payload: {
+                payload: [{
                     name: result.payload.name,
                     input: result.payload.input,
-                }
+                }]
             };
         }
 
