@@ -2,18 +2,14 @@ import express, { Express, Request, Response } from "express";
 import path from "node:path";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { TelegramInstance } from "./telegram";
-import { createWorkflowId as createAgentWorkflowId, signalAgenticWorkflowExit, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
-import { randomUUID } from "node:crypto";
-import { HennosRealtime } from "../realtime/sip";
 import { AgentResponseHandler } from "../response";
-import { signalLegacyWorkflowMessage, createWorkflowId as createLegacyWorkflowId } from "../temporal/legacy/interface";
-import { Database } from "../database";
-import { workflowSessionMcpClient } from "../singletons/mcp";
-import { ModelContextProtocolServer } from "./mcp";
-import { GemstoneMiddleware } from "../temporal/gemstone/middleware";
-import { Agent2AgentProtocolServer } from "./a2a";
-import { AGENT_CARD_PATH } from "@a2a-js/sdk";
+import { TelegramWebhookInstance } from "./endpoints/telegram";
+import { HennosWebhookInstance } from "./endpoints/hennos";
+import { MCPWebhookInstance } from "./endpoints/mcp";
+import { A2AWebhookInstance } from "./endpoints/a2a";
+import { GemstoneWebhookInstance } from "./endpoints/gemstone";
+import { SupabaseWebhookInstance } from "./endpoints/supabase";
+import { LegacyWebhookInstance } from "./endpoints/legacy";
 
 export class WebhookInstance {
     static _instance: Express;
@@ -23,17 +19,21 @@ export class WebhookInstance {
         if (!WebhookInstance._streams.has(sessionId)) {
             WebhookInstance._streams.set(sessionId, []);
         }
+
+        Logger.debug(undefined, `Registering stream for sessionId: ${sessionId}, socketId: ${socketId}`);
         WebhookInstance._streams.get(sessionId)?.push({ stream, uuid: socketId });
     }
 
     static unregister(sessionId: string, socketId: string) {
         const streams = WebhookInstance._streams.get(sessionId);
         if (streams) {
+            Logger.debug(undefined, `Unregistering stream for sessionId: ${sessionId}, socketId: ${socketId}`);
             WebhookInstance._streams.set(sessionId, streams.filter(s => s.uuid !== socketId));
         }
     }
 
     static sockets(sessionId: string) {
+        Logger.debug(undefined, `Fetching sockets for sessionId: ${sessionId}`);
         return WebhookInstance._streams.get(sessionId) || [];
     }
 
@@ -66,437 +66,46 @@ export class WebhookInstance {
             return res.status(200).send("OK");
         });
 
-        // Set up endpoints for each of the Temporal Workflow Signals
-        app.get("/hennos/conversation/:sessionId", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const workflowId = await createAgentWorkflowId("webhook", sessionId);
-
-            const db = Database.instance();
-            const history = await db.workflowMessage.findMany({
-                where: {
-                    workflowId
-                },
-                select: {
-                    content: true,
-                    role: true,
-                    userId: true,
-                    datetime: true
-                },
-                orderBy: {
-                    datetime: "asc"
-                },
-                take: 250
-            });
-
-            const respnse = history.map((entry) => ({
-                content: entry.content,
-                role: entry.role,
-                user: entry.userId,
-                date: entry.datetime
-            }));
-
-            return res.status(200).json(respnse);
-        });
-
-        app.get("/:agent/conversation/:sessionId/stream", (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const agent = req.params.agent;
-            if (!agent) {
-                return res.status(400).send("Missing agent");
-            }
-
-            if (Array.isArray(agent)) {
-                return res.status(400).send("Invalid agent");
-            }
-
-            const agents = ["hennos", "gemstone", "legacy"];
-            if (!agents.includes(agent)) {
-                return res.status(400).send("Invalid agent");
-            }
-
-            // Socket tuning
-            req.socket.setTimeout(0);
-            req.socket.setNoDelay(true);
-            req.socket.setKeepAlive(true);
-
-            // Set up headers for the SSE Stream
-            res.setHeader("Content-Type", "text/event-stream");
-            res.setHeader("Cache-Control", "no-cache");
-            res.setHeader("Connection", "keep-alive");
-            res.flushHeaders(); // Send headers immediately to keep connection open
-
-            const socketId = randomUUID();
-
-            Logger.debug(undefined, `Client connected for ${agent} sessionId: ${sessionId}, socketId: ${socketId}`);
-            WebhookInstance.register(sessionId, socketId, res);
-
-            res.on("close", () => {
-                Logger.debug(undefined, `Client disconnected for ${agent} sessionId: ${sessionId}, socketId: ${socketId}`);
-                WebhookInstance.unregister(sessionId, socketId);
-            });
-
-            // Send initial comment to establish connection
-            res.write(`data: ${JSON.stringify({ event: "connected" })}\n\n`);
-        });
-
-        app.post("/hennos/conversation/:sessionId/message", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const workflowId = await createAgentWorkflowId("webhook", sessionId);
-
-            const message = req.body.message;
-            if (!message) {
-                Logger.error(workflowId, "Missing message");
-                return res.status(400).send("Missing message");
-            }
-
-            const author = req.body.author;
-            if (!author) {
-                Logger.error(workflowId, "Missing author");
-                return res.status(400).send("Missing author");
-            }
-
-            try {
-                await signalAgenticWorkflowMessage(workflowId, author, message);
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(workflowId, `Error signaling agentic workflow message: ${error.message}`);
-                return res.status(500).json({ status: "error", message: "error sending message" });
-            }
-
-            return res.status(200).json({ status: "ok" });
-        });
-
-        app.post("/hennos/conversation/:sessionId/tools", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const body = req.body;
-            try {
-                const client = await workflowSessionMcpClient(sessionId);
-                await client.validate(body);
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(undefined, `Error validating MCP server: ${error.message}`);
-                return res.status(400).json({ status: "error", message: "error validating MCP server", details: error.message });
-            }
-
-            // This endpoint is used for adding mcp-servers to this conversation
-            const db = Database.instance();
-
-            try {
-                await db.workflowSession.upsert({
-                    where: {
-                        id: sessionId as string
-                    },
-                    create: {
-                        activePlatform: "webhook",
-                        id: sessionId as string,
-                        mcpservers: {
-                            create: {
-                                name: body.name,
-                                url: body.url,
-                                transport: body.transport,
-                                mcpserverHeaders: {
-                                    create: body.headers.map((h: { key: string; value: string }) => ({
-                                        key: h.key,
-                                        value: h.value
-                                    }))
-                                }
-                            }
-                        }
-                    },
-                    update: {
-                        activePlatform: "webhook",
-                        mcpservers: {
-                            create: {
-                                name: body.name,
-                                url: body.url,
-                                transport: body.transport,
-                                mcpserverHeaders: {
-                                    create: body.headers.map((h: { key: string; value: string }) => ({
-                                        key: h.key,
-                                        value: h.value
-                                    }))
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return res.status(200).json({ status: "ok" });
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(undefined, `Error adding MCP server: ${error.message}`);
-                return res.status(500).json({ status: "error", message: "error adding MCP server", details: error.message });
-            }
-        });
-
-        app.get("/hennos/conversation/:sessionId/tools", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            // This endpoint is used for listing the mcp-servers associated with this conversation
-            const db = Database.instance();
-            const servers = await db.modelContextProtocolServer.findMany({
-                where: {
-                    workflowSessionId: sessionId
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    transport: true,
-                    url: true,
-                    createdAt: true,
-                    mcpserverHeaders: {
-                        select: {
-                            key: true,
-                            value: true
-                        }
-                    }
-                }
-            });
-
-            return res.status(200).json({ mcp: servers });
-        });
-
-        app.delete("/hennos/conversation/:sessionId/tools/:toolId", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            // This endpoint is used for removing mcp-servers from this conversation
-
-            throw new Error("Not Implemented");
-        });
-
-        app.post("/hennos/conversation/:sessionId/artifact", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const workflowId = await createAgentWorkflowId("webhook", sessionId);
-
-            const author = req.body.author;
-            if (!author) {
-                Logger.error(workflowId, "Missing author");
-                return res.status(400).send("Missing author");
-            }
-
-            try {
-                // TODO: Implement this.
-                throw new Error("Not Implemented");
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(workflowId, `Error signaling agentic workflow message: ${error.message}`);
-                return res.status(500).json({ status: "error", message: "error handling artifact" });
-            }
-        });
-
-        app.delete("/hennos/conversation/:sessionId", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const workflowId = await createAgentWorkflowId("webhook", sessionId);
-
-            if (Array.isArray(workflowId)) {
-                Logger.error(undefined, "Invalid workflowId");
-                return res.status(400).send("Invalid workflowId");
-            }
-
-            try {
-                await signalAgenticWorkflowExit(workflowId);
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(workflowId, `Error exiting agentic workflow: ${error.message}`);
-                return res.status(500).json({ status: "error", message: "error exiting workflow" });
-            }
-
-            return res.status(200).json({ status: "ok" });
-        });
-
-        app.post("/hennos/conversation/:sessionId/context", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const workflowId = await createAgentWorkflowId("webhook", sessionId);
-
-            const message = req.body.message;
-            if (!message) {
-                Logger.error(workflowId, "Missing message");
-                return res.status(400).send("Missing message");
-            }
-
-            const author = req.body.author;
-            if (!author) {
-                Logger.error(workflowId, "Missing author");
-                return res.status(400).send("Missing author");
-            }
-
-            try {
-                await signalAgenticWorkflowMessage(workflowId, author, message);
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(workflowId, `Error signaling agentic workflow message: ${error.message}`);
-                return res.status(500).json({ status: "error", message: "error updating context" });
-            }
-
-            return res.status(200).json({ status: "ok" });
-        });
-
-        app.post("/hennos/realtime/sip", HennosRealtime.middleware());
+        if (Config.HENNOS_TELEGRAM_ENABLED) {
+            TelegramWebhookInstance.init(app);
+        }
 
         if (Config.HENNOS_MCP_ENABLED) {
-            app.post("/hennos/mcp", ModelContextProtocolServer.middleware());
-            app.get("/hennos/mcp", ModelContextProtocolServer.handleSessionRequest());
-            app.delete("/hennos/mcp", ModelContextProtocolServer.handleSessionRequest());
+            MCPWebhookInstance.init(app);
         }
 
         if (Config.HENNOS_A2A_ENABLED) {
-            app.use(`/${AGENT_CARD_PATH}`, Agent2AgentProtocolServer.agentCardHandler());
-            app.use("/a2a/rest", Agent2AgentProtocolServer.agentRestHandler());
+            A2AWebhookInstance.init(app);
         }
 
-        app.post("/gemstone/conversation/:sessionId/message", GemstoneMiddleware.postMessage());
-
-        app.post("/legacy/conversation/:sessionId/message", async (req: Request, res: Response) => {
-            const sessionId = req.params.sessionId;
-            if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
-                return res.status(400).send("Missing sessionId");
-            }
-
-            if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
-                return res.status(400).send("Invalid sessionId");
-            }
-
-            const workflowId = createLegacyWorkflowId("webhook", sessionId);
-
-            const message = req.body.message;
-            if (!message) {
-                Logger.error(workflowId, "Missing message");
-                return res.status(400).send("Missing message");
-            }
-
-            const author = req.body.author;
-            if (!author) {
-                Logger.error(workflowId, "Missing author");
-                return res.status(400).send("Missing author");
-            }
-
-            try {
-                await signalLegacyWorkflowMessage(workflowId, author, message);
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error(workflowId, `Error signaling legacy workflow message: ${error.message}`);
-                return res.status(500).json({ status: "error", message: "error sending message" });
-            }
-
-            return res.status(200).json({ status: "ok" });
-        });
-
-        if (Config.HENNOS_TELEGRAM_ENABLED) {
-            // Set up endpoints for Telegram Webhook mode
-            app.post(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
-                const bot = TelegramInstance.instance();
-                Logger.debug(undefined, `Telegram Webhook: ${JSON.stringify(req.body)}`);
-                bot.processUpdate(req.body);
-                return res.sendStatus(200);
-            });
-
-            app.get(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
-                return res.status(200).send("OK");
-            });
+        if (Config.HENNOS_GEMSTONE_ENABLED) {
+            GemstoneWebhookInstance.init(app);
         }
 
-        AgentResponseHandler.registerListener("webhook", async (message: string, chatId: string) => {
-            Logger.info(undefined, `Received webhook message: ${message} for chatId: ${chatId}`);
+        if (Config.HENNOS_SUPABASE_ENABLED) {
+            SupabaseWebhookInstance.init(app);
+        }
 
-            // Grab any listening response streams for this chatId
-            const sockets = WebhookInstance.sockets(chatId);
+        // Enable the primary endpoints always
+        HennosWebhookInstance.init(app);
+        LegacyWebhookInstance.init(app);
+
+        AgentResponseHandler.registerListener("webhook", async (message: string, sessionId: string) => {
+            Logger.info(undefined, `Received webhook message: ${message} for sessionId: ${sessionId}`);
+
+            // Grab any listening response streams for this sessionId and send the message to them
+            const sockets = WebhookInstance.sockets(sessionId);
             if (sockets) {
-                Logger.debug(undefined, `Found ${sockets.length} active streams for chatId: ${chatId}`);
+                Logger.debug(undefined, `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
                 for (const session of sockets) {
                     if (!session.stream.writableEnded) {
                         session.stream.write(`data: ${JSON.stringify({ role: "assistant", content: message })}\n\n`);
                     } else {
-                        Logger.warn(undefined, `Stream ended for chatId: ${chatId}`);
+                        Logger.warn(undefined, `Stream ended for sessionId: ${sessionId}`);
                     }
                 }
             } else {
-                Logger.debug(undefined, `No active streams for chatId: ${chatId}`);
+                Logger.debug(undefined, `No active streams for sessionId: ${sessionId}`);
             }
         });
 

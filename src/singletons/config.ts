@@ -98,6 +98,14 @@ export class Config {
         return process.env.HENNOS_MCP_ENABLED === "true";
     }
 
+    static get HENNOS_GEMSTONE_ENABLED(): boolean {
+        if (!process.env.HENNOS_GEMSTONE_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_GEMSTONE_ENABLED === "true";
+    }
+
     static get HENNOS_A2A_ENABLED(): boolean {
         if (!process.env.HENNOS_A2A_ENABLED) {
             return false;
@@ -138,6 +146,14 @@ export class Config {
         return process.env.HENNOS_DISCORD_ENABLED === "true";
     }
 
+    static get HENNOS_FLUXER_ENABLED(): boolean {
+        if (!process.env.HENNOS_FLUXER_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_FLUXER_ENABLED === "true";
+    }
+
     static get HENNOS_SLACK_ENABLED(): boolean {
         if (!process.env.HENNOS_SLACK_ENABLED) {
             return false;
@@ -152,6 +168,14 @@ export class Config {
         }
 
         return process.env.HENNOS_API_ENABLED === "true";
+    }
+
+    static get HENNOS_SUPABASE_ENABLED(): boolean {
+        if (!process.env.HENNOS_SUPABASE_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_SUPABASE_ENABLED === "true";
     }
 
     static get HENNOS_API_PORT(): number {
@@ -354,6 +378,14 @@ export class Config {
         }
 
         return process.env.DISCORD_BOT_TOKEN;
+    }
+
+    static get FLUXER_BOT_TOKEN(): string {
+        if (!process.env.FLUXER_BOT_TOKEN) {
+            throw new Error("Missing FLUXER_BOT_TOKEN");
+        }
+
+        return process.env.FLUXER_BOT_TOKEN;
     }
 
     static get SLACK_BOT_TOKEN(): string {
@@ -560,6 +592,30 @@ export class Config {
         }
 
         return process.env.AXIOM_DATASET;
+    }
+
+    static get SUPABASE_URL(): string | false {
+        if (!process.env.SUPABASE_URL) {
+            return false;
+        }
+
+        return process.env.SUPABASE_URL;
+    }
+
+    static get SUPABASE_ANON_KEY(): string | false {
+        if (!process.env.SUPABASE_ANON_KEY) {
+            return false;
+        }
+
+        return process.env.SUPABASE_ANON_KEY;
+    }
+
+    static get SUPABASE_SERVICE_ROLE_KEY(): string | false {
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            return false;
+        }
+
+        return process.env.SUPABASE_SERVICE_ROLE_KEY;
     }
 
     static LOCAL_STORAGE(workflowId: string): string {

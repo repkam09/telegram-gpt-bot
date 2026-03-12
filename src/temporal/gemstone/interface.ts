@@ -35,6 +35,10 @@ export function parseWorkflowId(workflowId: string): { platform: string; chatId:
 }
 
 export async function signalGemstoneWorkflowMessage(workflowId: string, author: string, message: string) {
+    if (!Config.HENNOS_GEMSTONE_ENABLED) {
+        throw new Error("Gemstone agent is disabled");
+    }
+
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(gemstoneAgentWorkflow, {
         taskQueue: Config.TEMPORAL_TASK_QUEUE,

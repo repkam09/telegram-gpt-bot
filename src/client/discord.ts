@@ -151,7 +151,7 @@ export class DiscordInstance {
             return filePath;
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(workflowId, `Error downloading file from Telegram: ${error.message}`, error);
+            Logger.error(workflowId, `Error downloading file from Discord: ${error.message}`, error);
         }
         return null;
     }

@@ -3,9 +3,11 @@ import { HennosTemporalWorker } from "./worker";
 import { Database } from "./database";
 import { TelegramInstance } from "./client/telegram";
 import { DiscordInstance } from "./client/discord";
+import { FluxerInstance } from "./client/fluxer";
 import { WebhookInstance } from "./client/api";
 import { SlackInstance } from "./client/slack";
 import { Config } from "./singletons/config";
+import { SupabaseInstance } from "./singletons/supabase";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
 import { createBlueskyScheduleWorkflow, deleteBlueskyScheduleWorkflow } from "./temporal/bluesky/schedule";
 import { ModelContextProtocolServer } from "./client/mcp";
@@ -32,6 +34,13 @@ async function start() {
         Logger.info(undefined, "Discord client is disabled. Skipping...");
     }
 
+    if (Config.HENNOS_FLUXER_ENABLED) {
+        Logger.info(undefined, "Initializing Fluxer client...");
+        await FluxerInstance.init();
+    } else {
+        Logger.info(undefined, "Fluxer client is disabled. Skipping...");
+    }
+
     if (Config.HENNOS_SLACK_ENABLED) {
         Logger.info(undefined, "Initializing Slack client...");
         await SlackInstance.init();
@@ -51,6 +60,13 @@ async function start() {
         await Agent2AgentProtocolServer.init();
     } else {
         Logger.info(undefined, "Agent2Agent Protocol Server is disabled. Skipping...");
+    }
+
+    if (Config.HENNOS_SUPABASE_ENABLED) {
+        Logger.info(undefined, "Initializing Supabase client...");
+        await SupabaseInstance.init();
+    } else {
+        Logger.info(undefined, "Supabase client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_API_ENABLED) {
