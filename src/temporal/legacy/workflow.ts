@@ -6,6 +6,7 @@ import {
     proxyActivities,
     setHandler,
     workflowInfo,
+    log
 } from "@temporalio/workflow";
 import type * as activities from "./activities";
 import { LegacyWorkflowInput } from "./interface";
@@ -119,7 +120,7 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
 
         } catch (err: unknown) {
             // Log error and continue - activity failures are transient
-            console.error("Error in legacyWorkflow:", err);
+            log.error("Error in legacyWorkflow main loop:" + ((err instanceof Error) ? err.message : String(err)));
             tools = [];
             iterations++;
         }
