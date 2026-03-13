@@ -105,11 +105,11 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
 
             if (agentThought.__type === "action") {
                 const pending = agentThought.payload.map(async (payload) => {
-                    tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                     const actionResult = await legacyAction(
                         payload.name,
                         payload.input,
                     );
+                    tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                     tools.push({ role: "tool_response", id: payload.id, result: actionResult });
                 });
 
@@ -117,8 +117,10 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
                 iterations++;
             }
 
-        } catch {
+        } catch (err: unknown) {
             // Log error and continue - activity failures are transient
+            console.error("Error in legacyWorkflow:", err);
+            tools = [];
             iterations++;
         }
     }
