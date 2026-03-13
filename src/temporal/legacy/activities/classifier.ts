@@ -102,13 +102,8 @@ export function classifierToolDefinitions(): HennosTool[] {
                 description: "Call this tool when the user message is simple.",
                 parameters: {
                     type: "object",
-                    properties: {
-                        reason: {
-                            type: "string",
-                            description: "A brief reason why this message is classified as simple.",
-                        },
-                    },
-                    required: ["reason"],
+                    properties: {},
+                    required: [],
                 },
             },
         },
@@ -119,13 +114,8 @@ export function classifierToolDefinitions(): HennosTool[] {
                 description: "Call this tool when the user message is complex.",
                 parameters: {
                     type: "object",
-                    properties: {
-                        reason: {
-                            type: "string",
-                            description: "A brief reason why this message is classified as complex.",
-                        },
-                    },
-                    required: ["reason"],
+                    properties: {},
+                    required: [],
                 },
             },
         },

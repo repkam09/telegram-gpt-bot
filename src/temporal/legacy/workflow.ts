@@ -5,6 +5,7 @@ import {
     defineSignal,
     proxyActivities,
     setHandler,
+    workflowInfo,
 } from "@temporalio/workflow";
 import type * as activities from "./activities";
 import { LegacyWorkflowInput } from "./interface";
@@ -56,11 +57,10 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
         });
     });
 
-    await condition(() => pending.length > 0);
-
-    const context: WorkflowContextEntry[] = [];
-
+    let tools: WorkflowContextEntry[] = [];
     let iterations = 0;
+
+    await condition(() => pending.length > 0);
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -76,10 +76,10 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
 
             const classification = await classifyPromptComplexity({
                 iterations,
-                hasToolContext: context.length > 0,
+                hasToolContext: tools.length > 0,
             });
 
-            const agentThought = await legacyCompletion({ context: context, iterations, classification });
+            const agentThought = await legacyCompletion({ context: tools, iterations, classification });
             if (agentThought.__type === "string") {
                 await persistLegacyAgentMessage({
                     message: agentThought.payload,
@@ -89,28 +89,34 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
                     message: agentThought.payload,
                 });
 
-                await allHandlersFinished();
-                return continueAsNew<typeof legacyWorkflow>({
-                    continueAsNew: {
-                        pending,
-                    },
-                });
+                if (workflowInfo().continueAsNewSuggested) {
+                    await allHandlersFinished();
+                    return continueAsNew<typeof legacyWorkflow>({
+                        continueAsNew: {
+                            pending,
+                        },
+                    });
+                } else {
+                    tools = [];
+                    iterations = 0;
+                    await condition(() => pending.length > 0);
+                }
             }
 
             if (agentThought.__type === "action") {
                 const pending = agentThought.payload.map(async (payload) => {
-                    context.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
+                    tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                     const actionResult = await legacyAction(
                         payload.name,
                         payload.input,
                     );
-                    context.push({ role: "tool_response", id: payload.id, result: actionResult });
+                    tools.push({ role: "tool_response", id: payload.id, result: actionResult });
                 });
 
                 await Promise.all(pending);
+                iterations++;
             }
 
-            iterations++;
         } catch {
             // Log error and continue - activity failures are transient
             iterations++;
