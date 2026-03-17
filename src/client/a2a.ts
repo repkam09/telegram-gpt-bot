@@ -15,7 +15,7 @@ export class Agent2AgentProtocolServer {
     private static _requestHandler: DefaultRequestHandler;
 
     public static async init() {
-        Logger.info(undefined, "Initializing Agent2Agent Protocol Server...");
+        Logger.info("Agent2AgentProtocolServer", "Initializing Agent2Agent Protocol Server...");
         // The actual server is created in the WebhookInstance when the Express app is initialized.
     }
 

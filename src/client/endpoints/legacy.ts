@@ -29,11 +29,11 @@ export class LegacyWebhookInstance {
 
             const socketId = randomUUID();
 
-            Logger.debug(undefined, `Client connected for Legacy sessionId: ${sessionId}, socketId: ${socketId}`);
+            Logger.debug("LegacyWebhook", `Client connected for Legacy sessionId: ${sessionId}, socketId: ${socketId}`);
             WebhookInstance.register(sessionId, socketId, res);
 
             res.on("close", () => {
-                Logger.debug(undefined, `Client disconnected for Legacy sessionId: ${sessionId}, socketId: ${socketId}`);
+                Logger.debug("LegacyWebhook", `Client disconnected for Legacy sessionId: ${sessionId}, socketId: ${socketId}`);
                 WebhookInstance.unregister(sessionId, socketId);
             });
 
@@ -44,12 +44,12 @@ export class LegacyWebhookInstance {
         app.post("/legacy/conversation/:sessionId/message", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("LegacyWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("LegacyWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 

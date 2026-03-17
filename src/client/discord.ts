@@ -27,7 +27,7 @@ export class DiscordInstance {
         });
 
         client.on(Events.ClientReady, readyClient => {
-            Logger.info(undefined, `Logged in as ${readyClient.user.tag}!`);
+            Logger.info("discord", `Logged in as ${readyClient.user.tag}!`);
 
             // Setting up workflow callback handler
             AgentResponseHandler.registerMessageListener("discord", async (message: string, chatId: string) => {
@@ -77,7 +77,7 @@ export class DiscordInstance {
             });
 
             AgentResponseHandler.registerStatusListener("discord", async (event: StatusListenerEvent, chatId: string) => {
-                Logger.info("discord", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+                Logger.debug("discord", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
                 // TODO: Handle sending status updates if needed
             });
 
@@ -86,7 +86,7 @@ export class DiscordInstance {
         client.on(Events.InteractionCreate, async interaction => {
             if (!interaction.isChatInputCommand()) return;
 
-            Logger.info(undefined, `Received command: ${interaction.commandName}`);
+            Logger.info("discord", `Received command: ${interaction.commandName}`);
         });
 
         client.on(Events.MessageCreate, async message => {

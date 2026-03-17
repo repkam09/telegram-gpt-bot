@@ -17,8 +17,8 @@ export type HennosEmbedModelConfig = {
     LENGTH: number
 }
 
-type HennosModelProvider = "ollama" | "openai" | "anthropic";
-type HennosEmbedProvider = "ollama" | "openai";
+export type HennosModelProvider = "ollama" | "openai" | "anthropic";
+export type HennosEmbedProvider = "ollama" | "openai";
 
 export class Config {
     static get HENNOS_DEVELOPMENT_MODE(): boolean {

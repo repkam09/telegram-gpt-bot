@@ -31,7 +31,7 @@ export class SlackInstance {
 
         Logger.debug("slack", "Registering Slack event listeners...");
         AgentResponseHandler.registerMessageListener("slack", async (message: string, chatId: string) => {
-            Logger.info("slack", `Received workflow callback for Slack in channel ${chatId}`);
+            Logger.debug("slack", `Received workflow callback for Slack in channel ${chatId}`);
 
             // TODO: Split and respond in 12,000 characters chunks.
             await SlackInstance.client.chat.postMessage({
@@ -41,12 +41,12 @@ export class SlackInstance {
         });
 
         AgentResponseHandler.registerStatusListener("slack", async (event: { type: string; payload?: unknown }, chatId: string) => {
-            Logger.info("slack", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+            Logger.debug("slack", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
             // TODO: Handle sending status updates if needed
         });
 
         AgentResponseHandler.registerArtifactListener("slack", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
-            Logger.info("slack", `Received artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
+            Logger.debug("slack", `Received artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
             // TODO: Handle sending artifacts if needed
         });
 

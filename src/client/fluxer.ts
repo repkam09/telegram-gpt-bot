@@ -67,7 +67,7 @@ export class FluxerInstance {
 
         client.on(GatewayDispatchEvents.Ready, (readyClient) => {
             const { username, discriminator } = readyClient.data.user;
-            Logger.info(undefined, `Logged in as @${username}#${discriminator}`);
+            Logger.info("fluxer", `Logged in as @${username}#${discriminator}`);
 
             // Setting up workflow callback handler
             AgentResponseHandler.registerMessageListener("fluxer", async (message: string, chatId: string) => {
@@ -94,12 +94,12 @@ export class FluxerInstance {
             });
 
             AgentResponseHandler.registerStatusListener("fluxer", async (event: { type: string; payload?: unknown }, chatId: string) => {
-                Logger.info("fluxer", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+                Logger.debug("fluxer", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
                 // TODO: Handle sending status updates if needed
             });
 
             AgentResponseHandler.registerArtifactListener("fluxer", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
-                Logger.info("fluxer", `Received artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
+                Logger.debug("fluxer", `Received artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
                 // TODO: Handle sending artifacts if needed
             });
         });

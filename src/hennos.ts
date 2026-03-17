@@ -15,86 +15,86 @@ import { Agent2AgentProtocolServer } from "./client/a2a";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
 
 async function start() {
-    Logger.info(undefined, "Starting Hennos...");
+    Logger.info("Hennos", "Starting Hennos...");
     await Database.init();
 
-    Logger.info(undefined, "Initializing clients...");
+    Logger.info("Hennos", "Initializing clients...");
 
 
     if (Config.HENNOS_TELEGRAM_ENABLED) {
-        Logger.info(undefined, "Initializing Telegram client...");
+        Logger.info("Hennos", "Initializing Telegram client...");
         await TelegramInstance.init();
         await TelegramLegacyInstance.init();
     } else {
-        Logger.info(undefined, "Telegram client is disabled. Skipping...");
+        Logger.info("Hennos", "Telegram client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_DISCORD_ENABLED) {
-        Logger.info(undefined, "Initializing Discord client...");
+        Logger.info("Hennos", "Initializing Discord client...");
         await DiscordInstance.init();
     } else {
-        Logger.info(undefined, "Discord client is disabled. Skipping...");
+        Logger.info("Hennos", "Discord client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_FLUXER_ENABLED) {
-        Logger.info(undefined, "Initializing Fluxer client...");
+        Logger.info("Hennos", "Initializing Fluxer client...");
         await FluxerInstance.init();
     } else {
-        Logger.info(undefined, "Fluxer client is disabled. Skipping...");
+        Logger.info("Hennos", "Fluxer client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_SLACK_ENABLED) {
-        Logger.info(undefined, "Initializing Slack client...");
+        Logger.info("Hennos", "Initializing Slack client...");
         await SlackInstance.init();
     } else {
-        Logger.info(undefined, "Slack client is disabled. Skipping...");
+        Logger.info("Hennos", "Slack client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_MCP_ENABLED) {
-        Logger.info(undefined, "Initializing Model Context Protocol Server...");
+        Logger.info("Hennos", "Initializing Model Context Protocol Server...");
         await ModelContextProtocolServer.run();
     } else {
-        Logger.info(undefined, "Model Context Protocol Server is disabled. Skipping...");
+        Logger.info("Hennos", "Model Context Protocol Server is disabled. Skipping...");
     }
 
     if (Config.HENNOS_A2A_ENABLED) {
-        Logger.info(undefined, "Initializing Agent2Agent Protocol Server...");
+        Logger.info("Hennos", "Initializing Agent2Agent Protocol Server...");
         await Agent2AgentProtocolServer.init();
     } else {
-        Logger.info(undefined, "Agent2Agent Protocol Server is disabled. Skipping...");
+        Logger.info("Hennos", "Agent2Agent Protocol Server is disabled. Skipping...");
     }
 
     if (Config.HENNOS_SUPABASE_ENABLED) {
-        Logger.info(undefined, "Initializing Supabase client...");
+        Logger.info("Hennos", "Initializing Supabase client...");
         await SupabaseInstance.init();
     } else {
-        Logger.info(undefined, "Supabase client is disabled. Skipping...");
+        Logger.info("Hennos", "Supabase client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_API_ENABLED) {
-        Logger.info(undefined, "Initializing API client...");
+        Logger.info("Hennos", "Initializing API client...");
         await WebhookInstance.init();
     } else {
-        Logger.info(undefined, "API client is disabled. Skipping...");
+        Logger.info("Hennos", "API client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_GMAIL_ENABLED) {
-        Logger.info(undefined, "Initializing Email Schedule Workflow...");
+        Logger.info("Hennos", "Initializing Email Schedule Workflow...");
         await createEmailScheduleWorkflow();
     } else {
-        Logger.info(undefined, "Email Schedule Workflow is disabled. Skipping...");
+        Logger.info("Hennos", "Email Schedule Workflow is disabled. Skipping...");
         await deleteEmailScheduleWorkflow();
     }
 
     if (Config.HENNOS_BLUESKY_ENABLED) {
-        Logger.info(undefined, "Initializing Bluesky Schedule Workflow...");
+        Logger.info("Hennos", "Initializing Bluesky Schedule Workflow...");
         await createBlueskyScheduleWorkflow();
     } else {
-        Logger.info(undefined, "Bluesky Schedule Workflow is disabled. Skipping...");
+        Logger.info("Hennos", "Bluesky Schedule Workflow is disabled. Skipping...");
         await deleteBlueskyScheduleWorkflow();
     }
 
-    Logger.info(undefined, "Starting Temporal worker...");
+    Logger.info("Hennos", "Starting Temporal worker...");
     return HennosTemporalWorker.init();
 }
 

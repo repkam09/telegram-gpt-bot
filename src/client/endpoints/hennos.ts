@@ -73,11 +73,11 @@ export class HennosWebhookInstance {
 
             const socketId = randomUUID();
 
-            Logger.debug(undefined, `Client connected for Hennos sessionId: ${sessionId}, socketId: ${socketId}`);
+            Logger.debug("HennosWebhook", `Client connected for Hennos sessionId: ${sessionId}, socketId: ${socketId}`);
             WebhookInstance.register(sessionId, socketId, res);
 
             res.on("close", () => {
-                Logger.debug(undefined, `Client disconnected for Hennos sessionId: ${sessionId}, socketId: ${socketId}`);
+                Logger.debug("HennosWebhook", `Client disconnected for Hennos sessionId: ${sessionId}, socketId: ${socketId}`);
                 WebhookInstance.unregister(sessionId, socketId);
             });
 
@@ -88,12 +88,12 @@ export class HennosWebhookInstance {
         app.post("/hennos/conversation/:sessionId/message", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("HennosWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("HennosWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 
@@ -125,12 +125,12 @@ export class HennosWebhookInstance {
         app.post("/hennos/conversation/:sessionId/tools", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("HennosWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("HennosWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 
@@ -140,7 +140,7 @@ export class HennosWebhookInstance {
                 await client.validate(body);
             } catch (err: unknown) {
                 const error = err as Error;
-                Logger.error(undefined, `Error validating MCP server: ${error.message}`);
+                Logger.error("HennosWebhook", `Error validating MCP server: ${error.message}`);
                 return res.status(400).json({ status: "error", message: "error validating MCP server", details: error.message });
             }
 
@@ -190,7 +190,7 @@ export class HennosWebhookInstance {
                 return res.status(200).json({ status: "ok" });
             } catch (err: unknown) {
                 const error = err as Error;
-                Logger.error(undefined, `Error adding MCP server: ${error.message}`);
+                Logger.error("HennosWebhook", `Error adding MCP server: ${error.message}`);
                 return res.status(500).json({ status: "error", message: "error adding MCP server", details: error.message });
             }
         });
@@ -198,12 +198,12 @@ export class HennosWebhookInstance {
         app.get("/hennos/conversation/:sessionId/tools", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("HennosWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("HennosWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 
@@ -234,12 +234,12 @@ export class HennosWebhookInstance {
         app.delete("/hennos/conversation/:sessionId/tools/:toolId", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("HennosWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("HennosWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 
@@ -251,12 +251,12 @@ export class HennosWebhookInstance {
         app.post("/hennos/conversation/:sessionId/artifact", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("HennosWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("HennosWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 
@@ -281,19 +281,19 @@ export class HennosWebhookInstance {
         app.delete("/hennos/conversation/:sessionId", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("HennosWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("HennosWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 
             const workflowId = await createAgentWorkflowId("webhook", sessionId);
 
             if (Array.isArray(workflowId)) {
-                Logger.error(undefined, "Invalid workflowId");
+                Logger.error("HennosWebhook", "Invalid workflowId");
                 return res.status(400).send("Invalid workflowId");
             }
 
@@ -311,12 +311,12 @@ export class HennosWebhookInstance {
         app.post("/hennos/conversation/:sessionId/context", async (req: Request, res: Response) => {
             const sessionId = req.params.sessionId;
             if (!sessionId) {
-                Logger.error(undefined, "Missing sessionId");
+                Logger.error("HennosWebhook", "Missing sessionId");
                 return res.status(400).send("Missing sessionId");
             }
 
             if (Array.isArray(sessionId)) {
-                Logger.error(undefined, "Invalid sessionId");
+                Logger.error("HennosWebhook", "Invalid sessionId");
                 return res.status(400).send("Invalid sessionId");
             }
 

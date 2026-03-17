@@ -23,7 +23,7 @@ import { Ollama, OllamaEmbedding } from "@llamaindex/ollama";
 
 
 if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
-    Logger.info(undefined, "Initializing Ollama embedding model for document processing");
+    Logger.info("DocumentProcessing", "Initializing Ollama embedding model for document processing");
     Settings.embedModel = new OllamaEmbedding({
         model: Config.OLLAMA_LLM_EMBED.MODEL,
         config: {
@@ -31,7 +31,7 @@ if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
         }
     });
 } else {
-    Logger.info(undefined, "Initializing OpenAI embedding model for document processing");
+    Logger.info("DocumentProcessing", "Initializing OpenAI embedding model for document processing");
     Settings.embedModel = new OpenAIEmbedding({
         model: Config.OPENAI_LLM_EMBED.MODEL,
         apiKey: Config.OPENAI_API_KEY
@@ -40,7 +40,7 @@ if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
 }
 
 if (Config.HENNOS_DOCUMENT_LLM_PROVIDER === "ollama") {
-    Logger.info(undefined, "Initializing Ollama LLM model for document processing");
+    Logger.info("DocumentProcessing", "Initializing Ollama LLM model for document processing");
     Settings.llm = new Ollama({
         model: Config.OLLAMA_LLM.MODEL,
         config: {
@@ -48,7 +48,7 @@ if (Config.HENNOS_DOCUMENT_LLM_PROVIDER === "ollama") {
         }
     });
 } else {
-    Logger.info(undefined, "Initializing OpenAI LLM model for document processing");
+    Logger.info("DocumentProcessing", "Initializing OpenAI LLM model for document processing");
     Settings.llm = new OpenAI({
         model: Config.OPENAI_MINI_LLM.MODEL,
         apiKey: Config.OPENAI_API_KEY,

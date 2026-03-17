@@ -21,7 +21,7 @@ export class ModelContextProtocolServer {
     }
 
     static async run(): Promise<void> {
-        Logger.info(undefined, "Starting Hennos MCP Server...");
+        Logger.info("ModelContextProtocolServer", "Starting Hennos MCP Server...");
         const server = new McpServer({
             name: "Hennos Agent MCP Server",
             version: "1.0.0",

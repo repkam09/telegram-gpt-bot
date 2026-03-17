@@ -75,23 +75,23 @@ export class HennosRealtime {
     public static middleware() {
         return async (req: Request, res: Response) => {
             if (!req.body) {
-                Logger.error(undefined, "Missing request body");
+                Logger.error("HennosRealtime", "Missing request body");
                 return res.status(400).send("Missing request body");
             }
 
             if (!req.body.type) {
-                Logger.error(undefined, "Missing request type");
+                Logger.error("HennosRealtime", "Missing request type");
                 return res.status(400).send("Missing request type");
             }
 
             if (req.body.type !== "realtime.call.incoming") {
-                Logger.error(undefined, `Unsupported request type: ${req.body.type}`);
+                Logger.error("HennosRealtime", `Unsupported request type: ${req.body.type}`);
                 return res.status(400).send(`Unsupported request type: ${req.body.type}`);
             }
 
             const callId = req.body.data?.call_id;
             if (!callId) {
-                Logger.error(undefined, "Missing call_id");
+                Logger.error("HennosRealtime", "Missing call_id");
                 return res.status(400).send("Missing call_id");
             }
 

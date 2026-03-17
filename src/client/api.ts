@@ -20,26 +20,26 @@ export class WebhookInstance {
             WebhookInstance._streams.set(sessionId, []);
         }
 
-        Logger.debug(undefined, `Registering stream for sessionId: ${sessionId}, socketId: ${socketId}`);
+        Logger.debug("WebhookInstance", `Registering stream for sessionId: ${sessionId}, socketId: ${socketId}`);
         WebhookInstance._streams.get(sessionId)?.push({ stream, uuid: socketId });
     }
 
     static unregister(sessionId: string, socketId: string) {
         const streams = WebhookInstance._streams.get(sessionId);
         if (streams) {
-            Logger.debug(undefined, `Unregistering stream for sessionId: ${sessionId}, socketId: ${socketId}`);
+            Logger.debug("WebhookInstance", `Unregistering stream for sessionId: ${sessionId}, socketId: ${socketId}`);
             WebhookInstance._streams.set(sessionId, streams.filter(s => s.uuid !== socketId));
         }
     }
 
     static sockets(sessionId: string) {
-        Logger.debug(undefined, `Fetching sockets for sessionId: ${sessionId}`);
+        Logger.debug("WebhookInstance", `Fetching sockets for sessionId: ${sessionId}`);
         return WebhookInstance._streams.get(sessionId) || [];
     }
 
     static instance(): Express {
         if (!WebhookInstance._instance) {
-            Logger.info(undefined, "Creating new Express instance for Webhook API");
+            Logger.info("WebhookInstance", "Creating new Express instance for Webhook API");
             const app = express();
             app.use(express.json());
             WebhookInstance._instance = app;
@@ -48,17 +48,17 @@ export class WebhookInstance {
     }
 
     static async init() {
-        Logger.info(undefined, "Starting Hennos Webhook API");
+        Logger.info("WebhookInstance", "Starting Hennos Webhook API");
 
         if (!Config.HENNOS_API_ENABLED) {
-            Logger.info(undefined, "Hennos Webhook API is disabled. Skipping initialization.");
+            Logger.info("WebhookInstance", "Hennos Webhook API is disabled. Skipping initialization.");
             return;
         }
 
         const app = WebhookInstance.instance();
 
         if (Config.HENNOS_DEVELOPMENT_MODE) {
-            Logger.info(undefined, "Hennos Webhook API running in development mode. Serving static files from /public.");
+            Logger.info("WebhookInstance", "Hennos Webhook API running in development mode. Serving static files from /public.");
             app.use(express.static(path.join(__dirname, "../../public")));
         }
 
@@ -123,7 +123,7 @@ export class WebhookInstance {
         });
 
         AgentResponseHandler.registerStatusListener("webhook", async (event: { type: string; payload?: unknown }, sessionId: string) => {
-            Logger.info("webhook", `Received status update: ${JSON.stringify(event)} for sessionId: ${sessionId}`);
+            Logger.debug("webhook", `Received status update: ${JSON.stringify(event)} for sessionId: ${sessionId}`);
 
             // Grab any listening response streams for this sessionId and send the message to them
             const sockets = WebhookInstance.sockets(sessionId);

@@ -75,7 +75,7 @@ export class TelegramInstance {
         });
 
         AgentResponseHandler.registerStatusListener("telegram", async (event: { type: StatusListenerEventType; payload?: unknown }, chatId: string) => {
-            Logger.info("telegram", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+            Logger.debug("telegram", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
             if (TelegramStatusEvents.includes(event.type as ChatAction)) {
                 TelegramInstance.setTelegramIndicator(Number(chatId), event.type as ChatAction);
             } else {

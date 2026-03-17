@@ -7,12 +7,12 @@ import "./temporal/workflows";
 export class HennosTemporalWorker {
     static async init() {
         const server = `${Config.TEMPORAL_HOST}:${Config.TEMPORAL_PORT}`;
-        Logger.info(undefined, `Connecting to Temporal server at ${server}...`);
+        Logger.info("HennosTemporalWorker", `Connecting to Temporal server at ${server}...`);
         const connection = await NativeConnection.connect({
             address: server,
         });
 
-        Logger.info(undefined, "Starting Temporal Worker...");
+        Logger.info("HennosTemporalWorker", "Starting Temporal Worker...");
         const agentWorker = await Worker.create({
             connection,
             namespace: Config.TEMPORAL_NAMESPACE,

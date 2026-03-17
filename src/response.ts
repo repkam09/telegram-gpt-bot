@@ -14,32 +14,32 @@ export class AgentResponseHandler {
     private static statusListeners: Map<string, StatusListener> = new Map();
 
     public static registerMessageListener(type: string, callback: MessageListener): void {
-        Logger.info(undefined, `Registering message listener for platform: ${type}`);
+        Logger.info("AgentResponseHandler", `Registering message listener for platform: ${type}`);
         this.messageListeners.set(type, callback);
     }
 
     public static unregisterMessageListener(type: string): void {
-        Logger.info(undefined, `Unregistering message listener for platform: ${type}`);
+        Logger.info("AgentResponseHandler", `Unregistering message listener for platform: ${type}`);
         this.messageListeners.delete(type);
     }
 
     public static registerArtifactListener(type: string, callback: ArtifactListener): void {
-        Logger.info(undefined, `Registering artifact listener for platform: ${type}`);
+        Logger.info("AgentResponseHandler", `Registering artifact listener for platform: ${type}`);
         this.artifactListeners.set(type, callback);
     }
 
     public static unregisterArtifactListener(type: string): void {
-        Logger.info(undefined, `Unregistering artifact listener for platform: ${type}`);
+        Logger.info("AgentResponseHandler", `Unregistering artifact listener for platform: ${type}`);
         this.artifactListeners.delete(type);
     }
 
     public static registerStatusListener(type: string, callback: StatusListener): void {
-        Logger.info(undefined, `Registering status listener for platform: ${type}`);
+        Logger.info("AgentResponseHandler", `Registering status listener for platform: ${type}`);
         this.statusListeners.set(type, callback);
     }
 
     public static unregisterStatusListener(type: string): void {
-        Logger.info(undefined, `Unregistering status listener for platform: ${type}`);
+        Logger.info("AgentResponseHandler", `Unregistering status listener for platform: ${type}`);
         this.statusListeners.delete(type);
     }
 

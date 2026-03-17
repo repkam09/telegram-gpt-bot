@@ -259,7 +259,7 @@ export class MemoryDataStore {
             return [];
         }
 
-        Logger.debug(undefined, `Searching memory store for user ${userId} with events: ${JSON.stringify(events)}`);
+        Logger.debug("MemoryDataStore", `Searching memory store for user ${userId} with events: ${JSON.stringify(events)}`);
         return MemoryDataStore.memories.get(userId) || [];
     }
 
@@ -268,12 +268,12 @@ export class MemoryDataStore {
             return [];
         }
 
-        Logger.debug(undefined, `Searching semantic memories for user ${userId} with queries: ${JSON.stringify(queries)}`);
+        Logger.debug("MemoryDataStore", `Searching semantic memories for user ${userId} with queries: ${JSON.stringify(queries)}`);
         return MemoryDataStore.memories.get(userId) || [];
     }
 
     public static async add(userId: string, memory: Memory): Promise<void> {
-        Logger.debug(undefined, `Adding memory to store: ${JSON.stringify(memory)}`);
+        Logger.debug("MemoryDataStore", `Adding memory to store: ${JSON.stringify(memory)}`);
         if (!MemoryDataStore.memories.has(userId)) {
             MemoryDataStore.memories.set(userId, []);
         }
@@ -282,17 +282,17 @@ export class MemoryDataStore {
     }
 
     public static async update(userId: string, memoryId: string, updates: Partial<Memory>): Promise<void> {
-        Logger.debug(undefined, `Updating memory ${memoryId} with updates: ${JSON.stringify(updates)}`);
+        Logger.debug("MemoryDataStore", `Updating memory ${memoryId} with updates: ${JSON.stringify(updates)}`);
         if (!MemoryDataStore.memories.has(userId)) {
             MemoryDataStore.memories.set(userId, []);
         }
 
         const index = MemoryDataStore.memories.get(userId)!.findIndex(m => m.memoryId === memoryId);
-        Logger.debug(undefined, `Found memory index: ${index}`);
+        Logger.debug("MemoryDataStore", `Found memory index: ${index}`);
     }
 
     public static async remove(userId: string, memoryId: string): Promise<void> {
-        Logger.debug(undefined, `Removing memory ${memoryId} from store`);
+        Logger.debug("MemoryDataStore", `Removing memory ${memoryId} from store`);
 
         if (!MemoryDataStore.memories.has(userId)) {
             MemoryDataStore.memories.set(userId, []);
@@ -302,7 +302,7 @@ export class MemoryDataStore {
         if (index !== -1) {
             MemoryDataStore.memories.get(userId)!.splice(index, 1);
         } else {
-            Logger.warn(undefined, `Memory with ID ${memoryId} not found for removal.`);
+            Logger.warn("MemoryDataStore", `Memory with ID ${memoryId} not found for removal.`);
         }
     }
 }

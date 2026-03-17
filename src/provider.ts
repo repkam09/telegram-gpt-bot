@@ -1,8 +1,11 @@
 import { Tool } from "ollama";
-import { Config } from "./singletons/config";
+import { Config, HennosModelProvider } from "./singletons/config";
 import { HennosOllamaSingleton } from "./singletons/ollama";
 import { HennosOpenAISingleton } from "./singletons/openai";
 import { HennosAnthropicSingleton } from "./singletons/anthropic";
+import { Logger } from "./singletons/logger";
+import { Database } from "./database";
+import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
 
 export type HennosTool = Tool;
 export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeToolResponse;
@@ -85,7 +88,11 @@ type InvokableModelProvider = {
 }
 
 export function resolveModelProvider(level: "high" | "low" | "nano"): InvokableModelProvider {
-    switch (Config.HENNOS_LLM_PROVIDER) {
+    return internalResolveModelProvider(level, Config.HENNOS_LLM_PROVIDER);
+}
+
+function internalResolveModelProvider(level: "high" | "low" | "nano", provider: HennosModelProvider): InvokableModelProvider {
+    switch (provider) {
         case "openai": {
             if (level === "high") {
                 return HennosOpenAISingleton.high();
@@ -124,5 +131,30 @@ export function resolveModelProvider(level: "high" | "low" | "nano"): InvokableM
         default: {
             throw new Error(`Unsupported model provider: ${Config.HENNOS_LLM_PROVIDER}`);
         }
+    }
+}
+
+export async function resolveLegacyModelProvider(workflowId: string, level: "high" | "low" | "nano"): Promise<InvokableModelProvider> {
+    try {
+        const parsed = parseLegacyWorkflowId(workflowId);
+        const database = Database.instance();
+        const user = await database.user.findUnique({
+            where: {
+                chatId: Number(parsed.chatId)
+            },
+            select: {
+                provider: true
+            }
+        });
+
+        if (!user || !user.provider) {
+            Logger.debug(workflowId, `No user provider found for workflowId '${workflowId}', falling back to default provider '${Config.HENNOS_LLM_PROVIDER}'`);
+            return resolveModelProvider(level);
+        }
+        Logger.debug(workflowId, `Resolved legacy model provider for level '${level}' to user provider '${user.provider}'`);
+        return internalResolveModelProvider(level, user.provider as HennosModelProvider);
+    } catch (err) {
+        Logger.error(workflowId, `Failed to resolve legacy model provider for level '${level}': ${err}`);
+        return resolveModelProvider(level);
     }
 }
