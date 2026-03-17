@@ -8,5 +8,5 @@ type GemstoneBroadcastAgentInput = {
 }
 
 export async function persistGemstoneAgentMessage(input: GemstoneBroadcastAgentInput) {
-    return AgentResponseHandler.handle(input.workflowId, input.message);
+    return AgentResponseHandler.handleMessage(input.workflowId, input.message);
 }

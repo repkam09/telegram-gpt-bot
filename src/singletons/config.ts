@@ -460,6 +460,22 @@ export class Config {
         return process.env.GMAIL_REFRESH_TOKEN;
     }
 
+    static get GOOGLE_IMAGE_MODEL(): string {
+        if (!process.env.GOOGLE_IMAGE_MODEL) {
+            throw new Error("Missing GOOGLE_IMAGE_MODEL");
+        }
+
+        return process.env.GOOGLE_IMAGE_MODEL;
+    }
+
+    static get GOOGLE_API_KEY(): string {
+        if (!process.env.GOOGLE_API_KEY) {
+            throw new Error("Missing GOOGLE_API_KEY");
+        }
+
+        return process.env.GOOGLE_API_KEY;
+    }
+
     static get AT_PROTO_SERVICE(): string {
         if (!process.env.AT_PROTO_SERVICE) {
             return "https://bsky.social";

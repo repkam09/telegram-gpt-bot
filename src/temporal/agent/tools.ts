@@ -12,6 +12,7 @@ import { PythonSandbox } from "../../tools/PythonSandbox";
 import { WolframAlpha } from "../../tools/WolframAlpha";
 import { parseWorkflowId } from "./interface";
 import { workflowSessionMcpClient } from "../../singletons/mcp";
+import { ImageGenerationTool } from "../../tools/ImageGenerationTool";
 
 export const AgentTools: HennosBaseTool[] = [
     MetaFeedbackTool,
@@ -27,7 +28,8 @@ export const AgentTools: HennosBaseTool[] = [
     JellyseerMediaSearch,
     AudiobookRequest,
     EbookRequest,
-    HennosRetrieveArtifact
+    HennosRetrieveArtifact,
+    ImageGenerationTool
 ];
 
 export async function availableTools(workflowId: string): Promise<HennosBaseTool[] | undefined> {

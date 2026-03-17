@@ -1,56 +1,74 @@
-import { getActivePlatformForWorkflowSession } from "./common/sessions";
 import { Logger } from "./singletons/logger";
 import { parseWorkflowId } from "./temporal/agent/interface";
 
+type MessageListener = (message: string, chatId: string) => Promise<void>;
+type ArtifactListener = (filePath: string, chatId: string, mime_type: string, description?: string) => Promise<void>;
+type StatusListener = (event: StatusListenerEvent, chatId: string) => Promise<void>;
+
+export interface StatusListenerEvent { type: StatusListenerEventType; payload?: unknown }
+export type StatusListenerEventType = "typing" | "upload_photo" | "record_video" | "upload_video" | "record_voice" | "upload_voice" | "upload_document" | "find_location" | "record_video_note" | "upload_video_note";
+
 export class AgentResponseHandler {
-    private static listeners: Map<string, (message: string, chatId: string) => Promise<void>> = new Map();
-    private static artifactListeners: Map<string, (filePath: string, chatId: string, description?: string) => Promise<void>> = new Map();
+    private static messageListeners: Map<string, MessageListener> = new Map();
+    private static artifactListeners: Map<string, ArtifactListener> = new Map();
+    private static statusListeners: Map<string, StatusListener> = new Map();
 
-    public static registerListener(type: string, callback: (message: string, chatId: string) => Promise<void>): void {
-        Logger.info(undefined, `Registering listener for platform: ${type}`);
-        this.listeners.set(type, callback);
+    public static registerMessageListener(type: string, callback: MessageListener): void {
+        Logger.info(undefined, `Registering message listener for platform: ${type}`);
+        this.messageListeners.set(type, callback);
     }
 
-    public static unregisterListener(type: string): void {
-        Logger.info(undefined, `Unregistering listener for platform: ${type}`);
-        this.listeners.delete(type);
+    public static unregisterMessageListener(type: string): void {
+        Logger.info(undefined, `Unregistering message listener for platform: ${type}`);
+        this.messageListeners.delete(type);
     }
 
-    public static registerArtifactListener(type: string, callback: (filePath: string, chatId: string, description?: string) => Promise<void>): void {
+    public static registerArtifactListener(type: string, callback: ArtifactListener): void {
         Logger.info(undefined, `Registering artifact listener for platform: ${type}`);
         this.artifactListeners.set(type, callback);
     }
 
-    public static async handle(workflowId: string, message: string): Promise<void> {
+    public static unregisterArtifactListener(type: string): void {
+        Logger.info(undefined, `Unregistering artifact listener for platform: ${type}`);
+        this.artifactListeners.delete(type);
+    }
+
+    public static registerStatusListener(type: string, callback: StatusListener): void {
+        Logger.info(undefined, `Registering status listener for platform: ${type}`);
+        this.statusListeners.set(type, callback);
+    }
+
+    public static unregisterStatusListener(type: string): void {
+        Logger.info(undefined, `Unregistering status listener for platform: ${type}`);
+        this.statusListeners.delete(type);
+    }
+
+    public static async handleStatus(workflowId: string, event: StatusListenerEvent): Promise<void> {
         const workflowInfo = parseWorkflowId(workflowId);
-
-        let listener = this.listeners.get(workflowInfo.platform);
-
-        if (workflowInfo.platform === "unified") {
-            // For unified sessions, we want to broadcast the message to the last active platform.
-            Logger.info(workflowId, `Handling message for unified session. Broadcasting to active platform. workflowId=${workflowId}, message=${message}`);
-
-            const platform = await getActivePlatformForWorkflowSession(workflowInfo.chatId);
-            if (!platform) {
-                Logger.warn(workflowId, `No active platform found for unified session with workflowId: ${workflowId}`);
-                return;
-            }
-
-            listener = this.listeners.get(platform);
-        }
-
+        const listener = this.statusListeners.get(workflowInfo.platform);
         if (listener) {
-            await listener(message, workflowInfo.chatId);
+            await listener(event, workflowInfo.chatId);
         } else {
-            Logger.warn(workflowId, `No listener registered for platform: ${workflowInfo.platform}`);
+            Logger.warn(workflowId, `No status listener registered for platform: ${workflowInfo.platform}`);
         }
     }
 
-    public static async handleArtifact(workflowId: string, filePath: string, description?: string): Promise<void> {
+    public static async handleMessage(workflowId: string, message: string): Promise<void> {
+        const workflowInfo = parseWorkflowId(workflowId);
+
+        const listener = this.messageListeners.get(workflowInfo.platform);
+        if (listener) {
+            await listener(message, workflowInfo.chatId);
+        } else {
+            Logger.warn(workflowId, `No message listener registered for platform: ${workflowInfo.platform}`);
+        }
+    }
+
+    public static async handleArtifact(workflowId: string, filePath: string, mime_type: string, description?: string): Promise<void> {
         const workflowInfo = parseWorkflowId(workflowId);
         const listener = this.artifactListeners.get(workflowInfo.platform);
         if (listener) {
-            await listener(filePath, workflowInfo.chatId, description);
+            await listener(filePath, workflowInfo.chatId, mime_type, description);
         } else {
             Logger.warn(workflowId, `No artifact listener registered for platform: ${workflowInfo.platform}`);
         }

@@ -36,6 +36,7 @@
     "@discordjs/core": "2.4.0",
     "@discordjs/rest": "2.6.0",
     "@discordjs/ws": "2.0.4",
+    "@google/genai": "^1.45.0",
     "@llamaindex/ollama": "^0.1.23",
     "@llamaindex/openai": "^0.4.22",
     "@llamaindex/readers": "^3.1.21",

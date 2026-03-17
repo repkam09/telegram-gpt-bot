@@ -26,7 +26,7 @@ export async function persistLegacyAgentMessage(input: LegacyBroadcastAgentInput
 export async function broadcastLegacyAgentMessage(input: LegacyBroadcastAgentInput) {
     const workflowId = Context.current().info.workflowExecution.workflowId;
     // Update the database with the new message, then broadcast it to all other workflow instances that are part of the same conversation
-    return AgentResponseHandler.handle(workflowId, input.message);
+    return AgentResponseHandler.handleMessage(workflowId, input.message);
 }
 
 type LegacyBroadcastUserInput = {

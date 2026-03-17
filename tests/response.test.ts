@@ -3,8 +3,9 @@ import { AgentResponseHandler } from "../src/response";
 
 describe("AgentResponseHandler", () => {
     beforeEach(() => {
-        AgentResponseHandler["listeners"].clear();
+        AgentResponseHandler["messageListeners"].clear();
         AgentResponseHandler["artifactListeners"].clear();
+        AgentResponseHandler["statusListeners"].clear();
     });
 
     describe("handle", () => {
@@ -19,8 +20,8 @@ describe("AgentResponseHandler", () => {
                 results.push({ platform: "discord", message, chatId });
             });
 
-            await AgentResponseHandler.handle("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "Telegram message");
-            await AgentResponseHandler.handle("{\"platform\":\"discord\",\"chatId\":\"456\"}", "Discord message");
+            await AgentResponseHandler.handleMessage("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "Telegram message");
+            await AgentResponseHandler.handleMessage("{\"platform\":\"discord\",\"chatId\":\"456\"}", "Discord message");
 
             expect(results).toHaveLength(2);
             expect(results[0]).toEqual({ platform: "telegram", message: "Telegram message", chatId: "123" });
@@ -29,7 +30,7 @@ describe("AgentResponseHandler", () => {
 
         it("should not throw when no listener is registered", async () => {
             await expect(
-                AgentResponseHandler.handle("{\"platform\":\"unknown\",\"chatId\":\"123\"}", "Test message")
+                AgentResponseHandler.handleMessage("{\"platform\":\"unknown\",\"chatId\":\"123\"}", "Test message")
             ).resolves.not.toThrow();
         });
     });
@@ -47,8 +48,8 @@ describe("AgentResponseHandler", () => {
                 discordArtifacts.push(filePath);
             });
 
-            await AgentResponseHandler.handleArtifact("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "/telegram/file.txt");
-            await AgentResponseHandler.handleArtifact("{\"platform\":\"discord\",\"chatId\":\"456\"}", "/discord/file.txt");
+            await AgentResponseHandler.handleArtifact("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "/telegram/file.txt", "text/plain");
+            await AgentResponseHandler.handleArtifact("{\"platform\":\"discord\",\"chatId\":\"456\"}", "/discord/file.txt", "text/plain");
 
             expect(telegramArtifacts).toEqual(["/telegram/file.txt"]);
             expect(discordArtifacts).toEqual(["/discord/file.txt"]);
@@ -57,20 +58,20 @@ describe("AgentResponseHandler", () => {
         it("should pass optional description parameter", async () => {
             let receivedDescription: string | undefined = "initial";
 
-            AgentResponseHandler.registerArtifactListener("telegram", async (_filePath: string, _chatId: string, description?: string) => {
+            AgentResponseHandler.registerArtifactListener("telegram", async (_filePath: string, _chatId: string, _mime_type: string, description?: string) => {
                 receivedDescription = description;
             });
 
-            await AgentResponseHandler.handleArtifact("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "/path/to/file.txt");
+            await AgentResponseHandler.handleArtifact("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "/path/to/file.txt", "text/plain");
             expect(receivedDescription).toBeUndefined();
 
-            await AgentResponseHandler.handleArtifact("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "/path/to/file.txt", "Test");
+            await AgentResponseHandler.handleArtifact("{\"platform\":\"telegram\",\"chatId\":\"123\"}", "/path/to/file.txt", "text/plain", "Test");
             expect(receivedDescription).toBe("Test");
         });
 
         it("should not throw when no artifact listener is registered", async () => {
             await expect(
-                AgentResponseHandler.handleArtifact("{\"platform\":\"unknown\",\"chatId\":\"123\"}", "/path/to/file")
+                AgentResponseHandler.handleArtifact("{\"platform\":\"unknown\",\"chatId\":\"123\"}", "/path/to/file", "application/octet-stream")
             ).resolves.not.toThrow();
         });
     });

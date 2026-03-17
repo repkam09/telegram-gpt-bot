@@ -12,8 +12,16 @@ export class CommandLineInstance {
             throw new Error("CommandLineInstance should not be used in production mode.");
         }
 
-        AgentResponseHandler.registerListener("cli", async (message: string) => {
+        AgentResponseHandler.registerMessageListener("cli", async (message: string) => {
             console.log(`Agent Response: ${message}`);
+        });
+
+        AgentResponseHandler.registerStatusListener("cli", async (event: { type: string; payload?: unknown }) => {
+            console.log(`Agent Status Update: ${JSON.stringify(event)}`);
+        });
+
+        AgentResponseHandler.registerArtifactListener("cli", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
+            console.log(`Agent Artifact Received: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
         });
 
         const rl = readline.createInterface({

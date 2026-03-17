@@ -18,7 +18,7 @@ export class SlackInstance {
             return;
         }
 
-        Logger.info(undefined, "Initializing Slack client...");
+        Logger.info("slack", "Initializing Slack client...");
 
         SlackInstance.client = new WebClient(Config.SLACK_BOT_TOKEN);
 
@@ -29,9 +29,9 @@ export class SlackInstance {
             appToken: Config.SLACK_APP_TOKEN,
         });
 
-        Logger.debug(undefined, "Registering Slack event listeners...");
-        AgentResponseHandler.registerListener("slack", async (message: string, chatId: string) => {
-            Logger.info(undefined, `Received workflow callback for Slack in channel ${chatId}`);
+        Logger.debug("slack", "Registering Slack event listeners...");
+        AgentResponseHandler.registerMessageListener("slack", async (message: string, chatId: string) => {
+            Logger.info("slack", `Received workflow callback for Slack in channel ${chatId}`);
 
             // TODO: Split and respond in 12,000 characters chunks.
             await SlackInstance.client.chat.postMessage({
@@ -40,9 +40,19 @@ export class SlackInstance {
             });
         });
 
-        Logger.debug(undefined, "Setting up Slack app_mention event handler...");
+        AgentResponseHandler.registerStatusListener("slack", async (event: { type: string; payload?: unknown }, chatId: string) => {
+            Logger.info("slack", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+            // TODO: Handle sending status updates if needed
+        });
+
+        AgentResponseHandler.registerArtifactListener("slack", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
+            Logger.info("slack", `Received artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
+            // TODO: Handle sending artifacts if needed
+        });
+
+        Logger.debug("slack", "Setting up Slack app_mention event handler...");
         SlackInstance.app.event("app_mention", async ({ event }) => {
-            Logger.debug(undefined, `Received Slack app_mention event: ${JSON.stringify(event)}`);
+            Logger.debug("slack", `Received Slack app_mention event: ${JSON.stringify(event)}`);
             try {
                 // This will capture messages that mention the bot in channels
                 const { author, workflowId } = await SlackInstance.workflowSignalAppArguments(event);
@@ -51,7 +61,7 @@ export class SlackInstance {
                     await signalAgenticWorkflowMessage(workflowId, author, cleanedText);
                 }
             } catch (err) {
-                Logger.error(undefined, `Error handling Slack app_mention event: ${err}`);
+                Logger.error("slack", `Error handling Slack app_mention event: ${err}`);
             }
         });
 
@@ -67,24 +77,24 @@ export class SlackInstance {
 
                 if (genericEvent.text && genericEvent.text.trim() !== "") {
                     if (SlackInstance.hasBotMention(genericEvent.text || "")) {
-                        Logger.debug(undefined, "Message contains bot mention, skipping to avoid duplicate handling.");
+                        Logger.debug("slack", "Message contains bot mention, skipping to avoid duplicate handling.");
                         return;
                     }
 
-                    Logger.debug(undefined, `Received Slack message event: ${JSON.stringify(event)}`);
+                    Logger.debug("slack", `Received Slack message event: ${JSON.stringify(event)}`);
                     const { author, workflowId } = await SlackInstance.workflowSignalIMArguments(genericEvent);
                     const cleanedText = SlackInstance.replaceBotMentions(genericEvent.text);
                     await signalAgenticWorkflowExternalContext(workflowId, author, cleanedText);
                 }
             } catch (err) {
-                Logger.error(undefined, `Error handling Slack message.im event: ${err}`);
+                Logger.error("slack", `Error handling Slack message.im event: ${err}`);
             }
         });
 
-        Logger.debug(undefined, "Starting Slack app...");
+        Logger.debug("slack", "Starting Slack app...");
         await SlackInstance.app.start();
 
-        Logger.info(undefined, "Slack client initialized and app started.");
+        Logger.info("slack", "Slack client initialized and app started.");
     }
 
     private static async workflowSignalAppArguments(event: AppMentionEvent): Promise<{ author: string; workflowId: string; }> {
@@ -118,7 +128,7 @@ export class SlackInstance {
                 }
             }
         } catch (err) {
-            Logger.warn(undefined, `Failed to resolve Slack user info for ${userId}: ${err}`);
+            Logger.warn("slack", `Failed to resolve Slack user info for ${userId}: ${err}`);
         }
 
         // Fallback to user ID if we can't get a friendly name

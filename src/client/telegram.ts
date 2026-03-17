@@ -1,4 +1,4 @@
-import TelegramBot from "node-telegram-bot-api";
+import TelegramBot, { ChatAction } from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
 import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { Logger } from "../singletons/logger";
@@ -7,9 +7,11 @@ import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 import path from "node:path";
 import fs from "fs/promises";
 import { generateTranscription } from "../singletons/transcription";
-import { AgentResponseHandler } from "../response";
+import { AgentResponseHandler, StatusListenerEventType } from "../response";
 import { Database } from "../database";
-import { TelegramLegacyInstance } from "./legacy";
+import { TelegramLegacyInstance } from "./legacy/legacy";
+
+const TelegramStatusEvents: ChatAction[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"];
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
@@ -33,7 +35,7 @@ export class TelegramInstance {
         TelegramInstance._instance = bot;
 
         Logger.debug(undefined, "Telegram bot initialized and polling started.");
-        AgentResponseHandler.registerListener("telegram", async (message: string, chatId: string) => {
+        AgentResponseHandler.registerMessageListener("telegram", async (message: string, chatId: string) => {
             try {
                 await TelegramInstance.sendMessageWrapper(chatId, message);
             } catch (err: unknown) {
@@ -42,14 +44,38 @@ export class TelegramInstance {
             }
         });
 
-        AgentResponseHandler.registerArtifactListener("telegram", async (filePath: string, chatId: string, description?: string | undefined) => {
+        AgentResponseHandler.registerArtifactListener("telegram", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
+            Logger.info("telegram", `Received webhook artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
+            if (mime_type.startsWith("image/")) {
+                try {
+                    Logger.debug("telegram", `Sending photo to chatId ${chatId}: ${filePath}`);
+                    await bot.sendPhoto(Number(chatId), filePath, {
+                        caption: description ? description.slice(0, 900) : `Artifact: ${path.basename(filePath)}`
+                    });
+                } catch (err: unknown) {
+                    const error = err as Error;
+                    Logger.error("telegram", `Error sending photo to chatId ${chatId}: ${error.message}`, error);
+                }
+                return;
+            }
+
             try {
+                Logger.debug("telegram", `Sending document to chatId ${chatId}: ${filePath}`);
                 await bot.sendDocument(Number(chatId), filePath, {
                     caption: description ? description.slice(0, 900) : `Artifact: ${path.basename(filePath)}`
                 });
             } catch (err: unknown) {
                 const error = err as Error;
                 Logger.error("telegram", `Error sending document to chatId ${chatId}: ${error.message}`, error);
+            }
+        });
+
+        AgentResponseHandler.registerStatusListener("telegram", async (event: { type: StatusListenerEventType; payload?: unknown }, chatId: string) => {
+            Logger.info("telegram", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+            if (TelegramStatusEvents.includes(event.type as ChatAction)) {
+                TelegramInstance.setTelegramIndicator(Number(chatId), event.type as ChatAction);
+            } else {
+                Logger.debug("telegram", `Received unsupported status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
             }
         });
 
@@ -75,6 +101,12 @@ export class TelegramInstance {
         });
 
         Logger.debug(undefined, "Registered Telegram message handlers.");
+    }
+
+    static setTelegramIndicator(chatId: number, action: ChatAction): void {
+        TelegramInstance.instance().sendChatAction(chatId, action).catch((err: unknown) => {
+            Logger.warn("telegram", `Error while setting Telegram status indicator ${action} for chatId ${chatId}: ${err}`);
+        });
     }
 
     private static async validateWhitelist(msg: TelegramBot.Message, handler: (msg: TelegramBot.Message) => Promise<void>): Promise<void> {
@@ -229,6 +261,7 @@ export class TelegramInstance {
         }
 
         if (msg.caption) {
+            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
             return signalAgenticWorkflowMessage(workflowId, author, msg.caption);
         }
     }
@@ -255,6 +288,7 @@ export class TelegramInstance {
         }
 
         const summary = "<not_implemented>Unsupported: Telegram Photo Messages</not_implemented>"; // TODO: Implement image support
+        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
         return signalAgenticWorkflowMessage(workflowId, author, summary);
     }
 
@@ -281,6 +315,7 @@ export class TelegramInstance {
         await signalAgenticWorkflowExternalContext(workflowId, author, payload);
 
         if (msg.caption) {
+            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
             return signalAgenticWorkflowMessage(workflowId, author, msg.caption);
         }
     }
@@ -306,7 +341,10 @@ export class TelegramInstance {
         const payload = `<voice><file_id>${msg.voice.file_id}</file_id><duration>${msg.voice.duration}</duration><mime_type>${msg.voice.mime_type || ""}</mime_type><file_size>${msg.voice.file_size || ""}</file_size></voice>`;
         await signalAgenticWorkflowExternalContext(workflowId, author, payload);
 
+        TelegramInstance.setTelegramIndicator(msg.chat.id, "upload_voice");
         const transcript = await generateTranscription(workflowId, result);
+
+        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
         return signalAgenticWorkflowMessage(workflowId, author, transcript);
     }
 
@@ -376,6 +414,7 @@ export class TelegramInstance {
             }
         }
 
+        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
         return signalAgenticWorkflowMessage(workflowId, author, msg.text);
     }
 
@@ -417,7 +456,6 @@ export class TelegramInstance {
         if (!msg.from || !msg.text) {
             return;
         }
-
 
         const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
         if (!isAgenticUser) {

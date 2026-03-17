@@ -90,28 +90,56 @@ export class WebhookInstance {
         HennosWebhookInstance.init(app);
         LegacyWebhookInstance.init(app);
 
-        AgentResponseHandler.registerListener("webhook", async (message: string, sessionId: string) => {
-            Logger.info(undefined, `Received webhook message: ${message} for sessionId: ${sessionId}`);
+        AgentResponseHandler.registerMessageListener("webhook", async (message: string, sessionId: string) => {
+            Logger.info("webhook", `Received webhook message: ${message} for sessionId: ${sessionId}`);
 
             // Grab any listening response streams for this sessionId and send the message to them
             const sockets = WebhookInstance.sockets(sessionId);
             if (sockets) {
-                Logger.debug(undefined, `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
+                Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
                 for (const session of sockets) {
                     if (!session.stream.writableEnded) {
                         session.stream.write(`data: ${JSON.stringify({ role: "assistant", content: message })}\n\n`);
                     } else {
-                        Logger.warn(undefined, `Stream ended for sessionId: ${sessionId}`);
+                        Logger.warn("webhook", `Stream ended for sessionId: ${sessionId}`);
                     }
                 }
             } else {
-                Logger.debug(undefined, `No active streams for sessionId: ${sessionId}`);
+                Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
             }
         });
 
-        Logger.info(undefined, "Hennos Webhook API initialized");
+        AgentResponseHandler.registerArtifactListener("webhook", async (filePath: string, sessionId: string, mime_type: string, description?: string | undefined) => {
+            Logger.info("webhook", `Received webhook artifact: ${filePath} for sessionId: ${sessionId} with mime_type: ${mime_type} and description: ${description}`);
+
+            // Grab any listening response streams for this sessionId and send the message to them
+            const sockets = WebhookInstance.sockets(sessionId);
+            if (sockets) {
+                Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
+                // TODO: Handle sending artifact streams if needed
+            } else {
+                Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
+            }
+        });
+
+        AgentResponseHandler.registerStatusListener("webhook", async (event: { type: string; payload?: unknown }, sessionId: string) => {
+            Logger.info("webhook", `Received status update: ${JSON.stringify(event)} for sessionId: ${sessionId}`);
+
+            // Grab any listening response streams for this sessionId and send the message to them
+            const sockets = WebhookInstance.sockets(sessionId);
+            if (sockets) {
+                Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
+                // TODO: Handle sending status updates if needed
+            } else {
+                Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
+            }
+
+        });
+
+
+        Logger.info("webhook", "Hennos Webhook API initialized");
         app.listen(Config.HENNOS_API_PORT, () => {
-            Logger.info(undefined, `Hennos Webhook API server is listening on ${Config.HENNOS_API_PORT}`);
+            Logger.info("webhook", `Hennos Webhook API server is listening on ${Config.HENNOS_API_PORT}`);
         });
 
         return app;

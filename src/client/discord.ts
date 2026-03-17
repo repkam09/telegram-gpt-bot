@@ -7,7 +7,7 @@ import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
-import { AgentResponseHandler } from "../response";
+import { AgentResponseHandler, StatusListenerEvent } from "../response";
 
 export class DiscordInstance {
     static async init() {
@@ -30,7 +30,7 @@ export class DiscordInstance {
             Logger.info(undefined, `Logged in as ${readyClient.user.tag}!`);
 
             // Setting up workflow callback handler
-            AgentResponseHandler.registerListener("discord", async (message: string, chatId: string) => {
+            AgentResponseHandler.registerMessageListener("discord", async (message: string, chatId: string) => {
                 Logger.info(
                     undefined,
                     `Received workflow callback for Discord in channel ${chatId}`
@@ -52,11 +52,12 @@ export class DiscordInstance {
                         await textChannel.send(message);
                     }
                 } else {
-                    Logger.error(`Channel with ID ${chatId} not found or is not text-based`);
+                    Logger.error("discord", `Channel with ID ${chatId} not found or is not text-based`);
                 }
             });
 
-            AgentResponseHandler.registerArtifactListener("discord", async (filePath: string, chatId: string, description?: string | undefined) => {
+            AgentResponseHandler.registerArtifactListener("discord", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
+                Logger.info("discord", `Received webhook artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
                 try {
                     const channel = await readyClient.channels.fetch(chatId);
                     if (channel && channel.isTextBased()) {
@@ -67,12 +68,17 @@ export class DiscordInstance {
                             files: [filePath]
                         });
                     } else {
-                        Logger.error(`Channel with ID ${chatId} not found or is not text-based`);
+                        Logger.error("discord", `Channel with ID ${chatId} not found or is not text-based`);
                     }
                 } catch (err: unknown) {
                     const error = err as Error;
-                    Logger.error("discord", `Error sending document to chatId ${chatId}: ${error.message}`, error);
+                    Logger.error("discord", `Error sending document of type ${mime_type} to chatId ${chatId}: ${error.message}`, error);
                 }
+            });
+
+            AgentResponseHandler.registerStatusListener("discord", async (event: StatusListenerEvent, chatId: string) => {
+                Logger.info("discord", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+                // TODO: Handle sending status updates if needed
             });
 
         });

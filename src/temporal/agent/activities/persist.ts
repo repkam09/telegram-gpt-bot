@@ -29,7 +29,7 @@ export async function persistAgentMessage(input: BroadcastAgentInput) {
     const info = parseWorkflowId(input.workflowId);
     await Promise.all([
         updateWorkflowMessageDatabase(input),
-        AgentResponseHandler.handle(input.workflowId, input.message),
+        AgentResponseHandler.handleMessage(input.workflowId, input.message),
         persistMemoryEvent(input.workflowId, info.chatId, "assistant", input.message)
     ]);
 }

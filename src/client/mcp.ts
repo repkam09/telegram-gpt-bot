@@ -74,7 +74,7 @@ export class ModelContextProtocolServer {
             await signalWithStartAgentWorkflow(sessionId, sessionId, message);
             try {
                 const response = await registerForAgentCallback(sessionId, sessionId);
-                AgentResponseHandler.unregisterListener(sessionId);
+                AgentResponseHandler.unregisterMessageListener(sessionId);
                 return {
                     content: [{
                         type: "text",
@@ -188,10 +188,22 @@ async function registerForAgentCallback(sessionId: string, chatId: string): Prom
             return reject(new Error("Timed out waiting for agent response"));
         }, 5 * 60 * 1000); // 5 minutes
 
-        AgentResponseHandler.registerListener(sessionId, async (message: string, callbackChatId: string) => {
+        AgentResponseHandler.registerMessageListener(sessionId, async (message: string, callbackChatId: string) => {
             if (chatId === callbackChatId) {
                 clearTimeout(timer);
                 return resolve(message);
+            }
+        });
+
+        AgentResponseHandler.registerStatusListener(sessionId, async (event: { type: string; payload?: unknown }, callbackChatId: string) => {
+            if (chatId === callbackChatId) {
+                Logger.debug("mcp", `Agent Status Update: ${JSON.stringify(event)}`);
+            }
+        });
+
+        AgentResponseHandler.registerArtifactListener(sessionId, async (filePath: string, callbackChatId: string, mime_type: string, description?: string | undefined) => {
+            if (chatId === callbackChatId) {
+                Logger.debug("mcp", `Agent Artifact Received: ${filePath} with mime_type: ${mime_type} and description: ${description}`);
             }
         });
     });

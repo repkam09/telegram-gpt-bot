@@ -1,13 +1,14 @@
 import path from "node:path";
 import mimetype from "mime-types";
 import TelegramBot from "node-telegram-bot-api";
-import { createWorkflowId, signalLegacyWorkflowExternalContext, signalLegacyWorkflowImageMessage, signalLegacyWorkflowMessage } from "../temporal/legacy/interface";
-import { TelegramInstance } from "./telegram";
-import { Logger } from "../singletons/logger";
-import { Config } from "../singletons/config";
+import { createWorkflowId, signalLegacyWorkflowExternalContext, signalLegacyWorkflowImageMessage, signalLegacyWorkflowMessage } from "../../temporal/legacy/interface";
+import { TelegramInstance } from "../telegram";
+import { Logger } from "../../singletons/logger";
+import { Config } from "../../singletons/config";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
-import { handleDocument } from "../tools/FetchWebpageContent";
-import { generateTranscription } from "../singletons/transcription";
+import { handleDocument } from "../../tools/FetchWebpageContent";
+import { generateTranscription } from "../../singletons/transcription";
+import { handleCommand } from "./commands";
 
 
 export class TelegramLegacyInstance {
@@ -57,6 +58,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.caption) {
+            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
             return signalLegacyWorkflowMessage(workflowId, author, msg.caption);
         }
 
@@ -85,6 +87,7 @@ export class TelegramLegacyInstance {
         await signalLegacyWorkflowImageMessage(workflowId, author, result, mime_type || "application/octet-stream");
 
         if (msg.caption) {
+            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
             await signalLegacyWorkflowMessage(workflowId, author, msg.caption);
         }
     }
@@ -112,6 +115,7 @@ export class TelegramLegacyInstance {
         await signalLegacyWorkflowExternalContext(workflowId, author, payload);
 
         if (msg.caption) {
+            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
             return signalLegacyWorkflowMessage(workflowId, author, msg.caption);
         }
     }
@@ -137,7 +141,10 @@ export class TelegramLegacyInstance {
         const payload = `<voice><file_id>${msg.voice.file_id}</file_id><duration>${msg.voice.duration}</duration><mime_type>${msg.voice.mime_type || ""}</mime_type><file_size>${msg.voice.file_size || ""}</file_size></voice>`;
         await signalLegacyWorkflowExternalContext(workflowId, author, payload);
 
+        TelegramInstance.setTelegramIndicator(msg.chat.id, "upload_voice");
         const transcript = await generateTranscription(workflowId, result);
+
+        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
         return signalLegacyWorkflowMessage(workflowId, author, transcript);
     }
 
@@ -202,6 +209,7 @@ export class TelegramLegacyInstance {
             }
         }
 
+        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
         return signalLegacyWorkflowMessage(workflowId, author, msg.text);
     }
 
@@ -215,7 +223,8 @@ export class TelegramLegacyInstance {
             return;
         }
 
-        Logger.debug(undefined, `Handling text command message: ${msg.text}`);
+        const { author, workflowId } = await TelegramLegacyInstance.workflowLegacySignalArguments(msg);
+        return handleCommand(workflowId, author, msg);
     }
 
     public static async handleLegacyNoOpMessage(msg: TelegramBot.Message): Promise<void> {

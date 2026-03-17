@@ -10,6 +10,7 @@ import { AudiobookRequest, EbookRequest } from "../../tools/MiscFileRequestTool"
 import { OpenWeatherMapLookupTool } from "../../tools/OpenWeatherMapLookupTool";
 import { PythonSandbox } from "../../tools/PythonSandbox";
 import { WolframAlpha } from "../../tools/WolframAlpha";
+import { ImageGenerationTool } from "../../tools/ImageGenerationTool";
 
 export const LegacyTools: HennosBaseTool[] = [
     MetaFeedbackTool,
@@ -25,7 +26,8 @@ export const LegacyTools: HennosBaseTool[] = [
     JellyseerMediaSearch,
     AudiobookRequest,
     EbookRequest,
-    HennosRetrieveArtifact
+    HennosRetrieveArtifact,
+    ImageGenerationTool
 ];
 
 export function availableTools(workflowId: string): HennosBaseTool[] | undefined {
