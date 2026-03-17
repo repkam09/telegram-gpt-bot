@@ -1,6 +1,6 @@
 import path from "node:path";
 import mimetype from "mime-types";
-import TelegramBot from "node-telegram-bot-api";
+import TelegramBot, { ChatAction } from "node-telegram-bot-api";
 import { createWorkflowId, signalLegacyWorkflowExternalContext, signalLegacyWorkflowImageMessage, signalLegacyWorkflowMessage } from "../../temporal/legacy/interface";
 import { TelegramInstance } from "../telegram";
 import { Logger } from "../../singletons/logger";
@@ -9,16 +9,77 @@ import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 import { handleDocument } from "../../tools/FetchWebpageContent";
 import { generateTranscription } from "../../singletons/transcription";
 import { handleCommand } from "./commands";
+import { AgentResponseHandler, StatusListenerEventType } from "../../response";
 
+const TelegramStatusEvents: ChatAction[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"];
 
 export class TelegramLegacyInstance {
+    private static initialized: boolean = false;
+
+    public static init() {
+        if (TelegramLegacyInstance.initialized) {
+            Logger.warn("legacy", "TelegramLegacyInstance is already initialized.");
+            return;
+        }
+
+        AgentResponseHandler.registerMessageListener("legacy", async (message: string, chatId: string) => {
+            try {
+                await TelegramInstance.sendMessageWrapper(chatId, message);
+            } catch (err: unknown) {
+                const error = err as Error;
+                Logger.error("legacy", `Error sending message to chatId ${chatId}: ${error.message}`, error);
+            }
+        });
+
+        AgentResponseHandler.registerArtifactListener("legacy", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
+            const bot = TelegramInstance.instance();
+            Logger.info("legacy", `Received webhook artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
+            if (mime_type.startsWith("image/")) {
+                try {
+                    Logger.debug("legacy", `Sending photo to chatId ${chatId}: ${filePath}`);
+                    await bot.sendPhoto(Number(chatId), filePath, {
+                        caption: description ? description.slice(0, 900) : `Artifact: ${path.basename(filePath)}`
+                    });
+
+                    const workflowId = createWorkflowId("legacy", chatId);
+                    await signalLegacyWorkflowImageMessage(workflowId, "Hennos", filePath, mime_type);
+                } catch (err: unknown) {
+                    const error = err as Error;
+                    Logger.error("legacy", `Error sending photo to chatId ${chatId}: ${error.message}`, error);
+                }
+                return;
+            }
+
+            try {
+                Logger.debug("legacy", `Sending document to chatId ${chatId}: ${filePath}`);
+                await bot.sendDocument(Number(chatId), filePath, {
+                    caption: description ? description.slice(0, 900) : `Artifact: ${path.basename(filePath)}`
+                });
+            } catch (err: unknown) {
+                const error = err as Error;
+                Logger.error("legacy", `Error sending document to chatId ${chatId}: ${error.message}`, error);
+            }
+        });
+
+        AgentResponseHandler.registerStatusListener("legacy", async (event: { type: StatusListenerEventType; payload?: unknown }, chatId: string) => {
+            Logger.info("legacy", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+            if (TelegramStatusEvents.includes(event.type as ChatAction)) {
+                TelegramInstance.setTelegramIndicator(Number(chatId), event.type as ChatAction);
+            } else {
+                Logger.debug("legacy", `Received unsupported status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
+            }
+        });
+
+        TelegramLegacyInstance.initialized = true;
+    }
+
     public static async handleDocumentMessage(msg: TelegramBot.Message): Promise<void> {
         if (!msg.from || !msg.document) {
             return;
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -61,7 +122,6 @@ export class TelegramLegacyInstance {
             TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
             return signalLegacyWorkflowMessage(workflowId, author, msg.caption);
         }
-
     }
 
     public static async handlePhotoMessage(msg: TelegramBot.Message): Promise<void> {
@@ -70,7 +130,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -98,7 +158,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -126,7 +186,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -154,7 +214,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -170,7 +230,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -185,7 +245,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -219,7 +279,7 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
@@ -233,15 +293,15 @@ export class TelegramLegacyInstance {
         }
 
         if (msg.chat.type !== "private") {
-            Logger.debug(undefined, `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            Logger.debug("legacy", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
             return;
         }
 
-        Logger.debug(undefined, "Ignoring unsupported message type in legacy mode.");
+        Logger.debug("legacy", "Ignoring unsupported message type in legacy mode.");
     }
 
     private static workflowLegacySignalArguments(msg: TelegramBot.Message): { author: string; workflowId: string; } {
-        const workflowId = createWorkflowId("telegram", String(msg.chat.id));
+        const workflowId = createWorkflowId("legacy", String(msg.chat.id));
         return {
             author: msg.from!.last_name ? `${msg.from!.first_name} ${msg.from!.last_name}` : `${msg.from!.first_name}`,
             workflowId,

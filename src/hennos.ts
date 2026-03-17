@@ -12,6 +12,7 @@ import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temp
 import { createBlueskyScheduleWorkflow, deleteBlueskyScheduleWorkflow } from "./temporal/bluesky/schedule";
 import { ModelContextProtocolServer } from "./client/mcp";
 import { Agent2AgentProtocolServer } from "./client/a2a";
+import { TelegramLegacyInstance } from "./client/legacy/legacy";
 
 async function start() {
     Logger.info(undefined, "Starting Hennos...");
@@ -23,6 +24,7 @@ async function start() {
     if (Config.HENNOS_TELEGRAM_ENABLED) {
         Logger.info(undefined, "Initializing Telegram client...");
         await TelegramInstance.init();
+        await TelegramLegacyInstance.init();
     } else {
         Logger.info(undefined, "Telegram client is disabled. Skipping...");
     }

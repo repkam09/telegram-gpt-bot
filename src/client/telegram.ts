@@ -18,23 +18,27 @@ export class TelegramInstance {
     private static _errors: number = 0;
 
     static async init(): Promise<void> {
-        Logger.info(undefined, "Starting Hennos Telegram Integration...");
+        if (TelegramInstance._instance) {
+            Logger.warn("telegram", "Telegram bot is already initialized.");
+            return;
+        }
+        Logger.info("telegram", "Starting Hennos Telegram Integration...");
 
         const bot = new TelegramBot(Config.TELEGRAM_BOT_KEY);
         if (Config.HENNOS_API_ENABLED && Config.TELEGRAM_BOT_WEBHOOK_EXTERNAL) {
-            Logger.info(undefined, `Starting Telegram Bot in Webhook mode: ${Config.TELEGRAM_BOT_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
+            Logger.info("telegram", `Starting Telegram Bot in Webhook mode: ${Config.TELEGRAM_BOT_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
 
             // This is the external URL that Telegram will use to send updates to our webhook.
             bot.setWebHook(`${Config.TELEGRAM_BOT_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
         } else {
-            Logger.info(undefined, "Starting Telegram Bot in Polling mode");
+            Logger.info("telegram", "Starting Telegram Bot in Polling mode");
             bot.deleteWebHook();
             bot.startPolling();
         }
 
         TelegramInstance._instance = bot;
 
-        Logger.debug(undefined, "Telegram bot initialized and polling started.");
+        Logger.debug("telegram", "Telegram bot initialized and polling started.");
         AgentResponseHandler.registerMessageListener("telegram", async (message: string, chatId: string) => {
             try {
                 await TelegramInstance.sendMessageWrapper(chatId, message);
@@ -90,17 +94,17 @@ export class TelegramInstance {
         bot.on("edited_message_text", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleEditTextMessage));
 
         bot.on("polling_error", (error: Error) => {
-            Logger.error(undefined, `Telegram polling error: ${error.message}`, error);
+            Logger.error("telegram", `Telegram polling error: ${error.message}`, error);
             TelegramInstance._errors++;
 
             // If we have more than 10 errors, exit the process to allow a restart
             if (TelegramInstance._errors > 10) {
-                Logger.error(undefined, "Too many Telegram polling errors, exiting process to allow restart.");
+                Logger.error("telegram", "Too many Telegram polling errors, exiting process to allow restart.");
                 process.exit(1);
             }
         });
 
-        Logger.debug(undefined, "Registered Telegram message handlers.");
+        Logger.debug("telegram", "Registered Telegram message handlers.");
     }
 
     static setTelegramIndicator(chatId: number, action: ChatAction): void {
@@ -117,34 +121,34 @@ export class TelegramInstance {
         // Check if the user is whitelisted in the database
         const isWhitelisted = await TelegramInstance.isUserWhitelisted(msg.from.id);
         if (!isWhitelisted) {
-            Logger.debug(undefined, `User ${msg.from.id} is not whitelisted`);
+            Logger.debug("telegram", `User ${msg.from.id} is not whitelisted`);
             return;
         }
 
         return handler(msg);
     }
 
-    private static async sendMessageWrapper(chatId: string, content: string, options: TelegramBot.SendMessageOptions = {}) {
+    public static async sendMessageWrapper(chatId: string, content: string, options: TelegramBot.SendMessageOptions = {}) {
         if (!content) {
-            Logger.warn(chatId, "Attempted to send empty message content.");
+            Logger.warn("telegram", `Attempted to send empty message content to chatId ${chatId}.`);
             return;
         }
 
         if (!content.length) {
-            Logger.warn(chatId, "Attempted to send message with zero length.");
+            Logger.warn("telegram", `Attempted to send message with zero length to chatId ${chatId}.`);
             return;
         }
 
         if (content.length < 4000) {
-            Logger.debug(chatId, `Sending Telegram message of length ${content.length}`);
+            Logger.debug("telegram", `Sending Telegram message of length ${content.length} to chatId ${chatId}`);
             return TelegramInstance.sendTelegramMessageWithRetry(chatId, content, options);
         }
 
 
         const chunks = chunkSubstr(content, 4000);
-        Logger.debug(chatId, `Message length ${content.length} exceeds 4000 characters, splitting into ${chunks.length} chunks.`);
+        Logger.debug("telegram", `Message length ${content.length} exceeds 4000 characters, splitting into ${chunks.length} chunks.`);
         for (let i = 0; i < chunks.length; i++) {
-            Logger.debug(chatId, `Sending chunk ${i + 1} of ${chunks.length}, length ${chunks[i].length}`);
+            Logger.debug("telegram", `Sending chunk ${i + 1} of ${chunks.length}, length ${chunks[i].length} to chatId ${chatId}`);
             await TelegramInstance.sendTelegramMessageWithRetry(chatId, chunks[i], options);
         }
     }
@@ -159,7 +163,7 @@ export class TelegramInstance {
             } catch (err2: unknown) {
                 const error1 = err1 as Error;
                 const error2 = err2 as Error;
-                Logger.error(chatId, `Failed 2x to send Telegram message. Err1=${error1.message}, Err2=${error2.message}`);
+                Logger.error("telegram", `Failed 2x to send Telegram message to chatId ${chatId}. Err1=${error1.message}, Err2=${error2.message}`);
             }
         }
     }
@@ -189,7 +193,7 @@ export class TelegramInstance {
     }
 
     private static async isAgenticUser(userId: number): Promise<boolean> {
-        Logger.debug(undefined, `Checking if user ${userId} is agentic.`);
+        Logger.debug("telegram", `Checking if user ${userId} is agentic.`);
         if (Config.TELEGRAM_BOT_ADMIN === String(userId)) {
             return true;
         }
@@ -449,7 +453,7 @@ export class TelegramInstance {
     }
 
     private static async handleUnimplemented(event: string, msg: TelegramBot.Message): Promise<void> {
-        Logger.debug(undefined, `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
+        Logger.debug("telegram", `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
     }
 
     private static async handleTextCommandMessage(msg: TelegramBot.Message): Promise<void> {
@@ -463,14 +467,14 @@ export class TelegramInstance {
         }
 
         const command = msg.text.split(" ")[0].substring(1).toLowerCase().trim();
-        Logger.debug(undefined, `Received Telegram command message: ${msg.text} from ${msg.from?.first_name} ${msg.from?.last_name || ""}`);
+        Logger.debug("telegram", `Received Telegram command message: ${msg.text} from ${msg.from?.first_name} ${msg.from?.last_name || ""}`);
         if (command === "debug") {
             const { workflowId } = await TelegramInstance.workflowSignalArguments(msg);
             const context = await queryAgenticWorkflowContext(workflowId);
 
             const filePath = path.join(Config.LOCAL_STORAGE(workflowId), `debug_context_${Date.now()}.xml`);
             await fs.writeFile(filePath, context.join("\n"), "utf-8");
-            Logger.debug(undefined, `Workflow context written to ${filePath}`);
+            Logger.debug("telegram", `Workflow context written to ${filePath}`);
         }
     }
 }
