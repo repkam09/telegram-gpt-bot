@@ -1,28 +1,21 @@
-import { randomUUID } from "crypto";
 import { Config } from "../../singletons/config";
 import { createTemporalClient } from "../../singletons/temporal";
 import { memoryExtractionWorkflow, memoryWorkflowEventSignal } from "./workflow";
-import { Logger } from "../../singletons/logger";
+import { MemoryEventInput } from "./types";
 
-export async function persistMemoryEvent(workflowId: string, userId: string, role: "user" | "assistant", message: string) {
-    if (!Config.HENNOS_MEMORY_ENABLED) {
-        Logger.warn(workflowId, `Memory is disabled. Skipping persistMemoryEvent for userId=${userId}, role=${role}, message=${message}`);
-        return;
-    }
-
+export async function persistMemoryEvent(userId: string, sessionId: string, event: MemoryEventInput) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(memoryExtractionWorkflow, {
         taskQueue: Config.TEMPORAL_TASK_QUEUE,
-        workflowId: `memory-${userId}`,
-        args: [{
-            userId,
-            sessionId: randomUUID(),
-        }],
+        workflowId: "memory-extraction",
+        args: [],
         signal: memoryWorkflowEventSignal,
-        signalArgs: [{
-            role: role,
-            content: message,
-            date: new Date().toISOString(),
-        }],
+        signalArgs:{
+            role: event.role as "user" | "assistant",
+            content: event.content,
+            userId,
+            sessionId,
+            date: event.date || new Date().toISOString(),
+        },
     });
 }

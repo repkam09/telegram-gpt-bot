@@ -3,7 +3,13 @@ import { Logger } from "../../singletons/logger";
 export type MemoryEventInput = {
     role: "user" | "assistant";
     content: string;
-    date: string;
+    date?: string;
+}
+
+export type PersistMemoryEventsInput = {
+    sessionId: string;
+    userId: string;
+    events: MemoryEventInput[];
 }
 
 export type Memory = UserPreferenceMemory | SemanticMemory
@@ -27,7 +33,7 @@ export type SemanticMemory = {
 
 
 export function MemoryEventInputToXML(input: MemoryEventInput): string {
-    return `<event role="${input.role}" date="${input.date}">
+    return `<event role="${input.role}" date="${input.date || new Date().toISOString()}">
 ${input.content}
 </event>`;
 }

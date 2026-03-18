@@ -1,17 +1,12 @@
 import { Context } from "@temporalio/activity";
-import { Memory, MemoryEventInput, MemoryEventInputToXML, MemoryToXML, SemanticMemory, UserPreferenceMemory } from "../types";
+import { Memory, MemoryEventInput, MemoryEventInputToXML, MemoryToXML, PersistMemoryEventsInput, SemanticMemory, UserPreferenceMemory } from "../types";
 import { HennosTool } from "../../../provider";
 import { Logger } from "../../../singletons/logger";
 import { HennosOpenAISingleton } from "../../../singletons/openai";
 import { randomUUID } from "node:crypto";
 import { Config } from "../../../singletons/config";
 import { StringValue } from "@temporalio/common";
-
-type PersistMemoryEventsInput = {
-    sessionId: string;
-    userId: string;
-    events: MemoryEventInput[];
-}
+import { AgentCoreInstance } from "../../../singletons/agentcore";
 
 export type MemoryExtractionWorkflowConfig = {
     timeout: StringValue | number;
@@ -25,6 +20,13 @@ export async function memoryExtractionWorkflowConfig(): Promise<MemoryExtraction
 
 export async function persistMemoryEvents(input: PersistMemoryEventsInput): Promise<void> {
     const workflowId = Context.current().info.workflowExecution.workflowId;
+    if (Config.BEDROCK_MEMORY_ID) {
+        return AgentCoreInstance.createEvent(input.userId, input.sessionId, input.events.map((entry) => ({
+            text: entry.content,
+            role: entry.role
+        })));
+    }
+
 
     // 1. Search the MemoryDataStore for existing memory entries related to
     //    things in the events (e.g. entities, topics, etc.)

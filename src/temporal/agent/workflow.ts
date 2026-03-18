@@ -11,7 +11,7 @@ import {
 import type * as activities from "./activities";
 import { AgentWorkflowInput, PendingMessage } from "./interface";
 
-const { persistUserMessage, persistAgentMessage, tokens } = proxyActivities<typeof activities>({
+const { persistUserMessage, persistAgentMessage, persistMemoryEvent, tokens } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: {
         backoffCoefficient: 1,
@@ -144,6 +144,11 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                     message: entry.message,
                 });
 
+                await persistMemoryEvent({
+                    role: "user",
+                    content: entry.message,
+                });
+
                 context.push(`<user_message date="${entry.date}" author="${entry.author}">\n${entry.message}\n</user_message>`);
             }
 
@@ -154,6 +159,11 @@ export async function agentWorkflow(input: AgentWorkflowInput): Promise<void> {
                     name: "assistant",
                     type: "agent-message",
                     message: agentThought.payload,
+                });
+
+                await persistMemoryEvent({
+                    role: "assistant",
+                    content: agentThought.payload,
                 });
 
                 context.push(`<answer>\n${agentThought.payload}\n</answer>`);

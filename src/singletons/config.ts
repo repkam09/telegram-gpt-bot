@@ -642,6 +642,46 @@ export class Config {
         return process.env.SUPABASE_SERVICE_ROLE_KEY;
     }
 
+    static get BEDROCK_REGION(): string {
+        if (!process.env.BEDROCK_REGION) {
+            return "us-east-1";
+        }
+
+        return process.env.BEDROCK_REGION;
+    }
+
+    static get BEDROCK_ACCESS_KEY_ID(): string {
+        if (!process.env.BEDROCK_ACCESS_KEY_ID) {
+            throw new Error("Missing BEDROCK_ACCESS_KEY_ID");
+        }
+
+        return process.env.BEDROCK_ACCESS_KEY_ID;
+    }
+
+    static get BEDROCK_SECRET_ACCESS_KEY(): string {
+        if (!process.env.BEDROCK_SECRET_ACCESS_KEY) {
+            throw new Error("Missing BEDROCK_SECRET_ACCESS_KEY");
+        }
+
+        return process.env.BEDROCK_SECRET_ACCESS_KEY;
+    }
+
+    static get BEDROCK_SESSION_TOKEN(): string | undefined {
+        if (!process.env.BEDROCK_SESSION_TOKEN) {
+            return undefined;
+        }
+
+        return process.env.BEDROCK_SESSION_TOKEN;
+    }
+
+    static get BEDROCK_MEMORY_ID(): string {
+        if (!process.env.BEDROCK_MEMORY_ID) {
+            throw new Error("Missing BEDROCK_MEMORY_ID");
+        }
+
+        return process.env.BEDROCK_MEMORY_ID;
+    }
+
     static LOCAL_STORAGE(workflowId: string): string {
         if (!process.env.LOCAL_STORAGE) {
             return os.tmpdir();

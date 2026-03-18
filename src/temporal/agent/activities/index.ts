@@ -4,3 +4,4 @@ export * from "./observation";
 export * from "./persist";
 export * from "./thought";
 export * from "./tokens";
+export * from "./memory";
