@@ -6,6 +6,7 @@ import { HennosAnthropicSingleton } from "./singletons/anthropic";
 import { Logger } from "./singletons/logger";
 import { Database } from "./database";
 import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
+import { HennosGoogleSingleton } from "./singletons/google";
 
 export type HennosTool = Tool;
 export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeToolResponse;
@@ -122,6 +123,22 @@ function internalResolveModelProvider(level: "high" | "low" | "nano", provider: 
                 return HennosOpenAISingleton.nano();
             }
             throw new Error(`Unsupported model tier for Anthropic provider: ${level}`);
+        }
+
+        case "google": {
+            if (level === "high") {
+                return HennosGoogleSingleton.high();
+            }
+
+            if (level === "low") {
+                return HennosGoogleSingleton.low();
+            }
+
+            if (level === "nano") {
+                // For simplicity, just use the OpenAI nano model here as well
+                return HennosOpenAISingleton.nano();
+            }
+            throw new Error(`Unsupported model tier for Google provider: ${level}`);
         }
 
         case "ollama": {

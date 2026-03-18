@@ -17,7 +17,7 @@ export type HennosEmbedModelConfig = {
     LENGTH: number
 }
 
-export type HennosModelProvider = "ollama" | "openai" | "anthropic";
+export type HennosModelProvider = "ollama" | "openai" | "anthropic" | "google";
 export type HennosEmbedProvider = "ollama" | "openai";
 
 export class Config {
@@ -42,8 +42,8 @@ export class Config {
             return "ollama";
         }
 
-        // Validate ollama, openai or anthropic
-        if (["ollama", "openai", "anthropic"].indexOf(process.env.HENNOS_LLM_PROVIDER) === -1) {
+        // Validate ollama, openai, anthropic or google
+        if (["ollama", "openai", "anthropic", "google"].indexOf(process.env.HENNOS_LLM_PROVIDER) === -1) {
             throw new Error("Invalid HENNOS_LLM_PROVIDER value");
         }
 
@@ -274,6 +274,28 @@ export class Config {
         }
 
         return parseHennosModelString(process.env.OPENAI_NANO_LLM, "OPENAI_NANO_LLM");
+    }
+
+    static get GOOGLE_LLM(): HennosModelConfig {
+        if (!process.env.GOOGLE_LLM) {
+            return {
+                MODEL: "gemini-3-flash-preview",
+                CTX: 32000,
+            };
+        }
+
+        return parseHennosModelString(process.env.GOOGLE_LLM, "GOOGLE_LLM");
+    }
+
+    static get GOOGLE_MINI_LLM(): HennosModelConfig {
+        if (!process.env.GOOGLE_MINI_LLM) {
+            return {
+                MODEL: "gemini-3.1-flash-lite-preview",
+                CTX: 24000,
+            };
+        }
+
+        return parseHennosModelString(process.env.GOOGLE_MINI_LLM, "GOOGLE_MINI_LLM");
     }
 
     static get OLLAMA_LLM(): HennosModelConfig {
