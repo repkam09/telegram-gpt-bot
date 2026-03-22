@@ -6,6 +6,7 @@ import { handleDocument } from "../tools/FetchWebpageContent";
 import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 import path from "node:path";
 import fs from "fs/promises";
+import { createReadStream } from "node:fs";
 import { generateTranscription } from "../singletons/transcription";
 import { AgentResponseHandler, StatusListenerEventType } from "../response";
 import { Database } from "../database";
@@ -92,6 +93,9 @@ export class TelegramInstance {
         bot.on("voice", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleVoiceMessage));
         bot.on("edited_message_caption", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleEditCaptionMessage));
         bot.on("edited_message_text", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleEditTextMessage));
+
+        // Special case for stickers, since we want to attempt to re-upload them as photos if they are sent as stickers, no whitelist check
+        bot.on("sticker", TelegramInstance.handleTelegramStickerMessage);
 
         bot.on("polling_error", (error: Error) => {
             Logger.error("telegram", `Telegram polling error: ${error.message}`, error);
@@ -454,6 +458,34 @@ export class TelegramInstance {
 
     private static async handleUnimplemented(event: string, msg: TelegramBot.Message): Promise<void> {
         Logger.debug("telegram", `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
+    }
+
+    private static async handleTelegramStickerMessage(msg: TelegramBot.Message) {
+        const chatId = msg.chat.id;
+        if (!msg.from || !msg.sticker) {
+            return;
+        }
+
+        const { workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+
+        const { set_name, emoji } = msg.sticker;
+        if (set_name && emoji) {
+            return;
+        }
+
+        try {
+            // This is a silly feature that fixes an issue in Telegram where some images are incorrectly sent as stickers
+            // This will download the sticker, and re-upload it as a photo
+            const stickerPath = await TelegramInstance.downloadTelegramFile(workflowId, msg.sticker.file_id, Config.LOCAL_STORAGE(workflowId));
+            if (!stickerPath) {
+                return;
+            }
+
+            await TelegramInstance.instance().sendPhoto(chatId, createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            Logger.error(workflowId, `Error handling Telegram sticker message with file_id: ${msg.sticker.file_id}.`, error);
+        }
     }
 
     private static async handleTextCommandMessage(msg: TelegramBot.Message): Promise<void> {
