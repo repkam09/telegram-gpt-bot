@@ -10,6 +10,7 @@ import { A2AWebhookInstance } from "./endpoints/a2a";
 import { GemstoneWebhookInstance } from "./endpoints/gemstone";
 import { SupabaseWebhookInstance } from "./endpoints/supabase";
 import { LegacyWebhookInstance } from "./endpoints/legacy";
+import { queryUsage } from "../temporal/usage/interface";
 
 export class WebhookInstance {
     static _instance: Express;
@@ -64,6 +65,11 @@ export class WebhookInstance {
 
         app.get("/healthz", (req: Request, res: Response) => {
             return res.status(200).send("OK");
+        });
+
+        app.get("/metrics", async (req: Request, res: Response) => {
+            const metrics = await queryUsage();
+            return res.status(200).json(metrics);
         });
 
         if (Config.HENNOS_TELEGRAM_ENABLED) {

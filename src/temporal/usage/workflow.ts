@@ -11,8 +11,12 @@ export const usageWorkflowContinueAsNew = defineSignal("usageWorkflowContinueAsN
 export const usageWorkflowSignal = defineSignal<[UsageWorkflowSignalInput]>(
     "usageWorkflowSignal",
 );
-export const usageWorkflowQuery = defineQuery<Usage | undefined, [string]>(
+export const usageWorkflowQuery = defineQuery<{ id: string; usage: Usage }[], []>(
     "usageWorkflowQuery",
+);
+
+export const usageByIdWorkflowQuery = defineQuery<Usage | undefined, [string]>(
+    "usageByIdWorkflowQuery",
 );
 
 export async function usageWorkflow(input: UsageWorkflowInput): Promise<void> {
@@ -39,8 +43,16 @@ export async function usageWorkflow(input: UsageWorkflowInput): Promise<void> {
         userRequestedContinueAsNew = true;
     });
 
-    setHandler(usageWorkflowQuery, (id: string) => {
+    setHandler(usageByIdWorkflowQuery, (id: string) => {
         return usage.get(id);
+    });
+
+    setHandler(usageWorkflowQuery, () => {
+        const result: { id: string; usage: Usage }[] = [];
+        for (const key of usage.keys()) {
+            result.push({ id: key, usage: usage.get(key)! });
+        }
+        return result;
     });
 
     await condition(() => userRequestedContinueAsNew || workflowInfo().continueAsNewSuggested);

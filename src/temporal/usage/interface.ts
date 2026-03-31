@@ -1,6 +1,6 @@
 import { Config } from "../../singletons/config";
 import { createTemporalClient } from "../../singletons/temporal";
-import { usageWorkflow, usageWorkflowContinueAsNew, usageWorkflowSignal } from "./workflow";
+import { usageByIdWorkflowQuery, usageWorkflow, usageWorkflowContinueAsNew, usageWorkflowQuery, usageWorkflowSignal } from "./workflow";
 
 export type Usage = {
     inputTokens: number;
@@ -48,4 +48,30 @@ export async function signalUsageContinueAsNew() {
     } catch (err) {
         console.error("Error signaling usage workflow to continue as new:", err);
     }
+}
+
+export async function queryUsage(): Promise<{ id: string; usage: Usage }[]> {
+    try {
+        const client = await createTemporalClient();
+        const workflowId = createWorkflowId();
+        const handle = await client.workflow.getHandle(workflowId);
+        const result = await handle.query(usageWorkflowQuery);
+        return result;
+    } catch (err) {
+        console.error("Error querying usage workflow:", err);
+    }
+    return [];
+}
+
+export async function queryUsageById(id: string): Promise<Usage | undefined> {
+    try {
+        const client = await createTemporalClient();
+        const workflowId = createWorkflowId();
+        const handle = await client.workflow.getHandle(workflowId);
+        const result = await handle.query(usageByIdWorkflowQuery, id);
+        return result;
+    } catch (err) {
+        console.error("Error querying usage workflow by ID:", err);
+    }
+    return undefined;
 }
