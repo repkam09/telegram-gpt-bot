@@ -2,7 +2,7 @@ import { Tool } from "ollama";
 import { Config, HennosModelProvider } from "./singletons/config";
 import { HennosOllamaSingleton } from "./singletons/ollama";
 import { HennosOpenAISingleton } from "./singletons/openai";
-import { HennosAnthropicSingleton } from "./singletons/anthropic";
+// import { HennosAnthropicSingleton } from "./singletons/anthropic";
 import { Logger } from "./singletons/logger";
 import { Database } from "./database";
 import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
@@ -110,11 +110,13 @@ function internalResolveModelProvider(level: "high" | "low" | "nano", provider: 
 
         case "anthropic": {
             if (level === "high") {
-                return HennosAnthropicSingleton.high();
+                return HennosOpenAISingleton.high();
+                // return HennosAnthropicSingleton.high();
             }
 
             if (level === "low") {
-                return HennosAnthropicSingleton.low();
+                return HennosOpenAISingleton.low();
+                // return HennosAnthropicSingleton.low();
             }
 
             if (level === "nano") {

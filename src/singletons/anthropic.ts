@@ -3,7 +3,6 @@ import { Logger } from "./logger";
 import { CompletionContextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 import Anthropic from "@anthropic-ai/sdk";
 import { HennosOpenAISingleton } from "./openai";
-import { Usage } from "@anthropic-ai/sdk/resources";
 
 export class HennosAnthropicSingleton {
     private static _instance: HennosAnthropicProvider | null = null;
@@ -24,21 +23,21 @@ export class HennosAnthropicSingleton {
     }
 }
 
-type AnthropicCompletionResponse = AnthropicCompletionResponseString | AnthropicCompletionResponseTool;
+// type AnthropicCompletionResponse = AnthropicCompletionResponseString | AnthropicCompletionResponseTool;
 
-type AnthropicCompletionResponseString = {
-    __type: "string";
-    payload: string;
-}
+// type AnthropicCompletionResponseString = {
+//     __type: "string";
+//     payload: string;
+// }
 
-type AnthropicCompletionResponseTool = {
-    __type: "tool";
-    payload: {
-        name: string;
-        input: string;
-        id: string;
-    };
-}
+// type AnthropicCompletionResponseTool = {
+//     __type: "tool";
+//     payload: {
+//         name: string;
+//         input: string;
+//         id: string;
+//     };
+// }
 
 export class HennosAnthropicProvider {
     public client: Anthropic;
@@ -57,45 +56,7 @@ export class HennosAnthropicProvider {
     }
 
     public async invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
-        Logger.info(workflowId, `Anthropic Invoke Start (${this.model.MODEL})`);
-        const converted = tools ? convertHennosTools(tools) : undefined;
-        const prompt = convertHennosMessages(messages);
-
-        const result = await this._invoke(workflowId, prompt, converted);
-
-        if (result.__type === "string") {
-            Logger.info(workflowId, "Anthropic Invoke Success, Resulted in String Response");
-            return {
-                __type: "string",
-                payload: result.payload
-            };
-        }
-
-        if (result.__type === "tool") {
-            return {
-                __type: "tool",
-                payload: [{
-                    name: result.payload.name,
-                    input: result.payload.input,
-                }]
-            };
-        }
-
-        throw new Error("Anthropic Invoke Failed, Unhandled Response Type");
-    }
-
-    private async _invoke(workflowId: string, prompt: Anthropic.Messages.MessageParam[], tools?: Anthropic.Messages.ToolUnion[]): Promise<AnthropicCompletionResponse> {
-        Logger.debug(workflowId, `Prompt Length: ${prompt.length}, Tools: ${tools ? tools.length : 0}`);
-
-        const response: Anthropic.Messages.Message = await this.client.messages.create({
-            model: this.model.MODEL,
-            messages: prompt,
-            tools: tools,
-            max_tokens: this.model.CTX
-        });
-
-        Logger.info(workflowId, `Anthropic Invoke Success, Usage: ${calculateUsage(response.usage)}`);
-        throw new Error(`Anthropic Invoke Failed, Unhandled Finish Reason: ${response.stop_reason}`);
+        return HennosOpenAISingleton.high().invoke(workflowId, messages, tools);
     }
 
     public async completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse> {
@@ -105,14 +66,6 @@ export class HennosAnthropicProvider {
     public async moderation(workflowId: string, input: string): Promise<boolean> {
         return HennosOpenAISingleton.high().moderation(workflowId, input);
     }
-}
-
-function calculateUsage(usage: Usage | undefined): string {
-    if (!usage) {
-        return "Unknown";
-    }
-
-    return `Input: ${usage.input_tokens} tokens, Output: ${usage.output_tokens} tokens`;
 }
 
 type ChatCompletionRole = "user" | "assistant";
