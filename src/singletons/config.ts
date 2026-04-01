@@ -146,30 +146,6 @@ export class Config {
         return process.env.HENNOS_TELEGRAM_ENABLED === "true";
     }
 
-    static get HENNOS_DISCORD_ENABLED(): boolean {
-        if (!process.env.HENNOS_DISCORD_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_DISCORD_ENABLED === "true";
-    }
-
-    static get HENNOS_FLUXER_ENABLED(): boolean {
-        if (!process.env.HENNOS_FLUXER_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_FLUXER_ENABLED === "true";
-    }
-
-    static get HENNOS_SLACK_ENABLED(): boolean {
-        if (!process.env.HENNOS_SLACK_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_SLACK_ENABLED === "true";
-    }
-
     static get HENNOS_API_ENABLED(): boolean {
         if (!process.env.HENNOS_API_ENABLED) {
             return false;
@@ -378,46 +354,6 @@ export class Config {
         }
 
         return port;
-    }
-
-    static get DISCORD_BOT_TOKEN(): string {
-        if (!process.env.DISCORD_BOT_TOKEN) {
-            throw new Error("Missing DISCORD_BOT_TOKEN");
-        }
-
-        return process.env.DISCORD_BOT_TOKEN;
-    }
-
-    static get FLUXER_BOT_TOKEN(): string {
-        if (!process.env.FLUXER_BOT_TOKEN) {
-            throw new Error("Missing FLUXER_BOT_TOKEN");
-        }
-
-        return process.env.FLUXER_BOT_TOKEN;
-    }
-
-    static get SLACK_BOT_TOKEN(): string {
-        if (!process.env.SLACK_BOT_TOKEN) {
-            throw new Error("Missing SLACK_BOT_TOKEN");
-        }
-
-        return process.env.SLACK_BOT_TOKEN;
-    }
-
-    static get SLACK_SIGNING_SECRET(): string {
-        if (!process.env.SLACK_SIGNING_SECRET) {
-            throw new Error("Missing SLACK_SIGNING_SECRET");
-        }
-
-        return process.env.SLACK_SIGNING_SECRET;
-    }
-
-    static get SLACK_APP_TOKEN(): string {
-        if (!process.env.SLACK_APP_TOKEN) {
-            throw new Error("Missing SLACK_APP_TOKEN");
-        }
-
-        return process.env.SLACK_APP_TOKEN;
     }
 
     static get TELEGRAM_BOT_KEY(): string {

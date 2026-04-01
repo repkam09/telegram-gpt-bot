@@ -1,5 +1,4 @@
 import { Logger } from "./singletons/logger";
-import { parseWorkflowId } from "./temporal/agent/interface";
 
 type MessageListener = (message: string, chatId: string) => Promise<void>;
 type ArtifactListener = (filePath: string, chatId: string, mime_type: string, description?: string) => Promise<void>;
@@ -44,33 +43,62 @@ export class AgentResponseHandler {
     }
 
     public static async handleStatus(workflowId: string, event: StatusListenerEvent): Promise<void> {
-        const workflowInfo = parseWorkflowId(workflowId);
-        const listener = this.statusListeners.get(workflowInfo.platform);
-        if (listener) {
-            await listener(event, workflowInfo.chatId);
-        } else {
-            Logger.warn(workflowId, `No status listener registered for platform: ${workflowInfo.platform}`);
+        try {
+            const workflowInfo = JSON.parse(workflowId);
+            if (!workflowInfo.platform || !workflowInfo.chatId) {
+                Logger.error(workflowId, `Invalid workflowId format: ${workflowId} for status handling. Expected properties 'platform' and 'chatId' not found.`);
+                return;
+            }
+
+            const listener = this.statusListeners.get(workflowInfo.platform);
+            if (listener) {
+                await listener(event, workflowInfo.chatId);
+            } else {
+                Logger.warn(workflowId, `No status listener registered for platform: ${workflowInfo.platform}`);
+            }
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(workflowId, `Failed to parse workflowId: ${workflowId}. Error: ${error.message}`, error);
         }
     }
 
     public static async handleMessage(workflowId: string, message: string): Promise<void> {
-        const workflowInfo = parseWorkflowId(workflowId);
+        try {
+            const workflowInfo = JSON.parse(workflowId);
+            if (!workflowInfo.platform || !workflowInfo.chatId) {
+                Logger.error(workflowId, `Invalid workflowId format: ${workflowId} for message handling. Expected properties 'platform' and 'chatId' not found.`);
+                return;
+            }
 
-        const listener = this.messageListeners.get(workflowInfo.platform);
-        if (listener) {
-            await listener(message, workflowInfo.chatId);
-        } else {
-            Logger.warn(workflowId, `No message listener registered for platform: ${workflowInfo.platform}`);
+            const listener = this.messageListeners.get(workflowInfo.platform);
+            if (listener) {
+                await listener(message, workflowInfo.chatId);
+            } else {
+                Logger.warn(workflowId, `No message listener registered for platform: ${workflowInfo.platform}`);
+            }
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(workflowId, `Failed to parse workflowId: ${workflowId}. Error: ${error.message}`, error);
         }
     }
 
     public static async handleArtifact(workflowId: string, filePath: string, mime_type: string, description?: string): Promise<void> {
-        const workflowInfo = parseWorkflowId(workflowId);
-        const listener = this.artifactListeners.get(workflowInfo.platform);
-        if (listener) {
-            await listener(filePath, workflowInfo.chatId, mime_type, description);
-        } else {
-            Logger.warn(workflowId, `No artifact listener registered for platform: ${workflowInfo.platform}`);
+        try {
+            const workflowInfo = JSON.parse(workflowId);
+            if (!workflowInfo.platform || !workflowInfo.chatId) {
+                Logger.error(workflowId, `Invalid workflowId format: ${workflowId} for artifact handling. Expected properties 'platform' and 'chatId' not found.`);
+                return;
+            }
+
+            const listener = this.artifactListeners.get(workflowInfo.platform);
+            if (listener) {
+                await listener(filePath, workflowInfo.chatId, mime_type, description);
+            } else {
+                Logger.warn(workflowId, `No artifact listener registered for platform: ${workflowInfo.platform}`);
+            }
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(workflowId, `Failed to parse workflowId: ${workflowId}. Error: ${error.message}`, error);
         }
     }
 }

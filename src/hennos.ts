@@ -2,10 +2,7 @@ import { Logger } from "./singletons/logger";
 import { HennosTemporalWorker } from "./worker";
 import { Database } from "./database";
 import { TelegramInstance } from "./client/telegram";
-import { DiscordInstance } from "./client/discord";
-import { FluxerInstance } from "./client/fluxer";
 import { WebhookInstance } from "./client/api";
-import { SlackInstance } from "./client/slack";
 import { Config } from "./singletons/config";
 import { SupabaseInstance } from "./singletons/supabase";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
@@ -27,27 +24,6 @@ async function start() {
         await TelegramLegacyInstance.init();
     } else {
         Logger.info("Hennos", "Telegram client is disabled. Skipping...");
-    }
-
-    if (Config.HENNOS_DISCORD_ENABLED) {
-        Logger.info("Hennos", "Initializing Discord client...");
-        await DiscordInstance.init();
-    } else {
-        Logger.info("Hennos", "Discord client is disabled. Skipping...");
-    }
-
-    if (Config.HENNOS_FLUXER_ENABLED) {
-        Logger.info("Hennos", "Initializing Fluxer client...");
-        await FluxerInstance.init();
-    } else {
-        Logger.info("Hennos", "Fluxer client is disabled. Skipping...");
-    }
-
-    if (Config.HENNOS_SLACK_ENABLED) {
-        Logger.info("Hennos", "Initializing Slack client...");
-        await SlackInstance.init();
-    } else {
-        Logger.info("Hennos", "Slack client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_MCP_ENABLED) {

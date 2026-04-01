@@ -1,7 +1,6 @@
 import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import axios from "axios";
 import { Config } from "../singletons/config";
 import { signalAgenticWorkflowAdminMessage } from "../temporal/agent/interface";
 
@@ -67,20 +66,27 @@ export class MetaBugReport extends BaseTool {
 async function createGitHubIssue(workflowId: string, title: string, report: string): Promise<string> {
     Logger.debug(workflowId, `createGitHubIssue. ${JSON.stringify({ title, report })}`);
 
-    const response = await axios.post("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
-        title: title,
-        body: report,
-        labels: ["bug_report_tool"]
-    }, {
+    const response = await fetch("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
+        method: "POST",
         headers: {
             "Authorization": `Bearer ${Config.GITHUB_API_KEY}`,
-            "Accept": "application/vnd.github+json"
-        }
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            title: title,
+            body: report,
+            labels: ["bug_report_tool"]
+        })
     });
 
-    return response.data.html_url;
-}
+    if (!response.ok) {
+        throw new Error(`GitHub API request failed with status ${response.status}`);
+    }
 
+    const data = await response.json();
+    return JSON.stringify(data);
+}
 
 export class MetaFeatureRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -144,18 +150,26 @@ export class MetaFeatureRequest extends BaseTool {
 async function createGitHubFeatureRequest(workflowId: string, title: string, request: string): Promise<string> {
     Logger.debug(workflowId, `createGitHubIssue. ${JSON.stringify({ title, request })}`);
 
-    const response = await axios.post("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
-        title,
-        body: request,
-        labels: ["feature_request_tool"]
-    }, {
+    const response = await fetch("https://api.github.com/repos/repkam09/telegram-gpt-bot/issues", {
+        method: "POST",
         headers: {
             "Authorization": `Bearer ${Config.GITHUB_API_KEY}`,
-            "Accept": "application/vnd.github+json"
-        }
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            title: title,
+            body: request,
+            labels: ["feature_request_tool"]
+        })
     });
 
-    return response.data.html_url;
+    if (!response.ok) {
+        throw new Error(`GitHub API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return JSON.stringify(data);
 }
 
 export class MetaFeedbackTool extends BaseTool {

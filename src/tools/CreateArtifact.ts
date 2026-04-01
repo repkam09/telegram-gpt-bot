@@ -6,21 +6,7 @@ import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { AgentResponseHandler } from "../response";
 
-/**
- * CreateArtifact allows the model to create a text-based file artifact (code, HTML, Markdown, JSON, etc.)
- * and send it back to the user as a Telegram document. Use this when:
- *  - The user asks for a complete file (e.g. "make an index.html", "give me a Dockerfile", "write a script.py").
- *  - The content would exceed normal message limits or is easier to consume as a file.
- *  - You need to provide multiple lines of code with exact formatting preserved.
- */
 export class CreateArtifact extends BaseTool {
-    private static readonly MAX_CONTENT_LENGTH = 200_000; // ~200 KB safeguard
-    private static readonly ALLOWED_EXTENSIONS = new Set([
-        ".txt", ".md", ".markdown", ".html", ".htm", ".css", ".js", ".cjs", ".mjs",
-        ".ts", ".tsx", ".jsx", ".json", ".yml", ".yaml", ".xml", ".csv", ".py", ".sh",
-        ".bash", ".zsh", ".sql", ".ini", ".cfg", ".conf", ".toml", ".env"
-    ]);
-
     public static isEnabled(): boolean {
         return true;
     }
@@ -47,12 +33,16 @@ export class CreateArtifact extends BaseTool {
                             type: "string",
                             description: "Full textual content of the artifact. Must be plain text (no base64)."
                         },
+                        mimeType: {
+                            type: "string",
+                            description: "MIME type of the file (e.g. 'text/plain', 'application/json')."
+                        },
                         description: {
                             type: "string",
                             description: "Optional short caption/description to accompany the file when sent."
                         }
                     },
-                    required: ["filename", "content"],
+                    required: ["filename", "content", "mimeType"],
                 }
             }
         };
@@ -62,8 +52,8 @@ export class CreateArtifact extends BaseTool {
         Logger.info(workflowId, `CreateArtifact callback. filename=${args.filename}, contentLength=${args.content?.length}`);
 
         // Basic validation
-        if (!args.filename || !args.content) {
-            return [JSON.stringify({ error: "'filename' and 'content' are required" }), metadata];
+        if (!args.filename || !args.content || !args.mimeType) {
+            return [JSON.stringify({ error: "'filename', 'content', and 'mimeType' are required" }), metadata];
         }
 
         const filename = sanitizeFilename(String(args.filename));
@@ -71,18 +61,7 @@ export class CreateArtifact extends BaseTool {
             return [JSON.stringify({ error: "invalid filename after sanitization" }), metadata];
         }
 
-        if (args.content.length > CreateArtifact.MAX_CONTENT_LENGTH) {
-            return [
-                JSON.stringify({ error: `content length (${args.content.length}) exceeds limit of ${CreateArtifact.MAX_CONTENT_LENGTH} characters. Please summarize or split into smaller files.` }),
-                metadata
-            ];
-        }
-
         const ext = path.extname(filename).toLowerCase();
-        if (!CreateArtifact.ALLOWED_EXTENSIONS.has(ext)) {
-            // Allow but warn; you could also reject. We'll allow to keep flexibility.
-            Logger.warn(workflowId, `CreateArtifact: extension ${ext} not in ALLOWED_EXTENSIONS, proceeding anyway.`);
-        }
 
         // Write file
         const artifactDir = path.join(Config.LOCAL_STORAGE(workflowId), "artifacts");
@@ -112,17 +91,19 @@ export class CreateArtifact extends BaseTool {
             ];
         }
 
-        let sent = false;
         try {
-            await AgentResponseHandler.handleArtifact(workflowId, targetPath, args.description);
-            sent = true;
+            await AgentResponseHandler.handleArtifact(workflowId, targetPath, args.mimeType, args.description);
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, "CreateArtifact send error", error);
+            return [
+                JSON.stringify({ error: `failed to send file '${filename}' to user. ${error.message}` }),
+                metadata
+            ];
         }
 
         return [
-            `create_artifact success: file '${path.basename(targetPath)}' ${sent ? "created and sent" : "created"}. Local path: ${targetPath}.`,
+            `create_artifact success: file '${path.basename(targetPath)}' created and sent to user. Local path: ${targetPath}.`,
             metadata
         ];
     }

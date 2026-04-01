@@ -5,7 +5,6 @@ import puppeteer from "puppeteer";
 import { JSDOM } from "jsdom";
 import { isProbablyReaderable, Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
-import { AxiosError } from "axios";
 import { HTMLReader } from "@llamaindex/readers/html";
 import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 import {
@@ -120,11 +119,6 @@ export class FetchWebpageContent extends BaseTool {
             return [JSON.stringify({ summary: result }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            if (err instanceof AxiosError) {
-                Logger.error(workflowId, `fetch_webpage_content error. url=${args.url} status=${err.response?.status} statusText=${err.response?.statusText}`, error);
-                return [JSON.stringify({ error: `unable to fetch content from URL '${args.url}', HTTP Status: ${err.response?.status}, Status Text: ${err.response?.statusText}` }), metadata];
-            }
-
             Logger.error(workflowId, `fetch_webpage_content error url=${args.url} error=${error.message}`, error);
             return [JSON.stringify({ error: `unable to fetch content from URL '${args.url}'` }), metadata];
         }
