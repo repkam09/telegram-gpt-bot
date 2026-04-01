@@ -135,8 +135,7 @@ export class HennosOpenAIProvider {
             safety_identifier: `${workflowId}`,
             tool_choice: tools ? "auto" : undefined,
             tools: tools,
-            parallel_tool_calls: tools ? true : undefined,
-            reasoning_effort: tools ? "medium" : undefined
+            parallel_tool_calls: tools ? true : undefined
         });
 
         if (response.usage) {
