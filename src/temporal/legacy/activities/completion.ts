@@ -183,10 +183,8 @@ function getChatContextTokenCount(context: CompletionContextEntry[]): number {
 
 export async function loadCompletionContextImage(image: CompletionContextImage): Promise<CompletionContextEncodedImage | null> {
     try {
-        Logger.debug(undefined, `Loading image from ${image.local} Start`);
         const raw = await fs.readFile(image.local);
         const data = Buffer.from(raw).toString("base64");
-        Logger.debug(undefined, `Loading image from ${image.local} Finish: ${data.length} bytes`);
         return { __type: "b64_image", data };
     } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error(String(err));

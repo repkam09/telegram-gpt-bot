@@ -10,6 +10,7 @@ import { createBlueskyScheduleWorkflow, deleteBlueskyScheduleWorkflow } from "./
 import { ModelContextProtocolServer } from "./client/mcp";
 import { Agent2AgentProtocolServer } from "./client/a2a";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
+import { UsageTracker } from "./temporal/usage/interface";
 
 async function start() {
     Logger.info("Hennos", "Starting Hennos...");
@@ -69,6 +70,8 @@ async function start() {
         Logger.info("Hennos", "Bluesky Schedule Workflow is disabled. Skipping...");
         await deleteBlueskyScheduleWorkflow();
     }
+
+    UsageTracker.init();
 
     Logger.info("Hennos", "Starting Temporal worker...");
     return HennosTemporalWorker.init();

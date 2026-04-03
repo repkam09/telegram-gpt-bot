@@ -35,7 +35,6 @@ export function availableTools(workflowId: string): HennosBaseTool[] | undefined
 
     LegacyTools.forEach((Tool) => {
         if (Tool.isEnabled()) {
-            Logger.debug(workflowId, `Tool ${Tool.definition().function.name} is enabled and will be added for ${workflowId}`);
             tools.push(Tool);
         } else {
             Logger.debug(workflowId, `Tool ${Tool.definition().function.name} is not enabled and will be skipped for ${workflowId}`);

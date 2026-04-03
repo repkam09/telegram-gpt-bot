@@ -19,7 +19,8 @@ import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Ollama, OllamaEmbedding } from "@llamaindex/ollama";
-
+import { UsageTracker } from "../temporal/usage/interface";
+import { Context } from "@temporalio/activity";
 
 if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
     Logger.info("DocumentProcessing", "Initializing Ollama embedding model for document processing");
@@ -35,7 +36,6 @@ if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
         model: Config.OPENAI_LLM_EMBED.MODEL,
         apiKey: Config.OPENAI_API_KEY
     });
-
 }
 
 if (Config.HENNOS_DOCUMENT_LLM_PROVIDER === "ollama") {
@@ -66,11 +66,25 @@ Settings.nodeParser = new SentenceSplitter({
 if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "openai" || Config.HENNOS_DOCUMENT_LLM_PROVIDER === "openai") {
     Logger.info("DocumentProcessing", "Setting up callback to log OpenAI token usage for document processing");
     Settings.callbackManager.on("llm-end", (event) => {
-        Logger.debug("DocumentProcessing", `LLM response received. Event details: ${JSON.stringify(event)}`);
-        const raw = event.detail.response.raw as Record<string, unknown> | null;
-        if (raw && typeof raw === "object" && "usage" in raw) {
-            const usage = raw.usage as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
-            Logger.info("DocumentProcessing", `LlamaIndex LLM Usage: input=${usage.prompt_tokens ?? 0}, output=${usage.completion_tokens ?? 0}, total=${usage.total_tokens ?? 0}`);
+        try {
+            const raw = event.detail.response.raw as Record<string, unknown> | null;
+            if (raw && typeof raw === "object" && "usage" in raw) {
+                const usage = raw.usage as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
+                Logger.info("DocumentProcessing", `LlamaIndex LLM Usage: input=${usage.prompt_tokens ?? 0}, output=${usage.completion_tokens ?? 0}, total=${usage.total_tokens ?? 0}`);
+
+                const workflowId = Context.current().info.workflowExecution.workflowId;
+                UsageTracker.signalUsage(workflowId, {
+                    inputTokens: usage.prompt_tokens ?? 0,
+                    outputTokens: usage.completion_tokens ?? 0,
+                    reasoningTokens: usage.completion_tokens_details?.reasoning_tokens ?? 0,
+                    totalTokens: usage.total_tokens ?? 0,
+                });
+            } else {
+                Logger.debug("DocumentProcessing", "LLM response does not contain usage information.");
+            }
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.debug("DocumentProcessing", `Failed to retrieve workflow ID from Temporal context: ${error.message}`);
         }
     });
 }
@@ -116,8 +130,8 @@ export class FetchWebpageContent extends BaseTool {
         try {
             const html = await fetchPageContent(workflowId, args.url);
 
-            // If the HTML is smaller than 32000 chars we can just return the whole thing
-            if (!args.query && html.length < 32000) {
+            // If the HTML is smaller than HENNOS_DOCUMENT_MAX_RAW_LENGTH chars we can just return the whole thing
+            if (!args.query && html.length < Config.HENNOS_DOCUMENT_MAX_RAW_LENGTH) {
                 return [html, metadata];
             }
 
@@ -215,7 +229,6 @@ export async function handleDocument(workflowId: string, path: string, uuid: str
     Logger.info(workflowId, `Processing document at path: ${path} with UUID: ${uuid}.`);
 
     const documents = await reader.loadData(path);
-
     Logger.debug(workflowId, `Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
     const index = await SummaryIndex.fromDocuments(documents);
 

@@ -122,6 +122,11 @@ export class TelegramInstance {
             return;
         }
 
+        if (Config.HENNOS_DEVELOPMENT_MODE) {
+            Logger.debug("telegram", `Development mode enabled, skipping whitelist check for user ${msg.from.id}`);
+            return handler(msg);
+        }
+
         // Check if the user is whitelisted in the database
         const isWhitelisted = await TelegramInstance.isUserWhitelisted(msg.from.id);
         if (!isWhitelisted) {
@@ -197,8 +202,8 @@ export class TelegramInstance {
     }
 
     private static async isAgenticUser(userId: number): Promise<boolean> {
-        Logger.debug("telegram", `Checking if user ${userId} is agentic.`);
         if (Config.TELEGRAM_BOT_ADMIN === String(userId)) {
+            Logger.debug("telegram", `User ${userId} is the Telegram bot admin and will be treated as agentic.`);
             return true;
         }
 

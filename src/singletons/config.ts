@@ -50,6 +50,27 @@ export class Config {
         return process.env.HENNOS_LLM_PROVIDER as HennosModelProvider;
     }
 
+    static get HENNOS_DOCUMENT_MAX_RAW_LENGTH(): number {
+        if (Config.HENNOS_DEVELOPMENT_MODE) {
+            return 1;
+        }
+
+        return 32000;
+    }
+
+    static get HENNOS_LEGACY_LLM_PROVIDER(): HennosModelProvider | null {
+        if (!process.env.HENNOS_LEGACY_LLM_PROVIDER) {
+            return null;
+        }
+
+        // Validate ollama, openai or anthropic
+        if (["ollama", "openai", "anthropic"].indexOf(process.env.HENNOS_LEGACY_LLM_PROVIDER) === -1) {
+            throw new Error("Invalid HENNOS_LEGACY_LLM_PROVIDER value");
+        }
+
+        return process.env.HENNOS_LEGACY_LLM_PROVIDER as HennosModelProvider;
+    }
+
     static get HENNOS_DOCUMENT_EMBED_PROVIDER(): HennosEmbedProvider {
         if (!process.env.HENNOS_DOCUMENT_EMBED_PROVIDER) {
             return "ollama";
