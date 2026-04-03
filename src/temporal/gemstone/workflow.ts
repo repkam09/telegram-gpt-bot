@@ -16,7 +16,7 @@ const { persistGemstoneAgentMessage, gemstoneTokens } = proxyActivities<typeof a
 });
 
 const { gemstoneThought, gemstoneAction, gemstoneCompact, gemstoneObservation } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes", // LLMs, especially Local ones, can be slow
     retry: {
         backoffCoefficient: 1,
         initialInterval: "3 seconds",

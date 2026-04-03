@@ -17,7 +17,7 @@ type MemoryExtractionWorkflowInput = {
 }
 
 const { persistMemoryEvents } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes",
     retry: {
         backoffCoefficient: 1,
         initialInterval: "3 seconds",
