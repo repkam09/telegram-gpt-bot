@@ -3,6 +3,7 @@ import { HennosTool, resolveModelProvider } from "../../../provider";
 import { Logger } from "../../../singletons/logger";
 import { Database } from "../../../database";
 import { parseWorkflowId } from "../interface";
+import { Config } from "../../../singletons/config";
 
 export type PromptComplexity = "simple" | "complex";
 
@@ -19,6 +20,11 @@ export type ClassifyPromptInput = {
 }
 
 export async function classifyPromptComplexity(input: ClassifyPromptInput): Promise<PromptComplexityResult> {
+    if (Config.HENNOS_LLM_PROVIDER === "ollama") {
+        Logger.debug("PromptClassifier", "LLM provider is Ollama, skipping classification and defaulting to 'complex'");
+        return complexResult();
+    }
+
     const workflowId = Context.current().info.workflowExecution.workflowId;
 
     // Fast path: already in a tool-call loop — no LLM call needed
