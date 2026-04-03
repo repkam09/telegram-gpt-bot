@@ -49,7 +49,7 @@ if (Config.HENNOS_DOCUMENT_LLM_PROVIDER === "ollama") {
 } else {
     Logger.info("DocumentProcessing", "Initializing OpenAI LLM model for document processing");
     Settings.llm = new OpenAI({
-        model: Config.OPENAI_MINI_LLM.MODEL,
+        model: Config.OPENAI_NANO_LLM.MODEL,
         apiKey: Config.OPENAI_API_KEY,
         temperature: 1
     });
@@ -63,6 +63,17 @@ Settings.nodeParser = new SentenceSplitter({
     chunkSize: 2048,
 });
 
+if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "openai" || Config.HENNOS_DOCUMENT_LLM_PROVIDER === "openai") {
+    Logger.info("DocumentProcessing", "Setting up callback to log OpenAI token usage for document processing");
+    Settings.callbackManager.on("llm-end", (event) => {
+        Logger.debug("DocumentProcessing", `LLM response received. Event details: ${JSON.stringify(event)}`);
+        const raw = event.detail.response.raw as Record<string, unknown> | null;
+        if (raw && typeof raw === "object" && "usage" in raw) {
+            const usage = raw.usage as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
+            Logger.info("DocumentProcessing", `LlamaIndex LLM Usage: input=${usage.prompt_tokens ?? 0}, output=${usage.completion_tokens ?? 0}, total=${usage.total_tokens ?? 0}`);
+        }
+    });
+}
 export class FetchWebpageContent extends BaseTool {
     public static isEnabled(): boolean {
         return true;

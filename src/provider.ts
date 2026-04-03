@@ -1,11 +1,11 @@
 import { Tool } from "ollama";
 import { Config, HennosModelProvider } from "./singletons/config";
 import { HennosOllamaSingleton } from "./singletons/ollama";
-import { HennosOpenAISingleton } from "./singletons/openai";
+// import { HennosOpenAISingleton } from "./singletons/openai";
 // import { HennosAnthropicSingleton } from "./singletons/anthropic";
 import { Logger } from "./singletons/logger";
-import { Database } from "./database";
-import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
+// import { Database } from "./database";
+// import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
 
 export type HennosTool = Tool;
 export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeToolResponse;
@@ -92,71 +92,75 @@ export function resolveModelProvider(level: "high" | "low" | "nano"): InvokableM
 }
 
 function internalResolveModelProvider(level: "high" | "low" | "nano", provider: HennosModelProvider): InvokableModelProvider {
-    switch (provider) {
-        case "openai": {
-            if (level === "high") {
-                return HennosOpenAISingleton.high();
-            }
+    Logger.debug("ModelProviderResolution", `Resolving model provider for level '${level}' and provider '${provider}'`);
+    return HennosOllamaSingleton.high();
+    // switch (provider) {
+    //     case "openai": {
+    //         if (level === "high") {
+    //             return HennosOpenAISingleton.high();
+    //         }
 
-            if (level === "low") {
-                return HennosOpenAISingleton.low();
-            }
+    //         if (level === "low") {
+    //             return HennosOpenAISingleton.low();
+    //         }
 
-            if (level === "nano") {
-                return HennosOpenAISingleton.nano();
-            }
-            throw new Error(`Unsupported model tier for OpenAI provider: ${level}`);
-        }
+    //         if (level === "nano") {
+    //             return HennosOpenAISingleton.nano();
+    //         }
+    //         throw new Error(`Unsupported model tier for OpenAI provider: ${level}`);
+    //     }
 
-        case "anthropic": {
-            if (level === "high") {
-                return HennosOpenAISingleton.high();
-                // return HennosAnthropicSingleton.high();
-            }
+    //     case "anthropic": {
+    //         if (level === "high") {
+    //             return HennosOpenAISingleton.high();
+    //             // return HennosAnthropicSingleton.high();
+    //         }
 
-            if (level === "low") {
-                return HennosOpenAISingleton.low();
-                // return HennosAnthropicSingleton.low();
-            }
+    //         if (level === "low") {
+    //             return HennosOpenAISingleton.low();
+    //             // return HennosAnthropicSingleton.low();
+    //         }
 
-            if (level === "nano") {
-                // For simplicity, just use the OpenAI nano model here as well
-                return HennosOpenAISingleton.nano();
-            }
-            throw new Error(`Unsupported model tier for Anthropic provider: ${level}`);
-        }
+    //         if (level === "nano") {
+    //             // For simplicity, just use the OpenAI nano model here as well
+    //             return HennosOpenAISingleton.nano();
+    //         }
+    //         throw new Error(`Unsupported model tier for Anthropic provider: ${level}`);
+    //     }
 
-        case "ollama": {
-            return HennosOllamaSingleton.high();
-        }
+    //     case "ollama": {
+    //         return HennosOllamaSingleton.high();
+    //     }
 
-        default: {
-            throw new Error(`Unsupported model provider: ${Config.HENNOS_LLM_PROVIDER}`);
-        }
-    }
+    //     default: {
+    //         throw new Error(`Unsupported model provider: ${Config.HENNOS_LLM_PROVIDER}`);
+    //     }
+    //}
 }
 
 export async function resolveLegacyModelProvider(workflowId: string, level: "high" | "low" | "nano"): Promise<InvokableModelProvider> {
-    try {
-        const parsed = parseLegacyWorkflowId(workflowId);
-        const database = Database.instance();
-        const user = await database.user.findUnique({
-            where: {
-                chatId: Number(parsed.chatId)
-            },
-            select: {
-                provider: true
-            }
-        });
+    Logger.debug(workflowId, `Resolving legacy model provider for workflowId '${workflowId}' and level '${level}'`);
+    return HennosOllamaSingleton.high();
+    // try {
+    //     const parsed = parseLegacyWorkflowId(workflowId);
+    //     const database = Database.instance();
+    //     const user = await database.user.findUnique({
+    //         where: {
+    //             chatId: Number(parsed.chatId)
+    //         },
+    //         select: {
+    //             provider: true
+    //         }
+    //     });
 
-        if (!user || !user.provider) {
-            Logger.debug(workflowId, `No user provider found for workflowId '${workflowId}', falling back to default provider '${Config.HENNOS_LLM_PROVIDER}'`);
-            return resolveModelProvider(level);
-        }
-        Logger.debug(workflowId, `Resolved legacy model provider for level '${level}' to user provider '${user.provider}'`);
-        return internalResolveModelProvider(level, user.provider as HennosModelProvider);
-    } catch (err) {
-        Logger.error(workflowId, `Failed to resolve legacy model provider for level '${level}': ${err}`);
-        return resolveModelProvider(level);
-    }
+    //     if (!user || !user.provider) {
+    //         Logger.debug(workflowId, `No user provider found for workflowId '${workflowId}', falling back to default provider '${Config.HENNOS_LLM_PROVIDER}'`);
+    //         return resolveModelProvider(level);
+    //     }
+    //     Logger.debug(workflowId, `Resolved legacy model provider for level '${level}' to user provider '${user.provider}'`);
+    //     return internalResolveModelProvider(level, user.provider as HennosModelProvider);
+    // } catch (err) {
+    //     Logger.error(workflowId, `Failed to resolve legacy model provider for level '${level}': ${err}`);
+    //     return resolveModelProvider(level);
+    // }
 }
