@@ -2,8 +2,6 @@ import TelegramBot, { ChatAction } from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
 import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { Logger } from "../singletons/logger";
-import { handleDocument } from "../tools/FetchWebpageContent";
-import { FILE_EXT_TO_READER } from "@llamaindex/readers/directory";
 import path from "node:path";
 import fs from "fs/promises";
 import { createReadStream } from "node:fs";
@@ -260,18 +258,9 @@ export class TelegramInstance {
             });
         }
 
-        const reader = FILE_EXT_TO_READER[ext];
-        if (!reader) {
-            Logger.warn(workflowId, `No reader available for document with file_id: ${msg.document.file_id} and extension: ${ext}`);
-            const payload = `<document><file_id>${msg.document.file_id}</file_id><file_name>${msg.document.file_name || ""}</file_name><mime_type>${msg.document.mime_type || ""}</mime_type><file_size>${msg.document.file_size || ""}</file_size><error>No reader available for document with file_id: ${msg.document.file_id} and extension: ${ext}</error></document>`;
-            await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-        }
-
-        if (reader) {
-            const summary = await handleDocument(workflowId, result, msg.document.file_unique_id, reader);
-            const payload = `<document><file_id>${msg.document.file_id}</file_id><file_name>${msg.document.file_name || ""}</file_name><mime_type>${msg.document.mime_type || ""}</mime_type><file_size>${msg.document.file_size || ""}</file_size><summary>${summary}</summary></document>`;
-            await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-        }
+        Logger.warn(workflowId, `Received document with file_id: ${msg.document.file_id} and extension: ${ext}.`);
+        const payload = `<document><file_id>${msg.document.file_id}</file_id><file_name>${msg.document.file_name || ""}</file_name><mime_type>${msg.document.mime_type || ""}</mime_type><file_size>${msg.document.file_size || ""}</file_size><error>Document support has been removed from the Hennos system for cost reasons</error></document>`;
+        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
 
         if (msg.caption) {
             TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");

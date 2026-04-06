@@ -4,6 +4,7 @@ import { Logger } from "./logger";
 import { HennosOpenAISingleton } from "./openai";
 import { CompletionContextEntry, CompletionContextTextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 import { randomUUID } from "node:crypto";
+import { UsageTracker } from "../temporal/usage/interface";
 
 export class HennosOllamaSingleton {
     private static _instance: HennosOllamaProvider | null = null;
@@ -74,6 +75,13 @@ export class HennosOllamaProvider {
         Logger.info(workflowId, `Ollama Invoke Success, Usage: ${response.eval_count}`);
         // If we're using a thinking model, we might get back thoughts within <think> ... </think> tags.
         // We should strip these out before returning to the user. Find the index of the first </think> tag and strip everything before it.
+
+        UsageTracker.signalUsage(workflowId, {
+            inputTokens: 0,
+            outputTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: 0
+        });
 
         const thinkingBlock = response.message.content.indexOf("</think>");
         if (thinkingBlock !== -1) {
