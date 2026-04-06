@@ -84,6 +84,14 @@ export class Config {
         return process.env.HENNOS_DOCUMENT_EMBED_PROVIDER as HennosEmbedProvider;
     }
 
+    static get HENNOS_DOCUMENTS_ENABLED(): boolean {
+        if (!process.env.HENNOS_DOCUMENTS_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_DOCUMENTS_ENABLED === "true";
+    }
+
     static get HENNOS_DOCUMENT_LLM_PROVIDER(): HennosModelProvider {
         if (!process.env.HENNOS_DOCUMENT_LLM_PROVIDER) {
             return "ollama";

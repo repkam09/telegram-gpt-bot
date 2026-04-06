@@ -127,6 +127,11 @@ export class FetchWebpageContent extends BaseTool {
         }
 
         Logger.info(workflowId, `fetch_webpage_content, url=${args.url}, query=${args.query}`);
+
+        if (!Config.HENNOS_DOCUMENTS_ENABLED) {
+            return [JSON.stringify({ error: "Document processing features are disabled by the Hennos system administrator at this time" }), metadata];
+        }
+
         try {
             const html = await fetchPageContent(workflowId, args.url);
 
