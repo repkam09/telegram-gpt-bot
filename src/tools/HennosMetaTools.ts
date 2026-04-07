@@ -221,3 +221,43 @@ export class MetaFeedbackTool extends BaseTool {
         }
     }
 }
+
+
+export class MetaErrorTool extends BaseTool {
+    public static isEnabled(): boolean {
+        return true;
+    }
+
+    public static definition(): Tool {
+        return {
+            type: "function",
+            function: {
+                name: "debug_mode_throw_error",
+                description: [
+                    "Use this tool to throw an error with a custom message. This is useful for testing error handling and debugging.",
+                ].join(" "),
+                parameters: {
+                    type: "object",
+                    properties: {
+                        message: {
+                            type: "string",
+                            description: "The error message that will be thrown."
+                        }
+                    },
+                    required: ["message"]
+                }
+            }
+        };
+    }
+
+    public static async callback(workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata): Promise<ToolCallResponse> {
+        Logger.info(workflowId, `MetaErrorTool callback. ${JSON.stringify({ message: args.message })}`);
+
+        if (!args.message) {
+            return ["debug_mode_throw_error: message not provided", metadata];
+        }
+
+
+        throw new Error(`MetaErrorTool triggered error with message: ${args.message}`);
+    }
+}

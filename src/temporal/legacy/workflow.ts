@@ -106,12 +106,18 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
 
             if (agentThought.__type === "action") {
                 const pending = agentThought.payload.map(async (payload) => {
-                    const actionResult = await legacyAction(
-                        payload.name,
-                        payload.input,
-                    );
-                    tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
-                    tools.push({ role: "tool_response", id: payload.id, result: actionResult });
+                    try {
+                        tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
+                        const actionResult = await legacyAction(
+                            payload.name,
+                            payload.input,
+                        );
+                        tools.push({ role: "tool_response", id: payload.id, result: actionResult });
+                    } catch (err: unknown) {
+                        const message = (err instanceof Error) ? err.message : String(err);
+                        log.error("Error processing tool " + payload.name + ": (id=" + payload.id + ") " + message);
+                        tools.push({ role: "tool_response", id: payload.id, result: `Error executing tool ${payload.name}: ${message}` });
+                    }
                 });
 
                 await Promise.all(pending);
@@ -120,9 +126,14 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
 
         } catch (err: unknown) {
             // Log error and continue - activity failures are transient
-            log.error("Error in legacyWorkflow main loop:" + ((err instanceof Error) ? err.message : String(err)));
-            tools = [];
-            iterations++;
+            const message = (err instanceof Error) ? err.message : String(err);
+            log.error("Error in legacyWorkflow main loop:" + message);
+
+            await broadcastLegacyAgentMessage({
+                message: "An error occurred while processing the conversation. Please try again. If the issue persists, contact the administrator.",
+            });
+
+            throw err; // rethrow to fail the workflow
         }
     }
 }

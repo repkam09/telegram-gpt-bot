@@ -5,13 +5,13 @@ import { Database } from "../../../database";
 import { parseWorkflowId } from "../interface";
 import { Config } from "../../../singletons/config";
 
-export type PromptComplexity = "simple" | "complex";
+export type PromptComplexity = "trivial" | "simple" | "complex";
 
 export type PromptComplexityResult = {
     complexity: PromptComplexity;
     contextLimit: number;
     useTools: boolean;
-    modelTier: "high" | "low";
+    modelTier: "high" | "low" | "nano";
 }
 
 export type ClassifyPromptInput = {
@@ -61,6 +61,16 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
                 return simpleResult();
             }
 
+            if (toolName === CLASSIFY_TRIVIAL_TOOL) {
+                return trivialResult();
+            }
+
+            if (toolName === CLASSIFY_COMPLEX_TOOL) {
+                return complexResult();
+            }
+
+            Logger.warn(workflowId, `Prompt classifier received unrecognized tool call: ${toolName}, defaulting to 'complex'`);
+
             // classify_complex or any unrecognized tool name, just return complex
             return complexResult();
         }
@@ -76,11 +86,21 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
     }
 }
 
+
+function trivialResult(): PromptComplexityResult {
+    return {
+        complexity: "trivial",
+        contextLimit: 5,
+        useTools: false,
+        modelTier: "nano",
+    };
+}
+
 function simpleResult(): PromptComplexityResult {
     return {
         complexity: "simple",
-        contextLimit: 3,
-        useTools: false,
+        contextLimit: 10,
+        useTools: true,
         modelTier: "low",
     };
 }
@@ -96,6 +116,7 @@ function complexResult(): PromptComplexityResult {
 
 // ─── Tool Definitions ───────────────────────────────────────────────────────
 
+const CLASSIFY_TRIVIAL_TOOL = "classify_trivial";
 const CLASSIFY_SIMPLE_TOOL = "classify_simple";
 const CLASSIFY_COMPLEX_TOOL = "classify_complex";
 
@@ -104,8 +125,20 @@ export function classifierToolDefinitions(): HennosTool[] {
         {
             type: "function",
             function: {
+                name: CLASSIFY_TRIVIAL_TOOL,
+                description: "Call this tool to classify the message as 'trivial' complexity.",
+                parameters: {
+                    type: "object",
+                    properties: {},
+                    required: [],
+                },
+            },
+        },
+        {
+            type: "function",
+            function: {
                 name: CLASSIFY_SIMPLE_TOOL,
-                description: "Call this tool when the user message is simple.",
+                description: "Call this tool to classify the message as 'simple' complexity.",
                 parameters: {
                     type: "object",
                     properties: {},
@@ -117,7 +150,7 @@ export function classifierToolDefinitions(): HennosTool[] {
             type: "function",
             function: {
                 name: CLASSIFY_COMPLEX_TOOL,
-                description: "Call this tool when the user message is complex.",
+                description: "Call this tool to classify the message as 'complex' complexity.",
                 parameters: {
                     type: "object",
                     properties: {},
@@ -125,6 +158,7 @@ export function classifierToolDefinitions(): HennosTool[] {
                 },
             },
         },
+
     ];
 }
 
@@ -139,12 +173,12 @@ export function classifierPromptTemplate(userMessage: string): ClassifierPrompt 
     return {
         system: [
             "You are a message classifier for a conversational AI assistant.",
-            "Your job is to decide whether a user message is \"simple\" or \"complex\".",
+            "Your job is to decide whether a user message is \"trivial\", \"simple\", or \"complex\".",
             "",
             "You MUST call exactly one of the provided tools to report your classification.",
-            "Call `classify_simple` if the message is a greeting, farewell, acknowledgment, reaction, emoji, or casual small talk in any language.",
-            "Call `classify_complex` if the message asks a question, requests an action, references prior conversation, contains technical content, code, URLs, or multi-sentence instructions.",
-            "When in doubt, call `classify_complex`.",
+            "Call `classify_trivial` when the user message is simple, a greeting, farewell, acknowledgment, reaction, emoji, or casual small talk in any language. This is for messages that should be handled with the smallest and fastest model tier and do not require any tools or previous context to respond to.",
+            "Call `classify_simple` when the user message is a basic question, request, or statement that does not require advanced reasoning or multiple rounds of tool use. This is for messages that can be handled with a low-tier model. Tools and limited context will be available to the Agent. ",
+            "Call `classify_complex` when the user message is complex or requires advanced reasoning. This includes complex questions of science, physics, engineering, mathematics, references to prior conversation, other technical content, code, or multi-sentence instructions. This is for messages that should be handled with the highest-tier model. Tools and full context will be available to the Agent."
         ].join("\n"),
         user: userMessage,
     };
