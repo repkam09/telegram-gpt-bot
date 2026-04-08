@@ -5,9 +5,17 @@ import { WebSocket } from "ws";
 import { TerminateCall } from "./terminate";
 import { BraveSearch } from "../tools/BraveSearch";
 import { Request, Response } from "express";
-import { createWorkflowId } from "../temporal/legacy/interface";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+
+export function createWorkflowId(platform: string, chatId: string): string {
+    const payload = JSON.stringify({
+        platform,
+        chatId,
+        type: "realtime",
+    });
+    return payload;
+}
 
 export class HennosRealtime {
     private static client: OpenAI = new OpenAI({
