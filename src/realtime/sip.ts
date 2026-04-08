@@ -5,23 +5,19 @@ import { WebSocket } from "ws";
 import { TerminateCall } from "./terminate";
 import { BraveSearch } from "../tools/BraveSearch";
 import { Request, Response } from "express";
+import { createWorkflowId } from "../temporal/legacy/interface";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
 export class HennosRealtime {
-    private static client: OpenAI;
+    private static client: OpenAI = new OpenAI({
+        apiKey: Config.OPENAI_API_KEY,
+    });
+
     private static tokens: Map<
         string,
         OpenAI.Beta.Realtime.Sessions.SessionCreateResponse.ClientSecret
     > = new Map();
-
-    constructor() {
-        if (!HennosRealtime.client) {
-            HennosRealtime.client = new OpenAI({
-                apiKey: Config.OPENAI_API_KEY,
-            });
-        }
-    }
 
     private static promptRealtime(): string {
         const system: Message[] = [
@@ -96,7 +92,7 @@ export class HennosRealtime {
             }
 
             // TODO: Some way of looking up the phone number to associate with a workflowId
-            const workflowId = undefined;
+            const workflowId = createWorkflowId("sip", callId);
 
             await HennosRealtime.createRealtimeSIPSession(workflowId, req.body);
             return res.status(200).json({ status: "ok" });
@@ -107,7 +103,7 @@ export class HennosRealtime {
         call_id: string;
         sip_headers: { name: string; value: string }[];
     }) {
-        Logger.info(data.call_id, `OpenAI Realtime SIP Request (${data.call_id})`);
+        Logger.info(workflowId, "OpenAI Realtime SIP Request Received");
         HennosRealtime.clearExpiredTokens();
 
         // Log the sip_headers for debugging
@@ -121,9 +117,14 @@ export class HennosRealtime {
             for (const header of important) {
                 const value = data.sip_headers.find((h) => h.name === header)?.value;
                 if (value) {
-                    Logger.info(data.call_id, ` > ${header}: ${value}`);
+                    Logger.info(workflowId, ` > ${header}: ${value}`);
                 }
             }
+        }
+
+        if (!HennosRealtime.client || !HennosRealtime.client.realtime) {
+            Logger.error(workflowId, "OpenAI Realtime client not initialized");
+            return;
         }
 
         await HennosRealtime.client.realtime.calls.accept(data.call_id, {
@@ -151,7 +152,7 @@ export class HennosRealtime {
                 );
 
                 socket.on("open", () => {
-                    Logger.info(data.call_id,
+                    Logger.info(workflowId,
                         `SIP Realtime WebSocket connected for call_id: ${data.call_id}`
                     );
 
@@ -163,7 +164,7 @@ export class HennosRealtime {
                             const payload = JSON.parse(rawPayload.toString());
                             const ignore = ["response.output_audio_transcript.delta"];
                             if (!ignore.includes(payload.type)) {
-                                Logger.info(data.call_id, `SIP ${data.call_id}: ${rawPayload}`);
+                                Logger.info(workflowId, `SIP ${data.call_id}: ${rawPayload}`);
 
                                 if (payload.type === "response.done") {
                                     if (payload.response.object === "realtime.response") {
@@ -179,7 +180,7 @@ export class HennosRealtime {
                                                     args = JSON.parse(item.arguments);
                                                 } catch (err: unknown) {
                                                     const error = err as Error;
-                                                    Logger.error(data.call_id,
+                                                    Logger.error(workflowId,
                                                         `SIP Error parsing function call arguments for call_id ${data.call_id}: ${error.message}`
                                                     );
                                                 }
@@ -195,13 +196,13 @@ export class HennosRealtime {
                                                             this.client.realtime.calls
                                                                 .hangup(data.call_id)
                                                                 .then(() => {
-                                                                    Logger.info(data.call_id,
+                                                                    Logger.info(workflowId,
                                                                         `SIP Hangup call_id: ${data.call_id}`
                                                                     );
                                                                 })
                                                                 .catch((hangupErr: unknown) => {
                                                                     const error = hangupErr as Error;
-                                                                    Logger.error(data.call_id,
+                                                                    Logger.error(workflowId,
                                                                         `SIP Error hanging up call_id ${data.call_id}: ${error.message}`
                                                                     );
                                                                 });
@@ -227,7 +228,7 @@ export class HennosRealtime {
                                                                 })
                                                             );
                                                         }).catch((error) => {
-                                                            Logger.error(data.call_id,
+                                                            Logger.error(workflowId,
                                                                 `SIP Error calling BraveSearch for call_id ${data.call_id}: ${error.message}`
                                                             );
                                                             socket.send(
@@ -251,7 +252,7 @@ export class HennosRealtime {
                                                     }
 
                                                     default: {
-                                                        Logger.error(data.call_id,
+                                                        Logger.error(workflowId,
                                                             `SIP Unknown function call '${item.name}' for call_id: ${data.call_id}`
                                                         );
 
@@ -280,7 +281,7 @@ export class HennosRealtime {
                                 }
                             }
                         } catch (err) {
-                            Logger.error(data.call_id, `SIP Error call_id ${data.call_id}: ${err} - payload: ${rawPayload}`);
+                            Logger.error(workflowId, `SIP Error call_id ${data.call_id}: ${err} - payload: ${rawPayload}`);
                         }
                     });
 
@@ -295,15 +296,15 @@ export class HennosRealtime {
                     );
                 });
             } catch (err) {
-                Logger.error(data.call_id, `SIP Error call_id ${data.call_id}: ${err}`);
+                Logger.error(workflowId, `SIP Error call_id ${data.call_id}: ${err}`);
 
                 this.client.realtime.calls
                     .hangup(data.call_id)
                     .then(() => {
-                        Logger.info(data.call_id, `SIP Hangup call_id: ${data.call_id}`);
+                        Logger.info(workflowId, `SIP Hangup call_id: ${data.call_id}`);
                     })
                     .catch((hangupErr) => {
-                        Logger.error(data.call_id, `SIP Error hanging up call_id ${data.call_id}: ${hangupErr}`);
+                        Logger.error(workflowId, `SIP Error hanging up call_id ${data.call_id}: ${hangupErr}`);
                     });
             }
         }, 1700);
