@@ -3,7 +3,8 @@ import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
 import { WebSocket } from "ws";
 import { TerminateCall } from "./terminate";
-import { BraveSearch } from "../tools/BraveSearch";
+import { RealtimeBraveSearch } from "./brave";
+import { RealtimeWeatherLookup } from "./weather";
 import { Request, Response } from "express";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -125,7 +126,7 @@ export class HennosRealtime {
         };
     }
 
-    public static async createRealtimeSIPSession(workflowId: string | undefined, data: RealtimeCallIncomingEventData) {
+    public static async createRealtimeSIPSession(workflowId: string, data: RealtimeCallIncomingEventData) {
         Logger.info(workflowId, "OpenAI Realtime SIP Request Received");
         HennosRealtime.clearExpiredTokens();
 
@@ -155,7 +156,7 @@ export class HennosRealtime {
             type: "realtime",
             model: "gpt-realtime-mini",
             instructions: HennosRealtime.promptRealtime(),
-            tools: [],
+            tools: [TerminateCall.definition(), RealtimeBraveSearch.definition(), RealtimeWeatherLookup.definition()],
             tool_choice: "auto",
             audio: {
                 output: {
@@ -212,6 +213,7 @@ export class HennosRealtime {
                                                 switch (item.name) {
                                                     case "terminate_session": {
                                                         TerminateCall.callback(
+                                                            workflowId,
                                                             socket,
                                                             data.call_id,
                                                             args
@@ -235,7 +237,7 @@ export class HennosRealtime {
                                                     }
 
                                                     case "brave_search": {
-                                                        BraveSearch.callback(data.call_id, args, null).then(([result]) => {
+                                                        RealtimeBraveSearch.callback(workflowId, args).then((result) => {
                                                             socket.send(
                                                                 JSON.stringify({
                                                                     type: "conversation.item.create",
@@ -254,6 +256,47 @@ export class HennosRealtime {
                                                         }).catch((error) => {
                                                             Logger.error(workflowId,
                                                                 `SIP Error calling BraveSearch for call_id ${data.call_id}: ${error.message}`
+                                                            );
+                                                            socket.send(
+                                                                JSON.stringify({
+                                                                    type: "conversation.item.create",
+                                                                    item: {
+                                                                        type: "function_call_output",
+                                                                        call_id: data.call_id,
+                                                                        output: `Error: ${error.message}`,
+                                                                    },
+                                                                })
+                                                            );
+                                                            socket.send(
+                                                                JSON.stringify({
+                                                                    type: "response.create",
+                                                                })
+                                                            );
+
+                                                        });
+                                                        break;
+                                                    }
+
+                                                    case "open_weather_map_lookup": {
+                                                        RealtimeWeatherLookup.callback(workflowId, args).then((result) => {
+                                                            socket.send(
+                                                                JSON.stringify({
+                                                                    type: "conversation.item.create",
+                                                                    item: {
+                                                                        type: "function_call_output",
+                                                                        call_id: data.call_id,
+                                                                        output: result,
+                                                                    },
+                                                                })
+                                                            );
+                                                            socket.send(
+                                                                JSON.stringify({
+                                                                    type: "response.create",
+                                                                })
+                                                            );
+                                                        }).catch((error) => {
+                                                            Logger.error(workflowId,
+                                                                `SIP Error calling OpenWeatherMapLookup for call_id ${data.call_id}: ${error.message}`
                                                             );
                                                             socket.send(
                                                                 JSON.stringify({

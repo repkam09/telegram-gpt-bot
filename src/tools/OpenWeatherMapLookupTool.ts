@@ -58,29 +58,33 @@ export class OpenWeatherMapLookupTool extends BaseTool {
             return [JSON.stringify({ error: "lon not provided" }), metadata];
         }
 
-        const units = args.units ?? "metric";
-        const mode = args.mode ?? "current";
-
-        Logger.info(workflowId, `open_weathermap_lookup_tool_callback. ${JSON.stringify({ lat: args.lat, lon: args.lon, units: units, mode: mode })}`);
         try {
-            if (mode === "current") {
-                const url = `https://api.openweathermap.org/data/2.5/weather?lat=${args.lat}&lon=${args.lon}&units=${units}&appid=${Config.OPEN_WEATHER_API}`;
-                const weather = await BaseTool.fetchJSONData(url);
-                return [`${JSON.stringify(weather)}`, metadata];
-            }
-
-            if (mode === "forecast") {
-                const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${args.lat}&lon=${args.lon}&units=${units}&appid=${Config.OPEN_WEATHER_API}`;
-                const weather = await BaseTool.fetchJSONData(url);
-                return [`${JSON.stringify(weather)}`, metadata];
-            }
-
-            Logger.warn(workflowId, `open_weathermap_lookup_tool_callback unknown mode. ${JSON.stringify({ lat: args.lat, lon: args.lon, units: units, mode: mode })}`);
-            return [JSON.stringify({ error: `unknown mode '${mode}' was specified` }), metadata];
+            const weather = await OpenWeatherMapLookupTool.fetchWeatherData(workflowId, args.lat, args.lon, args.units, args.mode);
+            return [`${JSON.stringify(weather)}`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `open_weathermap_lookup_tool_callback error. ${JSON.stringify({ lat: args.lat, lon: args.lon, error: error.message })}`, error);
             return [JSON.stringify({ error: error.message }), metadata];
         }
+    }
+
+    public static async fetchWeatherData(workflowId: string, lat: number, lon: number, units?: string, mode?: string): Promise<object> {
+        Logger.info(workflowId, `open_weathermap_lookup_tool_callback. ${JSON.stringify({ lat, lon, units, mode })}`);
+        const _units = units ?? "metric";
+        const _mode = mode ?? "current";
+
+        if (_mode === "current") {
+            const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${_units}&appid=${Config.OPEN_WEATHER_API}`;
+            const weather = await BaseTool.fetchJSONData(url);
+            return weather;
+        }
+
+        if (_mode === "forecast") {
+            const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=${_units}&appid=${Config.OPEN_WEATHER_API}`;
+            const weather = await BaseTool.fetchJSONData(url);
+            return weather;
+        }
+
+        throw new Error(`Unknown mode '${_mode}' was specified`);
     }
 }

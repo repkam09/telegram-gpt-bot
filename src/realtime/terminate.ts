@@ -23,15 +23,16 @@ export class TerminateCall {
     }
 
     public static async callback(
+        workflowId: string,
         socket: WebSocket,
         callId: string,
         args: Record<string, string>
     ): Promise<void> {
         // Log the reason for ending the call
         if (args.reason) {
-            Logger.info(callId, `SIP Ending call_id ${callId}: ${args.reason}`);
+            Logger.info(workflowId, `SIP Ending call_id ${callId}: ${args.reason}`);
         } else {
-            Logger.info(callId, `SIP Ending call_id ${callId} with no reason provided`);
+            Logger.info(workflowId, `SIP Ending call_id ${callId} with no reason provided`);
         }
         // Acknowledge the function call
         socket.send(
