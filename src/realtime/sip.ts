@@ -17,6 +17,20 @@ export function createWorkflowId(platform: string, chatId: string): string {
     return payload;
 }
 
+type RealtimeCallIncomingEvent = {
+    "object": string,
+    "id": string,
+    "type": string,
+    "created_at": number, // Unix timestamp
+    "data": RealtimeCallIncomingEventData
+}
+
+type RealtimeCallIncomingEventData = {
+    "call_id": string,
+    "sip_headers": { name: string; value: string }[]
+}
+
+
 export class HennosRealtime {
     private static client: OpenAI = new OpenAI({
         apiKey: Config.OPENAI_API_KEY,
@@ -93,6 +107,8 @@ export class HennosRealtime {
                 return res.status(400).send(`Unsupported request type: ${req.body.type}`);
             }
 
+            Logger.info("HennosRealtime", `Received request: ${JSON.stringify(req.body)}`);
+
             const callId = req.body.data?.call_id;
             if (!callId) {
                 Logger.error("HennosRealtime", "Missing call_id");
@@ -102,15 +118,14 @@ export class HennosRealtime {
             // TODO: Some way of looking up the phone number to associate with a workflowId
             const workflowId = createWorkflowId("sip", callId);
 
-            await HennosRealtime.createRealtimeSIPSession(workflowId, req.body);
+            const body = req.body as RealtimeCallIncomingEvent;
+
+            await HennosRealtime.createRealtimeSIPSession(workflowId, body.data);
             return res.status(200).json({ status: "ok" });
         };
     }
 
-    public static async createRealtimeSIPSession(workflowId: string | undefined, data: {
-        call_id: string;
-        sip_headers: { name: string; value: string }[];
-    }) {
+    public static async createRealtimeSIPSession(workflowId: string | undefined, data: RealtimeCallIncomingEventData) {
         Logger.info(workflowId, "OpenAI Realtime SIP Request Received");
         HennosRealtime.clearExpiredTokens();
 
@@ -135,6 +150,7 @@ export class HennosRealtime {
             return;
         }
 
+        Logger.info(workflowId, `Accepting call_id: ${data.call_id}`);
         await HennosRealtime.client.realtime.calls.accept(data.call_id, {
             type: "realtime",
             model: "gpt-realtime-mini",
