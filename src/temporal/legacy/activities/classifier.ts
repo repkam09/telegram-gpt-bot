@@ -91,7 +91,7 @@ function trivialResult(): PromptComplexityResult {
     return {
         complexity: "trivial",
         contextLimit: 5,
-        useTools: false,
+        useTools: true,
         modelTier: "nano",
     };
 }
