@@ -31,7 +31,7 @@ export class Logger {
             Logger.logger.info({
                 consumer: workflowId,
                 instance: Logger.instance,
-            }, message);
+            }, `<${workflowId}> ${message}`);
         } else {
             Logger.logger.info({
                 consumer: null,
@@ -45,7 +45,7 @@ export class Logger {
             Logger.logger.warn({
                 consumer: workflowId,
                 instance: Logger.instance,
-            }, message);
+            }, `<${workflowId}> ${message}`);
         } else {
             Logger.logger.warn({
                 consumer: null,
@@ -61,7 +61,7 @@ export class Logger {
                 instance: Logger.instance,
                 message: error ? error.message : undefined,
                 stack: error ? error.stack : undefined,
-            }, message);
+            }, `<${workflowId}> ${message}`);
         } else {
             Logger.logger.error({
                 consumer: null,
@@ -78,7 +78,7 @@ export class Logger {
                 Logger.logger.debug({
                     consumer: workflowId,
                     instance: Logger.instance,
-                }, message);
+                }, `<${workflowId}> ${message}`);
             } else {
                 Logger.logger.debug({
                     consumer: null,
@@ -93,6 +93,6 @@ export class Logger {
             consumer: workflowId,
             context: context,
             instance: Logger.instance,
-        });
+        }, `<${workflowId}> ${context}`);
     }
 }

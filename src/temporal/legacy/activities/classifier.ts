@@ -58,14 +58,17 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
             Logger.debug(workflowId, `Prompt classified by LLM tool call: ${toolName} (input: ${payload.input})`);
 
             if (toolName === CLASSIFY_SIMPLE_TOOL) {
+                Logger.info(workflowId, "Prompt classified as 'simple' by LLM tool call");
                 return simpleResult();
             }
 
             if (toolName === CLASSIFY_TRIVIAL_TOOL) {
+                Logger.info(workflowId, "Prompt classified as 'trivial' by LLM tool call");
                 return trivialResult();
             }
 
             if (toolName === CLASSIFY_COMPLEX_TOOL) {
+                Logger.info(workflowId, "Prompt classified as 'complex' by LLM tool call");
                 return complexResult();
             }
 
