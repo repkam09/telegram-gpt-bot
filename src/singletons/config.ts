@@ -58,6 +58,14 @@ export class Config {
         return 32000;
     }
 
+    static get HENNOS_CLASSIFIER_ENABLED(): boolean {
+        if (!process.env.HENNOS_CLASSIFIER_ENABLED) {
+            return true;
+        }
+
+        return process.env.HENNOS_CLASSIFIER_ENABLED === "true";
+    }
+
     static get HENNOS_LEGACY_LLM_PROVIDER(): HennosModelProvider | null {
         if (!process.env.HENNOS_LEGACY_LLM_PROVIDER) {
             return null;

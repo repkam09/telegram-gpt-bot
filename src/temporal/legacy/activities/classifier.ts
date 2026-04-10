@@ -20,10 +20,16 @@ export type ClassifyPromptInput = {
 }
 
 export async function classifyPromptComplexity(input: ClassifyPromptInput): Promise<PromptComplexityResult> {
+    if (!Config.HENNOS_CLASSIFIER_ENABLED) {
+        Logger.debug("PromptClassifier", "Classifier is disabled via config, defaulting to 'complex'");
+        return complexResult();
+    }
+
     if (Config.HENNOS_LLM_PROVIDER === "ollama") {
         Logger.debug("PromptClassifier", "LLM provider is Ollama, skipping classification and defaulting to 'complex'");
         return complexResult();
     }
+
 
     const workflowId = Context.current().info.workflowExecution.workflowId;
 
