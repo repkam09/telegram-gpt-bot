@@ -6,7 +6,7 @@ import { Logger } from "../../singletons/logger";
 
 export async function persistMemoryEvent(workflowId: string, userId: string, role: "user" | "assistant", message: string) {
     if (!Config.HENNOS_MEMORY_ENABLED) {
-        Logger.warn(workflowId, `Memory is disabled. Skipping persistMemoryEvent for userId=${userId}, role=${role}, message=${message}`);
+        Logger.warn(workflowId, `Memory is disabled. Skipping persistMemoryEvent for userId=${userId}, role=${role}`);
         return;
     }
 
