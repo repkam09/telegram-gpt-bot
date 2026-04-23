@@ -122,7 +122,13 @@ export class WebhookInstance {
             const sockets = WebhookInstance.sockets(sessionId);
             if (sockets) {
                 Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
-                // TODO: Handle sending artifact streams if needed
+                for (const session of sockets) {
+                    if (!session.stream.writableEnded) {
+                        session.stream.write(`data: ${JSON.stringify({ role: "assistant", artifact: { filePath, mime_type, description } })}\n\n`);
+                    } else {
+                        Logger.warn("webhook", `Stream ended for sessionId: ${sessionId}`);
+                    }
+                }
             } else {
                 Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
             }
@@ -135,7 +141,13 @@ export class WebhookInstance {
             const sockets = WebhookInstance.sockets(sessionId);
             if (sockets) {
                 Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
-                // TODO: Handle sending status updates if needed
+                for (const session of sockets) {
+                    if (!session.stream.writableEnded) {
+                        session.stream.write(`data: ${JSON.stringify({ role: "assistant", status: event })}\n\n`);
+                    } else {
+                        Logger.warn("webhook", `Stream ended for sessionId: ${sessionId}`);
+                    }
+                }
             } else {
                 Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
             }
