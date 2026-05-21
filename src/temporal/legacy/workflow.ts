@@ -107,15 +107,16 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
             if (agentThought.__type === "action") {
                 const pending = agentThought.payload.map(async (payload) => {
                     try {
-                        tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                         const actionResult = await legacyAction(
                             payload.name,
                             payload.input,
                         );
+                        tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                         tools.push({ role: "tool_response", id: payload.id, result: actionResult });
                     } catch (err: unknown) {
                         const message = (err instanceof Error) ? err.message : String(err);
                         log.error("Error processing tool " + payload.name + ": (id=" + payload.id + ") " + message);
+                        tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                         tools.push({ role: "tool_response", id: payload.id, result: `Error executing tool ${payload.name}: ${message}` });
                     }
                 });
