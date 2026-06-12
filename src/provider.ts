@@ -5,6 +5,7 @@ import { HennosOpenAISingleton } from "./singletons/openai";
 import { Logger } from "./singletons/logger";
 import { Database } from "./database";
 import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
+import { HennosAnthropicSingleton } from "./singletons/anthropic";
 
 export type HennosTool = Tool;
 export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeToolResponse;
@@ -110,13 +111,11 @@ function internalResolveModelProvider(level: "high" | "low" | "nano", provider: 
 
         case "anthropic": {
             if (level === "high") {
-                return HennosOpenAISingleton.high();
-                // return HennosAnthropicSingleton.high();
+                return HennosAnthropicSingleton.high();
             }
 
             if (level === "low") {
-                return HennosOpenAISingleton.low();
-                // return HennosAnthropicSingleton.low();
+                return HennosAnthropicSingleton.low();
             }
 
             if (level === "nano") {

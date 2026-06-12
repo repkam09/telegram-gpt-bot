@@ -32,6 +32,16 @@ model KeyValueMemory {
   @@unique([chatId, key])
 }
 
+model MemoryFile {
+  chatId    String
+  path      String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([chatId, path])
+}
+
 model FutureTask {
   id      Int      @id @default(autoincrement())
   chatId  BigInt

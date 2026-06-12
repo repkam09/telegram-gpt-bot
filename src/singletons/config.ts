@@ -571,22 +571,6 @@ export class Config {
         return process.env.TEMPORAL_TASK_QUEUE;
     }
 
-    static get AXIOM_API_KEY(): string | false {
-        if (!process.env.AXIOM_API_KEY) {
-            return false;
-        }
-
-        return process.env.AXIOM_API_KEY;
-    }
-
-    static get AXIOM_DATASET(): string | false {
-        if (!process.env.AXIOM_DATASET) {
-            return false;
-        }
-
-        return process.env.AXIOM_DATASET;
-    }
-
     static get SUPABASE_URL(): string | false {
         if (!process.env.SUPABASE_URL) {
             return false;

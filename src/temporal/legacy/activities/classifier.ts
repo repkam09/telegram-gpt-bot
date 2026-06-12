@@ -115,6 +115,14 @@ function simpleResult(): PromptComplexityResult {
 }
 
 function complexResult(): PromptComplexityResult {
+    if (Config.HENNOS_MEMORY_ENABLED) {
+        return {
+            complexity: "complex",
+            contextLimit: 15,
+            useTools: true,
+            modelTier: "high",
+        };
+    }
     return {
         complexity: "complex",
         contextLimit: 100,

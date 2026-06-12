@@ -166,7 +166,7 @@ export class HennosOpenAIProvider {
         }
 
         if (choice.finish_reason === "content_filter") {
-            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Content Filter Trigger");
+            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Content Filter Trigger. Details: " + JSON.stringify(choice));
             return {
                 __type: "string",
                 payload: "Content Filter Triggered. The model refused to generate a response based on the input provided."

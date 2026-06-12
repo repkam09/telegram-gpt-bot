@@ -6,9 +6,8 @@ import { availableToolsAsString } from "../tools";
 import { temporalGrounding } from "../../../common/grounding";
 import { withActivityHeartbeat } from "../../heartbeat";
 import { Config } from "../../../singletons/config";
-import { MemoryDataStore } from "../../activities";
 import { parseWorkflowId } from "../interface";
-import { Memory, MemoryToXML } from "../../memory/types";
+import { MemoryFileStore } from "../../../tools/memory/MemoryFileStore";
 
 export type ThoughtInput = {
     context: string[];
@@ -22,13 +21,20 @@ async function _thought(input: ThoughtInput,
 
     const info = parseWorkflowId(workflowId);
 
-    const memories = await MemoryDataStore.searchSemantic(info.chatId, input.context);
+    let memoryDirectory: string | undefined;
+    if (Config.HENNOS_MEMORY_ENABLED) {
+        try {
+            memoryDirectory = await new MemoryFileStore(info.chatId).directoryListing();
+        } catch (error) {
+            Logger.error(workflowId, `Failed to load memory directory listing: ${error}`);
+        }
+    }
 
     const promptTemplate = thoughtPromptTemplate({
         currentDate: new Date(),
         previousSteps: input.context.join("\n"),
         availableActions: await availableToolsAsString(workflowId),
-        memories
+        memoryDirectory
     });
 
     const model = resolveModelProvider("high");
@@ -128,16 +134,22 @@ type ThoughtPromptInput = {
     currentDate: Date,
     previousSteps: string,
     availableActions: string,
-    memories: Memory[]
+    memoryDirectory?: string
 }
 
-export function thoughtPromptTemplate({ availableActions, currentDate, previousSteps, memories }: ThoughtPromptInput): string {
+export function thoughtPromptTemplate({ availableActions, currentDate, previousSteps, memoryDirectory }: ThoughtPromptInput): string {
     const { date, day } = temporalGrounding(currentDate);
 
-    const formattedMemories = `Here are some long-term memories that have been extracted based on the current conversation:
-<memories>
-${memories.map(MemoryToXML).join("\n")}
-</memories>
+    const memoryProtocol = `You have a persistent memory directory, managed through the 'memory' tool, which survives across conversations and context resets.
+<memory-protocol>
+1. Before working on a task, check whether your memory directory contains relevant context, notes, or user preferences. Use the 'view' command of the 'memory' tool to read any relevant files.
+2. As you work, record durable information in your memory: user preferences, important facts, decisions, and progress on multi-step tasks. Assume your conversation context could be reset at any moment - anything not recorded in memory will be lost.
+3. Keep your memory up-to-date, coherent, and organized. Update or remove files that are stale rather than creating duplicates. Do not create new files unless necessary.
+4. Never store secrets such as passwords, API keys, or tokens in memory files.
+
+Here is the current listing of your memory directory:
+${memoryDirectory}
+</memory-protocol>
 `.trim();
 
     return `You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly.
@@ -148,7 +160,7 @@ Your knowledge is based on the data your model was trained on. Be aware that you
 
 In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.
 
-${memories.length > 0 ? formattedMemories : ""}
+${memoryDirectory ? memoryProtocol : ""}
 
 Here is the context of the current conversation:
 <conversation-context>
