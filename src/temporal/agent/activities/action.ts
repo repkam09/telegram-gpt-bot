@@ -9,7 +9,7 @@ async function _action(
     toolName: string,
     input: Record<string, string>
 ): Promise<string> {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
     const toolCall = {
         function: {
             name: toolName,

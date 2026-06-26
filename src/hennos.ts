@@ -6,7 +6,6 @@ import { WebhookInstance } from "./client/api";
 import { Config } from "./singletons/config";
 import { SupabaseInstance } from "./singletons/supabase";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
-import { createBlueskyScheduleWorkflow, deleteBlueskyScheduleWorkflow } from "./temporal/bluesky/schedule";
 import { ModelContextProtocolServer } from "./client/mcp";
 import { Agent2AgentProtocolServer } from "./client/a2a";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
@@ -61,14 +60,6 @@ async function start() {
     } else {
         Logger.info("Hennos", "Email Schedule Workflow is disabled. Skipping...");
         await deleteEmailScheduleWorkflow();
-    }
-
-    if (Config.HENNOS_BLUESKY_ENABLED) {
-        Logger.info("Hennos", "Initializing Bluesky Schedule Workflow...");
-        await createBlueskyScheduleWorkflow();
-    } else {
-        Logger.info("Hennos", "Bluesky Schedule Workflow is disabled. Skipping...");
-        await deleteBlueskyScheduleWorkflow();
     }
 
     UsageTracker.init();

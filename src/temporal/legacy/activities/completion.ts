@@ -22,7 +22,7 @@ export type LegacyCompletionInput = {
 export const legacyCompletion = withActivityHeartbeat(_legacyCompletion);
 async function _legacyCompletion(input: LegacyCompletionInput,
 ): Promise<LegacyAgenticResponse> {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
     const { classification } = input;
 
     Logger.debug(workflowId, `Completion using classification '${classification.complexity}': contextLimit=${classification.contextLimit}, useTools=${classification.useTools}, modelTier=${classification.modelTier}`);

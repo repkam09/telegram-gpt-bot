@@ -13,7 +13,7 @@ export type GemstoneThoughtInput = {
 export const gemstoneThought = withActivityHeartbeat(_gemstoneThought);
 async function _gemstoneThought(input: GemstoneThoughtInput,
 ): Promise<GemstoneAgenticResponse> {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     const systemPrompt = gemstoneThoughtPromptTemplate({
         currentDate: new Date()

@@ -8,7 +8,7 @@ type LegacyBroadcastAgentInput = {
 }
 
 export async function persistLegacyAgentMessage(input: LegacyBroadcastAgentInput) {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     const flow = parseWorkflowId(workflowId);
 
@@ -24,7 +24,7 @@ export async function persistLegacyAgentMessage(input: LegacyBroadcastAgentInput
 }
 
 export async function broadcastLegacyAgentMessage(input: LegacyBroadcastAgentInput) {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
     return AgentResponseHandler.handleMessage(workflowId, input.message);
 }
 
@@ -34,7 +34,7 @@ type LegacyBroadcastUserInput = {
 }
 
 export async function persistLegacyUserMessage(input: LegacyBroadcastUserInput) {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     const flow = parseWorkflowId(workflowId);
 

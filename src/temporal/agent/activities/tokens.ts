@@ -9,7 +9,7 @@ export async function tokens(
     tokenCount: number;
     tokenLimit: number;
 }> {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     const result = await getChatContextTokenCount(context);
 

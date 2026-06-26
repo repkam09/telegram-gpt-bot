@@ -8,7 +8,7 @@ export async function gemstoneTokens(
     tokenCount: number;
     tokenLimit: number;
 }> {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     const result = await getChatContextTokenCount(context);
     Logger.debug(workflowId, `Counting tokens for ${context.length} messages, tokenCount: ${result}, tokenLimit: 8000`);

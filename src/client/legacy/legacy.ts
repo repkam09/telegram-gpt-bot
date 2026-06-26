@@ -1,6 +1,6 @@
 import path from "node:path";
 import mimetype from "mime-types";
-import TelegramBot, { ChatAction } from "node-telegram-bot-api";
+import { Message, MessageOriginChannel, MessageOriginChat, MessageOriginHiddenUser, MessageOriginUser } from "node-telegram-bot-api";
 import { createWorkflowId, signalLegacyWorkflowExternalContext, signalLegacyWorkflowImageMessage, signalLegacyWorkflowMessage } from "../../temporal/legacy/interface";
 import { TelegramInstance } from "../telegram";
 import { Logger } from "../../singletons/logger";
@@ -9,7 +9,10 @@ import { generateTranscription } from "../../singletons/transcription";
 import { handleCommand } from "./commands";
 import { AgentResponseHandler, StatusListenerEventType } from "../../response";
 
-const TelegramStatusEvents: ChatAction[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"];
+const TelegramStatusEvents: string[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"];
+
+type ChatAction = typeof TelegramStatusEvents[number];
+
 
 export class TelegramLegacyInstance {
     private static initialized: boolean = false;
@@ -71,7 +74,7 @@ export class TelegramLegacyInstance {
         TelegramLegacyInstance.initialized = true;
     }
 
-    public static async handleDocumentMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleDocumentMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.document) {
             return;
         }
@@ -113,7 +116,7 @@ export class TelegramLegacyInstance {
         }
     }
 
-    public static async handlePhotoMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handlePhotoMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.photo || msg.photo.length === 0) {
             return;
         }
@@ -141,7 +144,7 @@ export class TelegramLegacyInstance {
         }
     }
 
-    public static async handleAudioMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleAudioMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.audio) {
             return;
         }
@@ -169,7 +172,7 @@ export class TelegramLegacyInstance {
         }
     }
 
-    public static async handleVoiceMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleVoiceMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.voice) {
             return;
         }
@@ -197,7 +200,7 @@ export class TelegramLegacyInstance {
         return signalLegacyWorkflowMessage(workflowId, author, transcript);
     }
 
-    public static async handleContactMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleContactMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.contact) {
             return;
         }
@@ -213,7 +216,7 @@ export class TelegramLegacyInstance {
     }
 
 
-    public static async handleLocationMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleLocationMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.location) {
             return;
         }
@@ -228,7 +231,7 @@ export class TelegramLegacyInstance {
         return signalLegacyWorkflowExternalContext(workflowId, author, payload);
     }
 
-    public static async handleTextMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleTextMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }
@@ -239,22 +242,33 @@ export class TelegramLegacyInstance {
         }
 
         const { author, workflowId } = await TelegramLegacyInstance.workflowLegacySignalArguments(msg);
-        if (msg.forward_date) {
-            const originaldate = new Date(msg.forward_date * 1000).toISOString();
-            if (msg.forward_from) {
-                const forwardUserName = msg.forward_from.last_name ? `${msg.forward_from.first_name} ${msg.forward_from.last_name}` : msg.forward_from.first_name;
+        if (msg.forward_origin) {
+            const originaldate = new Date(msg.forward_origin.date * 1000).toISOString();
+
+            Logger.info(workflowId, `Received forwarded message of type '${msg.forward_origin.type}' with original date '${originaldate}'`);
+            Logger.debug(workflowId, `Forwarded message content: ${JSON.stringify(msg)}`);
+            if ((msg.forward_origin as MessageOriginUser).sender_user) {
+                const forwardUser = (msg.forward_origin as MessageOriginUser).sender_user;
+                const forwardUserName = forwardUser.last_name ? `${forwardUser.first_name} ${forwardUser.last_name}` : forwardUser.first_name;
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
                 return signalLegacyWorkflowExternalContext(workflowId, forwardUserName, payload);
             }
 
-            if (msg.forward_sender_name) {
+            if ((msg.forward_origin as MessageOriginHiddenUser).sender_user_name) {
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalLegacyWorkflowExternalContext(workflowId, msg.forward_sender_name, payload);
+                return signalLegacyWorkflowExternalContext(workflowId, (msg.forward_origin as MessageOriginHiddenUser).sender_user_name, payload);
             }
 
-            if (msg.forward_from_chat) {
+            if ((msg.forward_origin as MessageOriginChat).sender_chat) {
+                const forwardChat = (msg.forward_origin as MessageOriginChat).sender_chat;
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalLegacyWorkflowExternalContext(workflowId, msg.forward_from_chat.title || "Unknown Chat", payload);
+                return signalLegacyWorkflowExternalContext(workflowId, forwardChat.title || "Unknown Chat", payload);
+            }
+
+            if ((msg.forward_origin as MessageOriginChannel).chat) {
+                const forwardChannel = (msg.forward_origin as MessageOriginChannel).chat;
+                const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
+                return signalLegacyWorkflowExternalContext(workflowId, forwardChannel.title || "Unknown Channel", payload);
             }
         }
 
@@ -262,7 +276,7 @@ export class TelegramLegacyInstance {
         return signalLegacyWorkflowMessage(workflowId, author, msg.text);
     }
 
-    public static async handleTextCommandMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleTextCommandMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }
@@ -276,7 +290,7 @@ export class TelegramLegacyInstance {
         return handleCommand(workflowId, author, msg);
     }
 
-    public static async handleLegacyNoOpMessage(msg: TelegramBot.Message): Promise<void> {
+    public static async handleLegacyNoOpMessage(msg: Message): Promise<void> {
         if (!msg.from) {
             return;
         }
@@ -289,7 +303,7 @@ export class TelegramLegacyInstance {
         Logger.debug("legacy", "Ignoring unsupported message type in legacy mode.");
     }
 
-    private static workflowLegacySignalArguments(msg: TelegramBot.Message): { author: string; workflowId: string; } {
+    private static workflowLegacySignalArguments(msg: Message): { author: string; workflowId: string; } {
         const workflowId = createWorkflowId("legacy", String(msg.chat.id));
         return {
             author: msg.from!.last_name ? `${msg.from!.first_name} ${msg.from!.last_name}` : `${msg.from!.first_name}`,

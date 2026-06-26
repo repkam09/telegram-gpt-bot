@@ -238,81 +238,24 @@ export class HennosRealtime {
 
                                                     case "brave_search": {
                                                         RealtimeBraveSearch.callback(workflowId, args).then((result) => {
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "conversation.item.create",
-                                                                    item: {
-                                                                        type: "function_call_output",
-                                                                        call_id: data.call_id,
-                                                                        output: result,
-                                                                    },
-                                                                })
-                                                            );
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "response.create",
-                                                                })
-                                                            );
+                                                            this.sendToolResponse(socket, data.call_id, result);
                                                         }).catch((error) => {
                                                             Logger.error(workflowId,
                                                                 `SIP Error calling BraveSearch for call_id ${data.call_id}: ${error.message}`
                                                             );
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "conversation.item.create",
-                                                                    item: {
-                                                                        type: "function_call_output",
-                                                                        call_id: data.call_id,
-                                                                        output: `Error: ${error.message}`,
-                                                                    },
-                                                                })
-                                                            );
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "response.create",
-                                                                })
-                                                            );
-
+                                                            this.sendToolResponse(socket, data.call_id, error);
                                                         });
                                                         break;
                                                     }
 
                                                     case "open_weather_map_lookup": {
                                                         RealtimeWeatherLookup.callback(workflowId, args).then((result) => {
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "conversation.item.create",
-                                                                    item: {
-                                                                        type: "function_call_output",
-                                                                        call_id: data.call_id,
-                                                                        output: result,
-                                                                    },
-                                                                })
-                                                            );
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "response.create",
-                                                                })
-                                                            );
+                                                            this.sendToolResponse(socket, data.call_id, result);
                                                         }).catch((error) => {
                                                             Logger.error(workflowId,
                                                                 `SIP Error calling OpenWeatherMapLookup for call_id ${data.call_id}: ${error.message}`
                                                             );
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "conversation.item.create",
-                                                                    item: {
-                                                                        type: "function_call_output",
-                                                                        call_id: data.call_id,
-                                                                        output: `Error: ${error.message}`,
-                                                                    },
-                                                                })
-                                                            );
-                                                            socket.send(
-                                                                JSON.stringify({
-                                                                    type: "response.create",
-                                                                })
-                                                            );
+                                                            this.sendToolResponse(socket, data.call_id, error);
 
                                                         });
                                                         break;
@@ -375,5 +318,23 @@ export class HennosRealtime {
                     });
             }
         }, 1700);
+    }
+
+    private static sendToolResponse(socket: WebSocket, callId: string, result: object | Error): void {
+        socket.send(
+            JSON.stringify({
+                type: "conversation.item.create",
+                item: {
+                    type: "function_call_output",
+                    call_id: callId,
+                    output: JSON.stringify(result),
+                },
+            })
+        );
+        socket.send(
+            JSON.stringify({
+                type: "response.create",
+            })
+        );
     }
 }

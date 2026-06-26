@@ -6,7 +6,6 @@
     "configurations": [
         {
             "type": "node",
-            "runtimeArgs": ["--preserve-symlinks"],
             "request": "launch",
             "name": "Launch Hennos",
             "skipFiles": [
@@ -16,7 +15,11 @@
             "program": "${workspaceFolder}/build/hennos.js",
             "console": "integratedTerminal",
             "sourceMaps": true,
-            "runtimeExecutable": "node"
+            "runtimeExecutable": "/bin/bash",
+            "runtimeArgs": [
+                "-lc",
+                "source \"$HOME/.nvm/nvm.sh\" && nvm use && node --preserve-symlinks \"${workspaceFolder}/build/hennos.js\""
+            ]
         }
     ]
 }

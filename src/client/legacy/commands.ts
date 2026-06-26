@@ -1,8 +1,8 @@
-import TelegramBot from "node-telegram-bot-api";
+import { Message } from "node-telegram-bot-api";
 import { AgentResponseHandler } from "../../response";
 import { comingSoonMessage, getStartMessage } from "./static";
 
-export async function handleCommand(workflowId: string, author: string, msg: TelegramBot.Message): Promise<void> {
+export async function handleCommand(workflowId: string, author: string, msg: Message): Promise<void> {
     if (!msg.from || !msg.text) {
         return;
     }

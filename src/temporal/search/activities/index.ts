@@ -5,7 +5,7 @@ import { temporalGrounding } from "../../../common/grounding";
 import { resolveModelProvider } from "../../../provider";
 
 export async function summarizeResults(input: SearchWorkflowInput, results: Array<object>): Promise<string | null> {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     const promptTemplate = summarizePromptTemplate({
         query: input.query,

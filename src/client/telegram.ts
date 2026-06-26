@@ -1,4 +1,4 @@
-import TelegramBot, { ChatAction } from "node-telegram-bot-api";
+import TelegramBot, { Message, MessageOriginChannel, MessageOriginChat, MessageOriginHiddenUser, MessageOriginUser, SendMessageParams } from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
 import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { Logger } from "../singletons/logger";
@@ -10,7 +10,11 @@ import { AgentResponseHandler, StatusListenerEventType } from "../response";
 import { Database } from "../database";
 import { TelegramLegacyInstance } from "./legacy/legacy";
 
-const TelegramStatusEvents: ChatAction[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"];
+const TelegramStatusEvents: string[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"] as const;
+
+
+type ChatAction = typeof TelegramStatusEvents[number];
+type SendMessageOptions = Omit<SendMessageParams, "chat_id" | "text">;
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
@@ -115,7 +119,7 @@ export class TelegramInstance {
         });
     }
 
-    private static async validateWhitelist(msg: TelegramBot.Message, handler: (msg: TelegramBot.Message) => Promise<void>): Promise<void> {
+    private static async validateWhitelist(msg: Message, handler: (msg: Message) => Promise<void>): Promise<void> {
         if (!msg.from) {
             return;
         }
@@ -135,7 +139,7 @@ export class TelegramInstance {
         return handler(msg);
     }
 
-    public static async sendMessageWrapper(chatId: string, content: string, options: TelegramBot.SendMessageOptions = {}) {
+    public static async sendMessageWrapper(chatId: string, content: string, options: SendMessageOptions = {}) {
         if (!content) {
             Logger.warn("telegram", `Attempted to send empty message content to chatId ${chatId}.`);
             return;
@@ -160,7 +164,7 @@ export class TelegramInstance {
         }
     }
 
-    private static async sendTelegramMessageWithRetry(chatId: string, content: string, options: TelegramBot.SendMessageOptions) {
+    private static async sendTelegramMessageWithRetry(chatId: string, content: string, options: SendMessageOptions) {
         const bot = TelegramInstance.instance();
         try {
             await bot.sendMessage(chatId, content, { ...options, parse_mode: "Markdown" });
@@ -182,7 +186,7 @@ export class TelegramInstance {
         return TelegramInstance._instance;
     }
 
-    private static async workflowSignalArguments(msg: TelegramBot.Message): Promise<{ author: string; workflowId: string; }> {
+    private static async workflowSignalArguments(msg: Message): Promise<{ author: string; workflowId: string; }> {
         const workflowId = await createWorkflowId("telegram", String(msg.chat.id));
         return {
             author: msg.from!.last_name ? `${msg.from!.first_name} ${msg.from!.last_name}` : `${msg.from!.first_name}`,
@@ -226,7 +230,7 @@ export class TelegramInstance {
         return null;
     }
 
-    private static async handleDocumentMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleDocumentMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.document) {
             return;
         }
@@ -268,7 +272,7 @@ export class TelegramInstance {
         }
     }
 
-    private static async handlePhotoMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handlePhotoMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.photo || msg.photo.length === 0) {
             return;
         }
@@ -294,7 +298,7 @@ export class TelegramInstance {
         return signalAgenticWorkflowMessage(workflowId, author, summary);
     }
 
-    private static async handleAudioMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleAudioMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.audio) {
             return;
         }
@@ -322,7 +326,7 @@ export class TelegramInstance {
         }
     }
 
-    private static async handleVoiceMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleVoiceMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.voice) {
             return;
         }
@@ -350,7 +354,7 @@ export class TelegramInstance {
         return signalAgenticWorkflowMessage(workflowId, author, transcript);
     }
 
-    private static async handleContactMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleContactMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.contact) {
             return;
         }
@@ -366,7 +370,7 @@ export class TelegramInstance {
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
 
-    private static async handleLocationMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleLocationMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.location) {
             return;
         }
@@ -381,7 +385,7 @@ export class TelegramInstance {
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
 
-    private static async handleTextMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleTextMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }
@@ -397,22 +401,33 @@ export class TelegramInstance {
         }
 
         const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        if (msg.forward_date) {
-            const originaldate = new Date(msg.forward_date * 1000).toISOString();
-            if (msg.forward_from) {
-                const forwardUserName = msg.forward_from.last_name ? `${msg.forward_from.first_name} ${msg.forward_from.last_name}` : msg.forward_from.first_name;
+        if (msg.forward_origin) {
+            const originaldate = new Date(msg.forward_origin.date * 1000).toISOString();
+
+            Logger.info(workflowId, `Received forwarded message of type '${msg.forward_origin.type}' with original date '${originaldate}'`);
+            Logger.debug(workflowId, `Forwarded message content: ${JSON.stringify(msg)}`);
+            if ((msg.forward_origin as MessageOriginUser).sender_user) {
+                const forwardUser = (msg.forward_origin as MessageOriginUser).sender_user;
+                const forwardUserName = forwardUser.last_name ? `${forwardUser.first_name} ${forwardUser.last_name}` : forwardUser.first_name;
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
                 return signalAgenticWorkflowExternalContext(workflowId, forwardUserName, payload);
             }
 
-            if (msg.forward_sender_name) {
+            if ((msg.forward_origin as MessageOriginHiddenUser).sender_user_name) {
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, msg.forward_sender_name, payload);
+                return signalAgenticWorkflowExternalContext(workflowId, (msg.forward_origin as MessageOriginHiddenUser).sender_user_name, payload);
             }
 
-            if (msg.forward_from_chat) {
+            if ((msg.forward_origin as MessageOriginChat).sender_chat) {
+                const forwardChat = (msg.forward_origin as MessageOriginChat).sender_chat;
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, msg.forward_from_chat.title || "Unknown Chat", payload);
+                return signalAgenticWorkflowExternalContext(workflowId, forwardChat.title || "Unknown Chat", payload);
+            }
+
+            if ((msg.forward_origin as MessageOriginChannel).chat) {
+                const forwardChannel = (msg.forward_origin as MessageOriginChannel).chat;
+                const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
+                return signalAgenticWorkflowExternalContext(workflowId, forwardChannel.title || "Unknown Channel", payload);
             }
         }
 
@@ -420,7 +435,7 @@ export class TelegramInstance {
         return signalAgenticWorkflowMessage(workflowId, author, msg.text);
     }
 
-    private static async handleEditTextMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleEditTextMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }
@@ -435,7 +450,7 @@ export class TelegramInstance {
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
 
-    private static async handleEditCaptionMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleEditCaptionMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.caption) {
             return;
         }
@@ -450,11 +465,11 @@ export class TelegramInstance {
         return signalAgenticWorkflowExternalContext(workflowId, author, payload);
     }
 
-    private static async handleUnimplemented(event: string, msg: TelegramBot.Message): Promise<void> {
+    private static async handleUnimplemented(event: string, msg: Message): Promise<void> {
         Logger.debug("telegram", `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
     }
 
-    private static async handleTelegramStickerMessage(msg: TelegramBot.Message) {
+    private static async handleTelegramStickerMessage(msg: Message) {
         const chatId = msg.chat.id;
         if (!msg.from || !msg.sticker) {
             return;
@@ -475,14 +490,14 @@ export class TelegramInstance {
                 return;
             }
 
-            await TelegramInstance.instance().sendPhoto(chatId, createReadStream(stickerPath), { reply_to_message_id: msg.message_id, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
+            await TelegramInstance.instance().sendPhoto(chatId, createReadStream(stickerPath), { reply_parameters: { message_id: msg.message_id }, caption: "Here, I RepBig'd that for you!" }, { contentType: "image/webp" });
         } catch (err: unknown) {
             const error = err instanceof Error ? err : new Error(String(err));
             Logger.error(workflowId, `Error handling Telegram sticker message with file_id: ${msg.sticker.file_id}.`, error);
         }
     }
 
-    private static async handleTextCommandMessage(msg: TelegramBot.Message): Promise<void> {
+    private static async handleTextCommandMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }

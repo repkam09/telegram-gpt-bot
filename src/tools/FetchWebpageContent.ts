@@ -72,7 +72,7 @@ if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "openai" || Config.HENNOS_DOCUMENT
                 const usage = raw.usage as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
                 Logger.info("DocumentProcessing", `LlamaIndex LLM Usage: input=${usage.prompt_tokens ?? 0}, output=${usage.completion_tokens ?? 0}, total=${usage.total_tokens ?? 0}`);
 
-                const workflowId = Context.current().info.workflowExecution.workflowId;
+                const workflowId = Context.current().info.workflowExecution!.workflowId;
                 UsageTracker.signalUsage(workflowId, {
                     inputTokens: usage.prompt_tokens ?? 0,
                     outputTokens: usage.completion_tokens ?? 0,

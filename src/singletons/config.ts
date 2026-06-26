@@ -163,14 +163,6 @@ export class Config {
         return process.env.HENNOS_GMAIL_ENABLED === "true";
     }
 
-    static get HENNOS_BLUESKY_ENABLED(): boolean {
-        if (!process.env.HENNOS_BLUESKY_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_BLUESKY_ENABLED === "true";
-    }
-
     static get HENNOS_TELEGRAM_ENABLED(): boolean {
         if (!process.env.HENNOS_TELEGRAM_ENABLED) {
             return false;

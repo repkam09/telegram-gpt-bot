@@ -17,7 +17,7 @@ export type ThoughtInput = {
 export const thought = withActivityHeartbeat(_thought);
 async function _thought(input: ThoughtInput,
 ): Promise<HennosAgenticResponse> {
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     const info = parseWorkflowId(workflowId);
 

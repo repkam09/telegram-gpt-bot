@@ -31,7 +31,7 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
     }
 
 
-    const workflowId = Context.current().info.workflowExecution.workflowId;
+    const workflowId = Context.current().info.workflowExecution!.workflowId;
 
     // Fast path: already in a tool-call loop — no LLM call needed
     if (input.iterations > 0 || input.hasToolContext) {
