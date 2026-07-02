@@ -25,11 +25,11 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
         return complexResult();
     }
 
-    if (Config.HENNOS_LLM_PROVIDER === "ollama") {
-        Logger.debug("PromptClassifier", "LLM provider is Ollama, skipping classification and defaulting to 'complex'");
+    if (Config.HENNOS_LLM_PROVIDER === "ollama" || Config.HENNOS_LLM_PROVIDER === "litellm") {
+        // Ollama is free and litellm has dynamic model routing, so classification is skipped to avoid unnecessary LLM calls
+        Logger.debug("PromptClassifier", `LLM provider is ${Config.HENNOS_LLM_PROVIDER}, skipping classification and defaulting to 'complex'`);
         return complexResult();
     }
-
 
     const workflowId = Context.current().info.workflowExecution!.workflowId;
 

@@ -17,8 +17,11 @@ export type HennosEmbedModelConfig = {
     LENGTH: number
 }
 
-export type HennosModelProvider = "ollama" | "openai" | "anthropic";
+export type HennosModelProvider = "ollama" | "openai" | "anthropic" | "litellm"
 export type HennosEmbedProvider = "ollama" | "openai";
+
+export const HENNOS_LLM_PROVIDERS = ["ollama", "openai", "anthropic", "litellm"];
+export const HENNOS_EMBED_PROVIDERS = ["ollama", "openai"];
 
 export class Config {
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
@@ -42,8 +45,8 @@ export class Config {
             return "ollama";
         }
 
-        // Validate ollama, openai or anthropic
-        if (["ollama", "openai", "anthropic"].indexOf(process.env.HENNOS_LLM_PROVIDER) === -1) {
+        // Validate provider
+        if (HENNOS_LLM_PROVIDERS.indexOf(process.env.HENNOS_LLM_PROVIDER) === -1) {
             throw new Error("Invalid HENNOS_LLM_PROVIDER value");
         }
 
@@ -71,8 +74,8 @@ export class Config {
             return null;
         }
 
-        // Validate ollama, openai or anthropic
-        if (["ollama", "openai", "anthropic"].indexOf(process.env.HENNOS_LEGACY_LLM_PROVIDER) === -1) {
+        // Validate provider
+        if (HENNOS_LLM_PROVIDERS.indexOf(process.env.HENNOS_LEGACY_LLM_PROVIDER) === -1) {
             throw new Error("Invalid HENNOS_LEGACY_LLM_PROVIDER value");
         }
 
@@ -85,7 +88,7 @@ export class Config {
         }
 
         // Validate ollama or openai
-        if (["ollama", "openai"].indexOf(process.env.HENNOS_DOCUMENT_EMBED_PROVIDER) === -1) {
+        if (HENNOS_EMBED_PROVIDERS.indexOf(process.env.HENNOS_DOCUMENT_EMBED_PROVIDER) === -1) {
             throw new Error("Invalid HENNOS_DOCUMENT_EMBED_PROVIDER value");
         }
 
@@ -102,7 +105,7 @@ export class Config {
         }
 
         // Validate ollama, openai or anthropic
-        if (["ollama", "openai", "anthropic"].indexOf(process.env.HENNOS_DOCUMENT_LLM_PROVIDER) === -1) {
+        if (HENNOS_LLM_PROVIDERS.indexOf(process.env.HENNOS_DOCUMENT_LLM_PROVIDER) === -1) {
             throw new Error("Invalid HENNOS_DOCUMENT_LLM_PROVIDER value");
         }
 
@@ -207,6 +210,33 @@ export class Config {
         }
 
         return process.env.TELEGRAM_BOT_WEBHOOK_EXTERNAL;
+    }
+
+    static get LITELLM_LLM(): HennosModelConfig {
+        if (!process.env.LITELLM_LLM) {
+            return {
+                MODEL: "hennos_dynamic",
+                CTX: 32000,
+            };
+        }
+
+        return parseHennosModelString(process.env.LITELLM_LLM, "LITELLM_LLM");
+    }
+
+    static get LITELLM_API_KEY(): string {
+        if (!process.env.LITELLM_API_KEY) {
+            throw new Error("Missing LITELLM_API_KEY");
+        }
+
+        return process.env.LITELLM_API_KEY;
+    }
+
+    static get LITELLM_BASE_URL(): string {
+        if (!process.env.LITELLM_BASE_URL) {
+            throw new Error("Missing LITELLM_BASE_URL");
+        }
+
+        return process.env.LITELLM_BASE_URL;
     }
 
     static get OPENAI_API_KEY(): string {

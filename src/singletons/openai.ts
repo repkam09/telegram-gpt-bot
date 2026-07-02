@@ -53,10 +53,10 @@ export class HennosOpenAIProvider {
     private model: HennosModelConfig;
     private moderationModel: string;
 
-
-    constructor(model: HennosModelConfig) {
+    constructor(model: HennosModelConfig, baseUrl?: string, apiKey?: string) {
         this.client = new OpenAI({
-            apiKey: Config.OPENAI_API_KEY,
+            apiKey: apiKey ?? Config.OPENAI_API_KEY,
+            baseURL: baseUrl ?? undefined,
         });
 
         this.model = model;

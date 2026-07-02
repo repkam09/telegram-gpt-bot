@@ -6,6 +6,7 @@ import { Logger } from "./singletons/logger";
 import { Database } from "./database";
 import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
 import { HennosAnthropicSingleton } from "./singletons/anthropic";
+import { HennosLiteLLMSingleton } from "./singletons/litellm";
 
 export type HennosTool = Tool;
 export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeToolResponse;
@@ -123,6 +124,10 @@ function internalResolveModelProvider(level: "high" | "low" | "nano", provider: 
                 return HennosOpenAISingleton.nano();
             }
             throw new Error(`Unsupported model tier for Anthropic provider: ${level}`);
+        }
+
+        case "litellm": {
+            return HennosLiteLLMSingleton.dynamic();
         }
 
         case "ollama": {
