@@ -52,13 +52,15 @@ export class HennosOpenAIProvider {
     public client: OpenAI;
     private model: HennosModelConfig;
     private moderationModel: string;
+    private name: string;
 
-    constructor(model: HennosModelConfig, baseUrl?: string, apiKey?: string) {
+    constructor(model: HennosModelConfig, baseUrl?: string, apiKey?: string, name?: string) {
         this.client = new OpenAI({
             apiKey: apiKey ?? Config.OPENAI_API_KEY,
             baseURL: baseUrl ?? undefined,
         });
 
+        this.name = name ?? "OpenAI";
         this.model = model;
         this.moderationModel = "omni-moderation-latest";
     }
@@ -68,14 +70,14 @@ export class HennosOpenAIProvider {
     }
 
     public async invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse> {
-        Logger.info(workflowId, `OpenAI Invoke Start (${this.model.MODEL})`);
+        Logger.info(workflowId, `${this.name} Invoke Start (${this.model.MODEL})`);
         const converted = tools ? convertHennosTools(tools) : undefined;
         const prompt = convertHennosMessages(messages);
 
         const result = await this._completion(workflowId, prompt, converted);
 
         if (result.__type === "string") {
-            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in String Response");
+            Logger.info(workflowId, `${this.name} Invoke Success, Resulted in String Response`);
             return {
                 __type: "string",
                 payload: result.payload
@@ -83,6 +85,7 @@ export class HennosOpenAIProvider {
         }
 
         if (result.__type === "tool") {
+            Logger.info(workflowId, `${this.name} Invoke Success, Resulted in Tool Response`);
             return {
                 __type: "tool",
                 payload: result.payload.map((payload) => ({
@@ -92,11 +95,11 @@ export class HennosOpenAIProvider {
             };
         }
 
-        throw new Error("OpenAI Invoke Failed, Unhandled Response Type");
+        throw new Error(`${this.name} Invoke Failed, Unhandled Response Type`);
     }
 
     public async completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse> {
-        Logger.info(workflowId, `OpenAI Completion Start (${this.model.MODEL})`);
+        Logger.info(workflowId, `${this.name} Completion Start (${this.model.MODEL})`);
         const converted = tools ? convertHennosTools(tools) : undefined;
         const prompt = convertCompletionMessages(messages);
 
@@ -104,7 +107,7 @@ export class HennosOpenAIProvider {
         const result = await this._completion(workflowId, prompt, convertedIterations);
 
         if (result.__type === "string") {
-            Logger.info(workflowId, "OpenAI Completion Success, Resulted in String Response");
+            Logger.info(workflowId, `${this.name} Completion Success, Resulted in String Response`);
             return {
                 __type: "string",
                 payload: result.payload
@@ -112,7 +115,7 @@ export class HennosOpenAIProvider {
         }
 
         if (result.__type === "tool") {
-            Logger.info(workflowId, "OpenAI Completion Success, Resulted in Tool Response");
+            Logger.info(workflowId, `${this.name} Completion Success, Resulted in Tool Response`);
             return {
                 __type: "tool",
                 payload: result.payload.map((payload) => ({
@@ -123,7 +126,7 @@ export class HennosOpenAIProvider {
             };
         }
 
-        throw new Error("OpenAI Completion Failed, Unhandled Response Type");
+        throw new Error(`${this.name} Completion Failed, Unhandled Response Type`);
     }
 
     private async _completion(workflowId: string, prompt: OpenAI.Chat.Completions.ChatCompletionMessageParam[], tools?: ChatCompletionTool[]): Promise<OpenAICompletionResponse> {
@@ -147,18 +150,18 @@ export class HennosOpenAIProvider {
             });
         }
 
-        Logger.info(workflowId, `OpenAI Invoke Success, Usage: ${calculateUsage(response.usage)}`);
+        Logger.info(workflowId, `${this.name} Invoke Success, Usage: ${calculateUsage(response.usage)}`);
         if (!response.choices && !response.choices[0]) {
-            throw new Error("Invalid OpenAI Response Shape, Missing Expected Choices");
+            throw new Error(`${this.name} Invalid Response Shape, Missing Expected Choices`);
         }
 
         const choice = response.choices[0];
         if (choice.finish_reason === "stop") {
             if (!choice.message.content) {
-                throw new Error("Invalid OpenAI Response Shape, Missing Expected Content on Stop Finish Reason");
+                throw new Error(`${this.name} Invalid Response Shape, Missing Expected Content on Stop Finish Reason`);
             }
 
-            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Stop Finish Reason");
+            Logger.info(workflowId, `${this.name} Invoke Success, Resulted in Stop Finish Reason`);
             return {
                 __type: "string",
                 payload: choice.message.content
@@ -166,7 +169,7 @@ export class HennosOpenAIProvider {
         }
 
         if (choice.finish_reason === "content_filter") {
-            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Content Filter Trigger. Details: " + JSON.stringify(choice));
+            Logger.info(workflowId, `${this.name} Invoke Success, Resulted in Content Filter Trigger. Details: ` + JSON.stringify(choice));
             return {
                 __type: "string",
                 payload: "Content Filter Triggered. The model refused to generate a response based on the input provided."
@@ -174,7 +177,7 @@ export class HennosOpenAIProvider {
         }
 
         if (choice.finish_reason === "length") {
-            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Length Limit");
+            Logger.info(workflowId, `${this.name} Invoke Success, Resulted in Length Limit`);
             prompt.push({
                 role: "assistant",
                 content: choice.message.content ? choice.message.content : ""
@@ -183,14 +186,14 @@ export class HennosOpenAIProvider {
         }
 
         if (choice.finish_reason === "tool_calls") {
-            Logger.info(workflowId, "OpenAI Invoke Success, Resulted in Tool Call");
+            Logger.info(workflowId, `${this.name} Invoke Success, Resulted in Tool Call`);
             if (!choice.message.tool_calls || choice.message.tool_calls.length === 0) {
-                throw new Error("Invalid OpenAI Response Shape, Missing Expected Tool Calls on Tool Calls Finish Reason");
+                throw new Error(`${this.name} Invalid Response Shape, Missing Expected Tool Calls on Tool Calls Finish Reason`);
             }
 
             const filtered = choice.message.tool_calls.filter(call => call.type === "function");
             if (filtered.length === 0) {
-                throw new Error("OpenAI Invoke Failed, Custom Tool Calls are not supported in Hennos at this time");
+                throw new Error(`${this.name} Invoke Failed, Custom Tool Calls are not supported in Hennos at this time`);
             }
 
             return {
@@ -203,11 +206,11 @@ export class HennosOpenAIProvider {
             };
         }
 
-        throw new Error(`OpenAI Invoke Failed, Unhandled Finish Reason: ${choice.finish_reason}`);
+        throw new Error(`${this.name} Invoke Failed, Unhandled Finish Reason: ${choice.finish_reason}`);
     }
 
     public async moderation(workflowId: string, input: string): Promise<boolean> {
-        Logger.info(workflowId, "OpenAI Moderation Start");
+        Logger.info(workflowId, `${this.name} Moderation Start`);
         try {
             const response = await this.client.moderations.create({
                 model: this.moderationModel,
@@ -223,11 +226,11 @@ export class HennosOpenAIProvider {
             }
 
             const flagged = response.results[0].flagged;
-            Logger.info(workflowId, `OpenAI Moderation Success, Result: ${flagged ? "Blocked" : "Allowed"}, Input: ${input}`);
+            Logger.info(workflowId, `${this.name} Moderation Success, Result: ${flagged ? "Blocked" : "Allowed"}, Input: ${input}`);
             return flagged;
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(workflowId, "OpenAI Moderation Error: ", error);
+            Logger.error(workflowId, `${this.name} Moderation Error: `, error);
             return false;
         }
     }

@@ -6,7 +6,7 @@ export class HennosLiteLLMSingleton {
 
     public static dynamic(): HennosOpenAIProvider {
         if (!HennosLiteLLMSingleton._instance) {
-            HennosLiteLLMSingleton._instance = new HennosOpenAIProvider(Config.LITELLM_LLM, Config.LITELLM_BASE_URL, Config.LITELLM_API_KEY);
+            HennosLiteLLMSingleton._instance = new HennosOpenAIProvider(Config.LITELLM_LLM, Config.LITELLM_BASE_URL, Config.LITELLM_API_KEY, "LiteLLM");
         }
         return HennosLiteLLMSingleton._instance;
     }
