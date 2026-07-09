@@ -1,2 +1,2 @@
-FROM "gemma4:12b"
+FROM "cogito:8b"
 PARAMETER num_ctx 102400
