@@ -1,8 +1,55 @@
 #!/bin/bash
 set -e
 
-ollama create repkam09/hennos-qwen3.5:9b -f ./hennos-qwen3.5-9b/Modelfile
-ollama create repkam09/hennos-qwen3.5:4b -f ./hennos-qwen3.5-4b/Modelfile
-ollama create repkam09/hennos-qwen3.5:2b -f ./hennos-qwen3.5-2b/Modelfile
-ollama create repkam09/hennos-qwen3.5:0.8b -f ./hennos-qwen3.5-0.8b/Modelfile
-ollama create repkam09/hennos-gemma4:12b -f ./hennos-gemma4-12b/Modelfile
+echo "Building hennos-gemma4-e4b"
+cd ./hennos-gemma4-e4b
+./build.sh
+cd ..
+
+
+echo "Building hennos-gemma4-12b"
+cd ./hennos-gemma4-12b
+./build.sh
+cd ..
+
+echo "Building hennos-codegemma-7b"
+cd ./hennos-codegemma-7b
+./build.sh
+cd ..
+
+echo "Building hennos-cogito-8b"
+cd ./hennos-cogito-8b
+./build.sh
+cd ..
+
+echo "Building hennos-cogito-14b"
+cd ./hennos-cogito-14b
+./build.sh
+cd ..
+
+echo "Building hennos-qwen3.5-0.8b"
+cd ./hennos-qwen3.5-0.8b
+./build.sh
+cd ..
+
+echo "Building hennos-qwen3.5-2b"
+cd ./hennos-qwen3.5-2b
+./build.sh
+cd ..
+
+echo "Building hennos-qwen3.5-4b"
+cd ./hennos-qwen3.5-4b
+./build.sh
+cd ..
+
+echo "Building hennos-qwen3.5-9b"
+cd ./hennos-qwen3.5-9b
+./build.sh
+cd ..
+
+echo "Building hennos-oss-20b"
+cd ./hennos-oss-20b
+./build.sh
+cd ..
+
+
