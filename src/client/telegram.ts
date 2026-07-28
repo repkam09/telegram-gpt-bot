@@ -1,4 +1,4 @@
-import TelegramBot, { Message, MessageOriginChannel, MessageOriginChat, MessageOriginHiddenUser, MessageOriginUser, SendMessageParams } from "node-telegram-bot-api";
+import TelegramBot, { Message, MessageOriginChannel, MessageOriginChat, MessageOriginHiddenUser, MessageOriginUser, SendMessageDraftParams, SendMessageParams } from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
 import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
 import { Logger } from "../singletons/logger";
@@ -15,6 +15,7 @@ const TelegramStatusEvents: string[] = ["typing", "upload_photo", "record_video"
 
 type ChatAction = typeof TelegramStatusEvents[number];
 type SendMessageOptions = Omit<SendMessageParams, "chat_id" | "text">;
+type SendMessageDraftOptions = Omit<SendMessageDraftParams, "chat_id" | "text" | "draft_id">;
 
 export class TelegramInstance {
     private static _instance: TelegramBot | null = null;
@@ -32,10 +33,10 @@ export class TelegramInstance {
             Logger.info("telegram", `Starting Telegram Bot in Webhook mode: ${Config.TELEGRAM_BOT_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
 
             // This is the external URL that Telegram will use to send updates to our webhook.
-            bot.setWebHook(`${Config.TELEGRAM_BOT_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
+            bot.setWebhook(`${Config.TELEGRAM_BOT_WEBHOOK_EXTERNAL}/bot${Config.TELEGRAM_BOT_KEY}`);
         } else {
             Logger.info("telegram", "Starting Telegram Bot in Polling mode");
-            bot.deleteWebHook();
+            bot.deleteWebhook();
             bot.startPolling();
         }
 
@@ -45,6 +46,15 @@ export class TelegramInstance {
         AgentResponseHandler.registerMessageListener("telegram", async (message: string, chatId: string) => {
             try {
                 await TelegramInstance.sendMessageWrapper(chatId, message);
+            } catch (err: unknown) {
+                const error = err as Error;
+                Logger.error("telegram", `Error sending message to chatId ${chatId}: ${error.message}`, error);
+            }
+        });
+
+        AgentResponseHandler.registerTokenMessageListener("telegram", async (message: string, chatId: string, draftId: number) => {
+            try {
+                await TelegramInstance.sendMessageDraftWrapper(chatId, draftId, message);
             } catch (err: unknown) {
                 const error = err as Error;
                 Logger.error("telegram", `Error sending message to chatId ${chatId}: ${error.message}`, error);
@@ -164,6 +174,21 @@ export class TelegramInstance {
         }
     }
 
+    public static async sendMessageDraftWrapper(chatId: string, draftId: number, content: string, options: SendMessageDraftOptions = {}) {
+        if (!content) {
+            Logger.warn("telegram", `Attempted to send empty message content to chatId ${chatId} for draftId ${draftId}.`);
+            return;
+        }
+
+        if (content.length > 4000) {
+            Logger.warn("telegram", `Attempted to send message with length ${content.length} exceeding 4000 characters to chatId ${chatId} for draftId ${draftId}.`);
+            return;
+        }
+
+        Logger.debug("telegram", `Sending Telegram message of length ${content.length} to chatId ${chatId}`);
+        return TelegramInstance.sendTelegramMessageDraftWithRetry(chatId, draftId, content, options);
+    }
+
     private static async sendTelegramMessageWithRetry(chatId: string, content: string, options: SendMessageOptions) {
         const bot = TelegramInstance.instance();
         try {
@@ -171,6 +196,21 @@ export class TelegramInstance {
         } catch (err1: unknown) {
             try {
                 await bot.sendMessage(chatId, content, { ...options, parse_mode: undefined });
+            } catch (err2: unknown) {
+                const error1 = err1 as Error;
+                const error2 = err2 as Error;
+                Logger.error("telegram", `Failed 2x to send Telegram message to chatId ${chatId}. Err1=${error1.message}, Err2=${error2.message}`);
+            }
+        }
+    }
+
+    private static async sendTelegramMessageDraftWithRetry(chatId: string, draftId: number, content: string, options: SendMessageDraftOptions) {
+        const bot = TelegramInstance.instance();
+        try {
+            await bot.sendMessageDraft(chatId, draftId, content, { ...options, parse_mode: "Markdown" });
+        } catch (err1: unknown) {
+            try {
+                await bot.sendMessageDraft(chatId, draftId, content, { ...options, parse_mode: undefined });
             } catch (err2: unknown) {
                 const error1 = err1 as Error;
                 const error2 = err2 as Error;

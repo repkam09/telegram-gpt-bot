@@ -1,6 +1,7 @@
 import { Logger } from "./singletons/logger";
 
 type MessageListener = (message: string, chatId: string) => Promise<void>;
+type TokenMessageListener = (message: string, chatId: string, draftId: number) => Promise<void>;
 type ArtifactListener = (filePath: string, chatId: string, mime_type: string, description?: string) => Promise<void>;
 type StatusListener = (event: StatusListenerEvent, chatId: string) => Promise<void>;
 
@@ -11,10 +12,16 @@ export class AgentResponseHandler {
     private static messageListeners: Map<string, MessageListener> = new Map();
     private static artifactListeners: Map<string, ArtifactListener> = new Map();
     private static statusListeners: Map<string, StatusListener> = new Map();
+    private static tokenMessageListeners: Map<string, TokenMessageListener> = new Map();
 
     public static registerMessageListener(type: string, callback: MessageListener): void {
         Logger.info("AgentResponseHandler", `Registering message listener for platform: ${type}`);
         this.messageListeners.set(type, callback);
+    }
+
+    public static registerTokenMessageListener(type: string, callback: TokenMessageListener): void {
+        Logger.info("AgentResponseHandler", `Registering token message listener for platform: ${type}`);
+        this.tokenMessageListeners.set(type, callback);
     }
 
     public static unregisterMessageListener(type: string): void {
