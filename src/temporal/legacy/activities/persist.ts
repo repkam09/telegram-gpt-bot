@@ -5,6 +5,7 @@ import { parseWorkflowId } from "../interface";
 
 type LegacyBroadcastAgentInput = {
     message: string;
+    sendResponse?: boolean;
 }
 
 export async function persistLegacyAgentMessage(input: LegacyBroadcastAgentInput) {

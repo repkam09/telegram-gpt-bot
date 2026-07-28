@@ -1,8 +1,8 @@
 import readline from "node:readline/promises";
 import { Config } from "../singletons/config";
 import { createTemporalClient } from "../singletons/temporal";
-import { agentWorkflow, agentWorkflowMessageSignal } from "../temporal/workflows";
-import { createWorkflowId } from "../temporal/agent/interface";
+import { legacyWorkflow, legacyWorkflowMessageSignal } from "../temporal/workflows";
+import { createWorkflowId } from "../temporal/legacy/interface";
 import { AgentResponseHandler } from "../response";
 
 export class CommandLineInstance {
@@ -49,11 +49,11 @@ export class CommandLineInstance {
 
 async function signalWithStartAgentWorkflow(input: string): Promise<void> {
     const client = await createTemporalClient();
-    await client.workflow.signalWithStart(agentWorkflow, {
+    await client.workflow.signalWithStart(legacyWorkflow, {
         taskQueue: Config.TEMPORAL_TASK_QUEUE,
-        workflowId: await createWorkflowId("cli", "cli"),
+        workflowId: await createWorkflowId("cli", "-1"),
         args: [{}],
-        signal: agentWorkflowMessageSignal,
+        signal: legacyWorkflowMessageSignal,
         signalArgs: [input, "User", new Date().toISOString()],
     });
 }

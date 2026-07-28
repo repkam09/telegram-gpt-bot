@@ -1,13 +1,12 @@
 import {
-    allHandlersFinished,
     condition,
-    continueAsNew,
     defineSignal,
     proxyActivities,
     setHandler,
     workflowInfo,
     log
 } from "@temporalio/workflow";
+import { WorkflowStream } from "@temporalio/workflow-streams/workflow";
 import type * as activities from "./activities";
 import { LegacyWorkflowInput } from "./interface";
 import { CompletionContextToolCallEntry, CompletionContextToolResponseEntry } from "../../provider";
@@ -41,25 +40,29 @@ const { legacyCompletion, legacyAction } = proxyActivities<typeof activities>({
     },
 });
 
-export const legacyWorkflowMessageSignal = defineSignal<[string, string, string]>(
+export const legacyWorkflowMessageSignal = defineSignal<[string, string, string, number?]>(
     "legacyWorkflowMessage",
 );
 
 export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> {
+    const stream = new WorkflowStream(input.continueAsNew?.streamState);
+
     const pending = input.continueAsNew
         ? input.continueAsNew.pending
         : [];
 
-    setHandler(legacyWorkflowMessageSignal, (message: string, author: string, date: string) => {
+    setHandler(legacyWorkflowMessageSignal, (message: string, author: string, date: string, responseId?: number) => {
         pending.push({
             message,
             author,
             date,
+            responseId,
         });
     });
 
     let tools: WorkflowContextEntry[] = [];
     let iterations = 0;
+    let responseId: number | undefined;
 
     await condition(() => pending.length > 0);
 
@@ -69,6 +72,7 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
             // grab all the pending messages and put them into the database
             while (pending.length > 0) {
                 const entry = pending.shift()!;
+                responseId = entry.responseId;
                 await persistLegacyUserMessage({
                     name: entry.author,
                     message: entry.message,
@@ -80,7 +84,7 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
                 hasToolContext: tools.length > 0,
             });
 
-            const agentThought = await legacyCompletion({ context: tools, iterations, classification });
+            const agentThought = await legacyCompletion({ context: tools, iterations, classification, responseId });
             if (agentThought.__type === "string") {
                 await persistLegacyAgentMessage({
                     message: agentThought.payload,
@@ -88,15 +92,16 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
 
                 await broadcastLegacyAgentMessage({
                     message: agentThought.payload,
+                    sendResponse: responseId === undefined,
                 });
 
                 if (workflowInfo().continueAsNewSuggested) {
-                    await allHandlersFinished();
-                    return continueAsNew<typeof legacyWorkflow>({
+                    return stream.continueAsNew<typeof legacyWorkflow>((streamState) => [{
                         continueAsNew: {
                             pending,
+                            streamState,
                         },
-                    });
+                    }]);
                 } else {
                     tools = [];
                     iterations = 0;

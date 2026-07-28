@@ -89,6 +89,26 @@ export class AgentResponseHandler {
         }
     }
 
+    public static async handleTokenMessage(workflowId: string, message: string, draftId: number): Promise<void> {
+        try {
+            const workflowInfo = JSON.parse(workflowId);
+            if (!workflowInfo.platform || !workflowInfo.chatId) {
+                Logger.error(workflowId, `Invalid workflowId format: ${workflowId} for token message handling. Expected properties 'platform' and 'chatId' not found.`);
+                return;
+            }
+
+            const listener = this.tokenMessageListeners.get(workflowInfo.platform);
+            if (listener) {
+                await listener(message, workflowInfo.chatId, draftId);
+            } else {
+                Logger.warn(workflowId, `No token message listener registered for platform: ${workflowInfo.platform}`);
+            }
+        } catch (err: unknown) {
+            const error = err as Error;
+            Logger.error(workflowId, `Failed to parse workflowId: ${workflowId}. Error: ${error.message}`, error);
+        }
+    }
+
     public static async handleArtifact(workflowId: string, filePath: string, mime_type: string, description?: string): Promise<void> {
         try {
             const workflowInfo = JSON.parse(workflowId);

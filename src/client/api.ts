@@ -5,9 +5,6 @@ import { Config } from "../singletons/config";
 import { AgentResponseHandler } from "../response";
 import { TelegramWebhookInstance } from "./endpoints/telegram";
 import { HennosWebhookInstance } from "./endpoints/hennos";
-import { MCPWebhookInstance } from "./endpoints/mcp";
-import { A2AWebhookInstance } from "./endpoints/a2a";
-import { GemstoneWebhookInstance } from "./endpoints/gemstone";
 import { SupabaseWebhookInstance } from "./endpoints/supabase";
 import { LegacyWebhookInstance } from "./endpoints/legacy";
 import { queryUsage } from "../temporal/usage/interface";
@@ -75,19 +72,7 @@ export class WebhookInstance {
         if (Config.HENNOS_TELEGRAM_ENABLED) {
             TelegramWebhookInstance.init(app);
         }
-
-        if (Config.HENNOS_MCP_ENABLED) {
-            MCPWebhookInstance.init(app);
-        }
-
-        if (Config.HENNOS_A2A_ENABLED) {
-            A2AWebhookInstance.init(app);
-        }
-
-        if (Config.HENNOS_GEMSTONE_ENABLED) {
-            GemstoneWebhookInstance.init(app);
-        }
-
+        
         if (Config.HENNOS_SUPABASE_ENABLED) {
             SupabaseWebhookInstance.init(app);
         }

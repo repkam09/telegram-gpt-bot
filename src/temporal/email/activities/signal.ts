@@ -1,5 +1,5 @@
-import { signalAgenticWorkflowAdminExternalContext } from "../../agent/interface";
+import { signalLegacyWorkflowAdminMessageExternalContext } from "../../legacy/interface";
 
 export function signalSummary(summary: string): Promise<void> {
-    return signalAgenticWorkflowAdminExternalContext("scheduled_email_digest", summary);
+    return signalLegacyWorkflowAdminMessageExternalContext("scheduled_email_digest", summary);
 }

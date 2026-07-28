@@ -3,11 +3,13 @@ import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
 import { legacyWorkflow, legacyWorkflowMessageSignal } from "./workflow";
+import type { WorkflowStreamState } from "@temporalio/workflow-streams/workflow";
 
 export type PendingMessage = {
     author: string;
     message: string;
     date: string;
+    responseId?: number;
 }
 
 export function createWorkflowId(platform: string, chatId: string): string {
@@ -39,15 +41,25 @@ export function parseWorkflowId(workflowId: string): { platform: string; chatId:
     return result;
 }
 
-export async function signalLegacyWorkflowMessage(workflowId: string, author: string, message: string) {
+export async function signalLegacyWorkflowMessage(workflowId: string, author: string, message: string, responseId?: number) {
     const client = await createTemporalClient();
     await client.workflow.signalWithStart(legacyWorkflow, {
         taskQueue: Config.TEMPORAL_TASK_QUEUE,
         workflowId: workflowId,
         args: [{}],
         signal: legacyWorkflowMessageSignal,
-        signalArgs: [message, author, new Date().toISOString()],
+        signalArgs: [message, author, new Date().toISOString(), responseId],
     });
+}
+
+export async function signalLegacyWorkflowAdminMessageExternalContext(author: string, message: string) {
+    if (!Config.TELEGRAM_BOT_ADMIN) {
+        Logger.info(undefined, `signalLegacyWorkflowAdminMessageExternalContext: author=${author}, message=${message}`);
+        return;
+    }
+
+    const workflowId = createWorkflowId("telegram", Config.TELEGRAM_BOT_ADMIN);
+    return signalLegacyWorkflowExternalContext(workflowId, author, message);
 }
 
 export async function signalLegacyWorkflowExternalContext(workflowId: string, author: string, content: string) {
@@ -70,6 +82,16 @@ export async function signalLegacyWorkflowExternalContext(workflowId: string, au
         Logger.error(workflowId, `Failed to update legacy workflow database for: ${workflowId}, author: ${author}, content: ${content}`, error);
         throw err;
     }
+}
+
+export async function signalLegacyWorkflowAdminMessage(author: string, message: string) {
+    if (!Config.TELEGRAM_BOT_ADMIN) {
+        Logger.info(undefined, `signalLegacyWorkflowAdminMessage: author=${author}, message=${message}`);
+        return;
+    }
+
+    const workflowId = createWorkflowId("telegram", Config.TELEGRAM_BOT_ADMIN);
+    return signalLegacyWorkflowMessage(workflowId, author, message);
 }
 
 export async function signalLegacyWorkflowImageMessage(workflowId: string, author: string, path: string, mime: string) {
@@ -101,5 +123,6 @@ export async function signalLegacyWorkflowImageMessage(workflowId: string, autho
 export type LegacyWorkflowInput = {
     continueAsNew?: {
         pending: PendingMessage[];
+        streamState?: WorkflowStreamState;
     };
 };

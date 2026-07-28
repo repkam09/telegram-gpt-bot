@@ -1,14 +1,17 @@
-import TelegramBot, { Message, MessageOriginChannel, MessageOriginChat, MessageOriginHiddenUser, MessageOriginUser, SendMessageDraftParams, SendMessageParams } from "node-telegram-bot-api";
-import { Config } from "../singletons/config";
-import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
-import { Logger } from "../singletons/logger";
 import path from "node:path";
-import fs from "fs/promises";
 import { createReadStream } from "node:fs";
+
+import TelegramBot, { Message, MessageOriginChannel, MessageOriginChat, MessageOriginHiddenUser, MessageOriginUser, SendMessageDraftParams, SendMessageParams } from "node-telegram-bot-api";
+import mimetype from "mime-types";
+import { Config } from "../singletons/config";
+import { createWorkflowId, signalLegacyWorkflowExternalContext, signalLegacyWorkflowImageMessage, signalLegacyWorkflowMessage } from "../temporal/legacy/interface";
+import { Logger } from "../singletons/logger";
 import { generateTranscription } from "../singletons/transcription";
 import { AgentResponseHandler, StatusListenerEventType } from "../response";
 import { Database } from "../database";
-import { TelegramLegacyInstance } from "./legacy/legacy";
+import { createTemporalClient } from "../singletons/temporal";
+import { WorkflowStreamClient } from "@temporalio/workflow-streams/client";
+import { LegacyResponseStreamEvent } from "../temporal/legacy/types";
 
 const TelegramStatusEvents: string[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"] as const;
 
@@ -123,6 +126,39 @@ export class TelegramInstance {
         Logger.debug("telegram", "Registered Telegram message handlers.");
     }
 
+    private static async streamLegacyResponse(workflowId: string, draftId: number): Promise<void> {
+        const client = await createTemporalClient();
+        const stream = WorkflowStreamClient.create(client, workflowId);
+        const response = stream.topic<LegacyResponseStreamEvent>("legacy-response");
+        let draft = "";
+
+        try {
+            for await (const item of response.subscribe()) {
+                const event = item.data;
+                if (event.responseId !== draftId) {
+                    continue;
+                }
+
+                if (event.type === "retry") {
+                    draft = "";
+                    continue;
+                }
+
+                if (event.type === "delta") {
+                    draft += event.text;
+                    if (draft.length <= 4000) {
+                        await AgentResponseHandler.handleTokenMessage(workflowId, draft, draftId);
+                    }
+                    continue;
+                }
+
+                return;
+            }
+        } catch (error) {
+            Logger.error(workflowId, `Failed to stream legacy response to Telegram: ${error}`);
+        }
+    }
+
     static setTelegramIndicator(chatId: number, action: ChatAction): void {
         TelegramInstance.instance().sendChatAction(chatId, action).catch((err: unknown) => {
             Logger.warn("telegram", `Error while setting Telegram status indicator ${action} for chatId ${chatId}: ${err}`);
@@ -226,8 +262,8 @@ export class TelegramInstance {
         return TelegramInstance._instance;
     }
 
-    private static async workflowSignalArguments(msg: Message): Promise<{ author: string; workflowId: string; }> {
-        const workflowId = await createWorkflowId("telegram", String(msg.chat.id));
+    private static workflowLegacySignalArguments(msg: Message): { author: string; workflowId: string; } {
+        const workflowId = createWorkflowId("telegram", String(msg.chat.id));
         return {
             author: msg.from!.last_name ? `${msg.from!.first_name} ${msg.from!.last_name}` : `${msg.from!.first_name}`,
             workflowId,
@@ -270,18 +306,18 @@ export class TelegramInstance {
         return null;
     }
 
-    private static async handleDocumentMessage(msg: Message): Promise<void> {
+    public static async handleDocumentMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.document) {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleDocumentMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.document.file_id, Config.LOCAL_STORAGE(workflowId));
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
+        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.document.file_id, Config.LOCAL_STORAGE(String(msg.chat.id)));
         if (!result) {
             Logger.error(workflowId, `Failed to download document with file_id: ${msg.document.file_id}`);
             return;
@@ -302,55 +338,57 @@ export class TelegramInstance {
             });
         }
 
-        Logger.warn(workflowId, `Received document with file_id: ${msg.document.file_id} and extension: ${ext}.`);
+        Logger.warn(workflowId, `Ignoring document with file_id: ${msg.document.file_id} and extension: ${ext}.`);
         const payload = `<document><file_id>${msg.document.file_id}</file_id><file_name>${msg.document.file_name || ""}</file_name><mime_type>${msg.document.mime_type || ""}</mime_type><file_size>${msg.document.file_size || ""}</file_size><error>Document support has been removed from the Hennos system for cost reasons</error></document>`;
-        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
+        await signalLegacyWorkflowExternalContext(workflowId, author, payload);
 
         if (msg.caption) {
             TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-            return signalAgenticWorkflowMessage(workflowId, author, msg.caption);
+            return signalLegacyWorkflowMessage(workflowId, author, msg.caption);
         }
     }
 
-    private static async handlePhotoMessage(msg: Message): Promise<void> {
+    public static async handlePhotoMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.photo || msg.photo.length === 0) {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handlePhotoMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
         const largestPhoto = msg.photo.reduce((prev, current) => (prev.file_size && current.file_size && prev.file_size > current.file_size) ? prev : current);
 
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, largestPhoto.file_id, Config.LOCAL_STORAGE(workflowId));
-        if (result) {
-            const payload = `<photo><file_id>${largestPhoto.file_id}</file_id><width>${largestPhoto.width}</width><height>${largestPhoto.height}</height><file_size>${largestPhoto.file_size || ""}</file_size><caption>${msg.caption || ""}</caption></photo>`;
-            await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-        } else {
+        const result = await TelegramInstance.downloadTelegramFile(workflowId, largestPhoto.file_id, Config.LOCAL_STORAGE(String(msg.chat.id)));
+        if (!result) {
             Logger.error(workflowId, `Failed to download photo with file_id: ${largestPhoto.file_id}`);
+            return;
         }
 
-        const summary = "<not_implemented>Unsupported: Telegram Photo Messages</not_implemented>"; // TODO: Implement image support
-        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-        return signalAgenticWorkflowMessage(workflowId, author, summary);
+        const mime_type = mimetype.contentType(path.extname(result));
+        await signalLegacyWorkflowImageMessage(workflowId, author, result, mime_type || "application/octet-stream");
+
+        if (msg.caption) {
+            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
+            await signalLegacyWorkflowMessage(workflowId, author, msg.caption);
+        }
     }
 
-    private static async handleAudioMessage(msg: Message): Promise<void> {
+    public static async handleAudioMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.audio) {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleAudioMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
 
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.audio.file_id, Config.LOCAL_STORAGE(workflowId));
+        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.audio.file_id, Config.LOCAL_STORAGE(String(msg.chat.id)));
         if (!result) {
             Logger.error(workflowId, `Failed to download audio with file_id: ${msg.audio.file_id}`);
             return;
@@ -358,89 +396,83 @@ export class TelegramInstance {
 
         const transcript = await generateTranscription(workflowId, result);
         const payload = `<audio><file_id>${msg.audio.file_id}</file_id><duration>${msg.audio.duration}</duration><performer>${msg.audio.performer || ""}</performer><title>${msg.audio.title || ""}</title><mime_type>${msg.audio.mime_type || ""}</mime_type><file_size>${msg.audio.file_size || ""}</file_size><transcript>${transcript}</transcript></audio>`;
-        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
+        await signalLegacyWorkflowExternalContext(workflowId, author, payload);
 
         if (msg.caption) {
             TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-            return signalAgenticWorkflowMessage(workflowId, author, msg.caption);
+            return signalLegacyWorkflowMessage(workflowId, author, msg.caption);
         }
     }
 
-    private static async handleVoiceMessage(msg: Message): Promise<void> {
+    public static async handleVoiceMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.voice) {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleVoiceMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
 
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.voice.file_id, Config.LOCAL_STORAGE(workflowId));
+        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.voice.file_id, Config.LOCAL_STORAGE(String(msg.chat.id)));
         if (!result) {
             Logger.error(workflowId, `Failed to download voice message with file_id: ${msg.voice.file_id}`);
             return;
         }
 
         const payload = `<voice><file_id>${msg.voice.file_id}</file_id><duration>${msg.voice.duration}</duration><mime_type>${msg.voice.mime_type || ""}</mime_type><file_size>${msg.voice.file_size || ""}</file_size></voice>`;
-        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
+        await signalLegacyWorkflowExternalContext(workflowId, author, payload);
 
         TelegramInstance.setTelegramIndicator(msg.chat.id, "upload_voice");
         const transcript = await generateTranscription(workflowId, result);
 
         TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-        return signalAgenticWorkflowMessage(workflowId, author, transcript);
+        return signalLegacyWorkflowMessage(workflowId, author, transcript);
     }
 
-    private static async handleContactMessage(msg: Message): Promise<void> {
+    public static async handleContactMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.contact) {
             return;
         }
 
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleContactMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
         const payload = `<contact><first_name>${msg.contact.first_name}</first_name><last_name>${msg.contact.last_name || ""}</last_name><user_id>${msg.contact.user_id || ""}</user_id><vcard>${msg.contact.vcard || ""}</vcard><phone_number>${msg.contact.phone_number}</phone_number></contact>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
+        return signalLegacyWorkflowExternalContext(workflowId, author, payload);
     }
 
-    private static async handleLocationMessage(msg: Message): Promise<void> {
+    public static async handleLocationMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.location) {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleLocationMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
         const payload = `<location><latitude>${msg.location.latitude}</latitude><longitude>${msg.location.longitude}</longitude></location>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
+        return signalLegacyWorkflowExternalContext(workflowId, author, payload);
     }
 
-    private static async handleTextMessage(msg: Message): Promise<void> {
+    public static async handleTextMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }
 
-        // Check if this is a command
-        if (msg.text.startsWith("/")) {
-            return TelegramInstance.handleTextCommandMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleTextMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
         if (msg.forward_origin) {
             const originaldate = new Date(msg.forward_origin.date * 1000).toISOString();
 
@@ -450,29 +482,30 @@ export class TelegramInstance {
                 const forwardUser = (msg.forward_origin as MessageOriginUser).sender_user;
                 const forwardUserName = forwardUser.last_name ? `${forwardUser.first_name} ${forwardUser.last_name}` : forwardUser.first_name;
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, forwardUserName, payload);
+                return signalLegacyWorkflowExternalContext(workflowId, forwardUserName, payload);
             }
 
             if ((msg.forward_origin as MessageOriginHiddenUser).sender_user_name) {
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, (msg.forward_origin as MessageOriginHiddenUser).sender_user_name, payload);
+                return signalLegacyWorkflowExternalContext(workflowId, (msg.forward_origin as MessageOriginHiddenUser).sender_user_name, payload);
             }
 
             if ((msg.forward_origin as MessageOriginChat).sender_chat) {
                 const forwardChat = (msg.forward_origin as MessageOriginChat).sender_chat;
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, forwardChat.title || "Unknown Chat", payload);
+                return signalLegacyWorkflowExternalContext(workflowId, forwardChat.title || "Unknown Chat", payload);
             }
 
             if ((msg.forward_origin as MessageOriginChannel).chat) {
                 const forwardChannel = (msg.forward_origin as MessageOriginChannel).chat;
                 const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, forwardChannel.title || "Unknown Channel", payload);
+                return signalLegacyWorkflowExternalContext(workflowId, forwardChannel.title || "Unknown Channel", payload);
             }
         }
 
         TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-        return signalAgenticWorkflowMessage(workflowId, author, msg.text);
+        await signalLegacyWorkflowMessage(workflowId, author, msg.text, msg.message_id);
+        void TelegramInstance.streamLegacyResponse(workflowId, msg.message_id);
     }
 
     private static async handleEditTextMessage(msg: Message): Promise<void> {
@@ -480,14 +513,9 @@ export class TelegramInstance {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleLegacyNoOpMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
         const payload = `<edited_message><edited_date>${new Date().toISOString()}</edited_date><new_text>${msg.text}</new_text></edited_message>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
+        return signalLegacyWorkflowExternalContext(workflowId, author, payload);
     }
 
     private static async handleEditCaptionMessage(msg: Message): Promise<void> {
@@ -495,18 +523,9 @@ export class TelegramInstance {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleLegacyNoOpMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
         const payload = `<edited_caption><edited_date>${new Date().toISOString()}</edited_date><new_caption>${msg.caption}</new_caption></edited_caption>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
-    }
-
-    private static async handleUnimplemented(event: string, msg: Message): Promise<void> {
-        Logger.debug("telegram", `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
+        return signalLegacyWorkflowExternalContext(workflowId, author, payload);
     }
 
     private static async handleTelegramStickerMessage(msg: Message) {
@@ -515,7 +534,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const { workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
 
         const { set_name, emoji } = msg.sticker;
         if (set_name && emoji) {
@@ -537,26 +556,18 @@ export class TelegramInstance {
         }
     }
 
-    private static async handleTextCommandMessage(msg: Message): Promise<void> {
+    public static async handleTextCommandMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleTextCommandMessage(msg);
+        if (msg.chat.type !== "private") {
+            Logger.debug("telegram", `Ignoring message from non-private chat: ${msg.chat.id} of type ${msg.chat.type}`);
+            return;
         }
 
-        const command = msg.text.split(" ")[0].substring(1).toLowerCase().trim();
-        Logger.debug("telegram", `Received Telegram command message: ${msg.text} from ${msg.from?.first_name} ${msg.from?.last_name || ""}`);
-        if (command === "debug") {
-            const { workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-            const context = await queryAgenticWorkflowContext(workflowId);
-
-            const filePath = path.join(Config.LOCAL_STORAGE(workflowId), `debug_context_${Date.now()}.xml`);
-            await fs.writeFile(filePath, context.join("\n"), "utf-8");
-            Logger.debug("telegram", `Workflow context written to ${filePath}`);
-        }
+        const { author, workflowId } = await TelegramInstance.workflowLegacySignalArguments(msg);
+        return handleCommand(workflowId, author, msg);
     }
 }
 
@@ -569,4 +580,50 @@ function chunkSubstr(str: string, size: number) {
     }
 
     return chunks;
+}
+
+
+export async function handleCommand(workflowId: string, author: string, msg: Message): Promise<void> {
+    if (!msg.from || !msg.text) {
+        return;
+    }
+
+    if (msg.text === "/reset") {
+        // TODO: This command needs to clear the messages from the users database entries
+        return AgentResponseHandler.handleMessage(workflowId, comingSoonMessage());
+    }
+
+    if (msg.text === "/start") {
+        return AgentResponseHandler.handleMessage(workflowId, getStartMessage());
+    }
+
+    if (msg.text === "/help" || msg.text === "/about") {
+        return AgentResponseHandler.handleMessage(workflowId, getStartMessage());
+    }
+
+    if (msg.text === "/settings") {
+        return AgentResponseHandler.handleMessage(workflowId, comingSoonMessage());
+    }
+
+    return AgentResponseHandler.handleMessage(workflowId, `Unknown Command: ${msg.text}`);
+}
+
+export function getStartMessage(): string {
+    return `Hennos is a conversational chat assistant powered by a number of different large language models.
+
+Hennos is available to whitelisted users only. Your messages will be subject to moderation before being sent to the bot.
+
+Hennos supports the following features for whitelisted users:
+- Basic text conversations with the bot.
+- Chat memory is stored allowing the bot to respond conversationally.
+- Voice messages as input.
+- Image messages as input.
+- GPS location based context (if the user sends a location, the bot will take that into account in future conversation).
+
+For more information check out the [GitHub repository](https://github.com/repkam09/telegram-gpt-bot).
+`;
+}
+
+export function comingSoonMessage(): string {
+    return "Hennos v2 has been released, some features are not yet implemented but will be coming soon!";
 }

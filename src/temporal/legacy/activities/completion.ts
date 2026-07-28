@@ -12,11 +12,14 @@ import { withActivityHeartbeat } from "../../heartbeat";
 import { PromptComplexityResult } from "./classifier";
 import { Config } from "../../../singletons/config";
 import { MemoryFileStore } from "../../../tools/memory/MemoryFileStore";
+import { WorkflowStreamClient } from "@temporalio/workflow-streams/client";
+import type { LegacyResponseStreamEvent } from "../types";
 
 export type LegacyCompletionInput = {
     context: CompletionContextEntry[];
     iterations: number;
     classification: PromptComplexityResult;
+    responseId?: number;
 }
 
 export const legacyCompletion = withActivityHeartbeat(_legacyCompletion);
@@ -69,6 +72,9 @@ async function _legacyCompletion(input: LegacyCompletionInput,
     const response = await model.completion(workflowId, prompt, input.iterations, tools ? tools.map((tool) => tool.definition()) : []);
 
     if (response.__type === "string") {
+        if (input.responseId !== undefined) {
+            await publishResponse(input.responseId, response.payload);
+        }
         Logger.debug(workflowId, "Received string response from model provider");
         return {
             __type: "string",
@@ -89,6 +95,21 @@ async function _legacyCompletion(input: LegacyCompletionInput,
     }
 
     throw new ApplicationFailure("Invalid response from model provider, expected string or tool response", "InvalidModelResponse");
+}
+
+async function publishResponse(responseId: number, text: string): Promise<void> {
+    const streamClient = WorkflowStreamClient.fromWithinActivity({ batchInterval: "200 milliseconds" });
+    const response = streamClient.topic<LegacyResponseStreamEvent>("legacy-response");
+
+    try {
+        if (Context.current().info.attempt > 1) {
+            response.publish({ type: "retry", responseId }, { forceFlush: true });
+        }
+        response.publish({ type: "delta", responseId, text }, { forceFlush: true });
+        response.publish({ type: "close", responseId });
+    } finally {
+        await streamClient[Symbol.asyncDispose]();
+    }
 }
 
 type LegacyCompletionPromptInput = {

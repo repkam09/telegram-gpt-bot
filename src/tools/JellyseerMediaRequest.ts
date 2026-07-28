@@ -2,7 +2,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
-import { signalAgenticWorkflowAdminMessage } from "../temporal/agent/interface";
+import { signalLegacyWorkflowAdminMessage } from "../temporal/legacy/interface";
 
 export class JellyseerMediaRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -121,7 +121,7 @@ export class JellyseerMediaRequest extends BaseTool {
 
             Logger.info(workflowId, `jellyseer_media_request. ${JSON.stringify(results)}`);
 
-            await signalAgenticWorkflowAdminMessage(workflowId, `User has requested ${args.mediaType} with id ${args.mediaId}. Please review the request within the Jellyfin/Jellyseer system.`);
+            await signalLegacyWorkflowAdminMessage(workflowId, `User has requested ${args.mediaType} with id ${args.mediaId}. Please review the request within the Jellyfin/Jellyseer system.`);
             return [JSON.stringify({ status: "requested" }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
