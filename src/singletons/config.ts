@@ -158,14 +158,6 @@ export class Config {
         return process.env.HENNOS_API_ENABLED === "true";
     }
 
-    static get HENNOS_SUPABASE_ENABLED(): boolean {
-        if (!process.env.HENNOS_SUPABASE_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_SUPABASE_ENABLED === "true";
-    }
-
     static get HENNOS_API_PORT(): number {
         if (!process.env.HENNOS_API_PORT) {
             return 16006;
@@ -443,30 +435,6 @@ export class Config {
         return process.env.GOOGLE_API_KEY;
     }
 
-    static get AT_PROTO_SERVICE(): string {
-        if (!process.env.AT_PROTO_SERVICE) {
-            return "https://bsky.social";
-        }
-
-        return process.env.AT_PROTO_SERVICE;
-    }
-
-    static get AT_PROTO_USERNAME(): string {
-        if (!process.env.AT_PROTO_USERNAME) {
-            throw new Error("Missing AT_PROTO_USERNAME");
-        }
-
-        return process.env.AT_PROTO_USERNAME;
-    }
-
-    static get AT_PROTO_PASSWORD(): string {
-        if (!process.env.AT_PROTO_PASSWORD) {
-            throw new Error("Missing AT_PROTO_PASSWORD");
-        }
-
-        return process.env.AT_PROTO_PASSWORD;
-    }
-
     static get OPEN_WEATHER_API(): string | false {
         if (!process.env.OPEN_WEATHER_API) {
             return false;
@@ -567,30 +535,6 @@ export class Config {
         }
 
         return process.env.TEMPORAL_TASK_QUEUE;
-    }
-
-    static get SUPABASE_URL(): string | false {
-        if (!process.env.SUPABASE_URL) {
-            return false;
-        }
-
-        return process.env.SUPABASE_URL;
-    }
-
-    static get SUPABASE_ANON_KEY(): string | false {
-        if (!process.env.SUPABASE_ANON_KEY) {
-            return false;
-        }
-
-        return process.env.SUPABASE_ANON_KEY;
-    }
-
-    static get SUPABASE_SERVICE_ROLE_KEY(): string | false {
-        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            return false;
-        }
-
-        return process.env.SUPABASE_SERVICE_ROLE_KEY;
     }
 
     static LOCAL_STORAGE(workflowId: string): string {

@@ -23,22 +23,6 @@ export class HennosAnthropicSingleton {
     }
 }
 
-// type AnthropicCompletionResponse = AnthropicCompletionResponseString | AnthropicCompletionResponseTool;
-
-// type AnthropicCompletionResponseString = {
-//     __type: "string";
-//     payload: string;
-// }
-
-// type AnthropicCompletionResponseTool = {
-//     __type: "tool";
-//     payload: {
-//         name: string;
-//         input: string;
-//         id: string;
-//     };
-// }
-
 export class HennosAnthropicProvider {
     public client: Anthropic;
     private model: HennosModelConfig;

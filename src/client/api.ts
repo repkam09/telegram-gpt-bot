@@ -2,12 +2,9 @@ import express, { Express, Request, Response } from "express";
 import path from "node:path";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { AgentResponseHandler } from "../response";
-import { TelegramWebhookInstance } from "./endpoints/telegram";
-import { HennosWebhookInstance } from "./endpoints/hennos";
-import { SupabaseWebhookInstance } from "./endpoints/supabase";
-import { LegacyWebhookInstance } from "./endpoints/legacy";
 import { queryUsage } from "../temporal/usage/interface";
+import { HennosRealtime } from "../realtime/sip";
+import { TelegramInstance } from "./telegram";
 
 export class WebhookInstance {
     static _instance: Express;
@@ -69,76 +66,19 @@ export class WebhookInstance {
             return res.status(200).json(metrics);
         });
 
-        if (Config.HENNOS_TELEGRAM_ENABLED) {
-            TelegramWebhookInstance.init(app);
-        }
-        
-        if (Config.HENNOS_SUPABASE_ENABLED) {
-            SupabaseWebhookInstance.init(app);
-        }
+        app.post("/hennos/realtime/sip", HennosRealtime.middleware());
 
-        // Enable the primary endpoints always
-        HennosWebhookInstance.init(app);
-        LegacyWebhookInstance.init(app);
-
-        AgentResponseHandler.registerMessageListener("webhook", async (message: string, sessionId: string) => {
-            Logger.info("webhook", `Received webhook message: ${message} for sessionId: ${sessionId}`);
-
-            // Grab any listening response streams for this sessionId and send the message to them
-            const sockets = WebhookInstance.sockets(sessionId);
-            if (sockets) {
-                Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
-                for (const session of sockets) {
-                    if (!session.stream.writableEnded) {
-                        session.stream.write(`data: ${JSON.stringify({ role: "assistant", content: message })}\n\n`);
-                    } else {
-                        Logger.warn("webhook", `Stream ended for sessionId: ${sessionId}`);
-                    }
-                }
-            } else {
-                Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
-            }
+        // Set up endpoints for Telegram Webhook mode
+        app.post(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
+            const bot = TelegramInstance.instance();
+            Logger.debug(undefined, `Telegram Webhook: ${JSON.stringify(req.body)}`);
+            bot.processUpdate(req.body);
+            return res.sendStatus(200);
         });
 
-        AgentResponseHandler.registerArtifactListener("webhook", async (filePath: string, sessionId: string, mime_type: string, description?: string | undefined) => {
-            Logger.info("webhook", `Received webhook artifact: ${filePath} for sessionId: ${sessionId} with mime_type: ${mime_type} and description: ${description}`);
-
-            // Grab any listening response streams for this sessionId and send the message to them
-            const sockets = WebhookInstance.sockets(sessionId);
-            if (sockets) {
-                Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
-                for (const session of sockets) {
-                    if (!session.stream.writableEnded) {
-                        session.stream.write(`data: ${JSON.stringify({ role: "assistant", artifact: { filePath, mime_type, description } })}\n\n`);
-                    } else {
-                        Logger.warn("webhook", `Stream ended for sessionId: ${sessionId}`);
-                    }
-                }
-            } else {
-                Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
-            }
+        app.get(`/bot${Config.TELEGRAM_BOT_KEY}`, (req: Request, res: Response) => {
+            return res.status(200).send("OK");
         });
-
-        AgentResponseHandler.registerStatusListener("webhook", async (event: { type: string; payload?: unknown }, sessionId: string) => {
-            Logger.debug("webhook", `Received status update: ${JSON.stringify(event)} for sessionId: ${sessionId}`);
-
-            // Grab any listening response streams for this sessionId and send the message to them
-            const sockets = WebhookInstance.sockets(sessionId);
-            if (sockets) {
-                Logger.debug("webhook", `Found ${sockets.length} active streams for sessionId: ${sessionId}`);
-                for (const session of sockets) {
-                    if (!session.stream.writableEnded) {
-                        session.stream.write(`data: ${JSON.stringify({ role: "assistant", status: event })}\n\n`);
-                    } else {
-                        Logger.warn("webhook", `Stream ended for sessionId: ${sessionId}`);
-                    }
-                }
-            } else {
-                Logger.debug("webhook", `No active streams for sessionId: ${sessionId}`);
-            }
-
-        });
-
 
         Logger.info("webhook", "Hennos Webhook API initialized");
         app.listen(Config.HENNOS_API_PORT, () => {

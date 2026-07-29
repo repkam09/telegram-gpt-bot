@@ -4,7 +4,6 @@ import { Database } from "./database";
 import { TelegramInstance } from "./client/telegram";
 import { WebhookInstance } from "./client/api";
 import { Config } from "./singletons/config";
-import { SupabaseInstance } from "./singletons/supabase";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
 import { UsageTracker } from "./temporal/usage/interface";
 
@@ -19,13 +18,6 @@ async function start() {
         await TelegramInstance.init();
     } else {
         Logger.info("Hennos", "Telegram client is disabled. Skipping...");
-    }
-
-    if (Config.HENNOS_SUPABASE_ENABLED) {
-        Logger.info("Hennos", "Initializing Supabase client...");
-        await SupabaseInstance.init();
-    } else {
-        Logger.info("Hennos", "Supabase client is disabled. Skipping...");
     }
 
     if (Config.HENNOS_API_ENABLED) {
