@@ -19,8 +19,6 @@ import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Ollama, OllamaEmbedding } from "@llamaindex/ollama";
-import { UsageTracker } from "../temporal/usage/interface";
-import { Context } from "@temporalio/activity";
 
 if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
     Logger.info("DocumentProcessing", "Initializing Ollama embedding model for document processing");
@@ -71,14 +69,6 @@ if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "openai" || Config.HENNOS_DOCUMENT
             if (raw && typeof raw === "object" && "usage" in raw) {
                 const usage = raw.usage as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
                 Logger.info("DocumentProcessing", `LlamaIndex LLM Usage: input=${usage.prompt_tokens ?? 0}, output=${usage.completion_tokens ?? 0}, total=${usage.total_tokens ?? 0}`);
-
-                const workflowId = Context.current().info.workflowExecution!.workflowId;
-                UsageTracker.signalUsage(workflowId, {
-                    inputTokens: usage.prompt_tokens ?? 0,
-                    outputTokens: usage.completion_tokens ?? 0,
-                    reasoningTokens: usage.completion_tokens_details?.reasoning_tokens ?? 0,
-                    totalTokens: usage.total_tokens ?? 0,
-                });
             } else {
                 Logger.debug("DocumentProcessing", "LLM response does not contain usage information.");
             }

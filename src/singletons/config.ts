@@ -134,14 +134,6 @@ export class Config {
         return process.env.HENNOS_MEMORY_ENABLED === "true";
     }
 
-    static get HENNOS_GMAIL_ENABLED(): boolean {
-        if (!process.env.HENNOS_GMAIL_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_GMAIL_ENABLED === "true";
-    }
-
     static get HENNOS_TELEGRAM_ENABLED(): boolean {
         if (!process.env.HENNOS_TELEGRAM_ENABLED) {
             return false;
@@ -393,30 +385,6 @@ export class Config {
         }
 
         return process.env.TELEGRAM_BOT_ADMIN;
-    }
-
-    static get GMAIL_CLIENT_ID(): string {
-        if (!process.env.GMAIL_CLIENT_ID) {
-            throw new Error("Missing GMAIL_CLIENT_ID");
-        }
-
-        return process.env.GMAIL_CLIENT_ID;
-    }
-
-    static get GMAIL_CLIENT_SECRET(): string {
-        if (!process.env.GMAIL_CLIENT_SECRET) {
-            throw new Error("Missing GMAIL_CLIENT_SECRET");
-        }
-
-        return process.env.GMAIL_CLIENT_SECRET;
-    }
-
-    static get GMAIL_REFRESH_TOKEN(): string {
-        if (!process.env.GMAIL_REFRESH_TOKEN) {
-            throw new Error("Missing GMAIL_REFRESH_TOKEN");
-        }
-
-        return process.env.GMAIL_REFRESH_TOKEN;
     }
 
     static get GOOGLE_IMAGE_MODEL(): string {

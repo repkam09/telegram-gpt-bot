@@ -2,7 +2,6 @@ import express, { Express, Request, Response } from "express";
 import path from "node:path";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { queryUsage } from "../temporal/usage/interface";
 import { HennosRealtime } from "../realtime/sip";
 import { TelegramInstance } from "./telegram";
 
@@ -59,11 +58,6 @@ export class WebhookInstance {
 
         app.get("/healthz", (req: Request, res: Response) => {
             return res.status(200).send("OK");
-        });
-
-        app.get("/metrics", async (req: Request, res: Response) => {
-            const metrics = await queryUsage();
-            return res.status(200).json(metrics);
         });
 
         app.post("/hennos/realtime/sip", HennosRealtime.middleware());
