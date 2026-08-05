@@ -26,7 +26,8 @@
   "author": "Mark Repka",
   "license": "MIT",
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=26.0.0",
+    "npm": ">=11.17.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
