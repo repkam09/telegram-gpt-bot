@@ -13,7 +13,7 @@ export async function tokens(
 
     const result = await getChatContextTokenCount(context);
 
-    const provider = resolveModelProvider("high");
+    const provider = await resolveModelProvider(workflowId, "high");
     const limit = provider.limit();
     
     Logger.debug(workflowId, `Counting tokens for ${context.length} messages, tokenCount: ${result}, tokenLimit: ${limit}`);

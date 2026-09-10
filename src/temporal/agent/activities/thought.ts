@@ -37,7 +37,7 @@ async function _thought(input: ThoughtInput,
         memoryDirectory
     });
 
-    const model = resolveModelProvider("high");
+    const model = await resolveModelProvider(workflowId, "high");
 
     const tools: HennosTool[] = [
         {

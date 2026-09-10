@@ -13,7 +13,7 @@ export type GemstoneCompactionResult = {
 export async function gemstoneCompact(input: GemstoneCompactionInput
 ): Promise<GemstoneCompactionResult> {
     const workflowId = Context.current().info.workflowExecution!.workflowId;
-    const model = resolveModelProvider("low");
+    const model = await resolveModelProvider(workflowId, "low");
     const compactTemplate = gemstoneCompactPromptTemplate({
         contextHistory: input.context.map(entry => `${entry.role}: ${entry.content}`).join("\n"),
     });

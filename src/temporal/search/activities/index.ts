@@ -13,7 +13,7 @@ export async function summarizeResults(input: SearchWorkflowInput, results: Arra
         currentDate: new Date(),
     });
 
-    const instance = resolveModelProvider("low");
+    const instance = await resolveModelProvider(workflowId, "low");
     const response = await instance.invoke(workflowId, [{ role: "user", content: promptTemplate, type: "text" }]);
 
     if (!response || response.__type !== "string") {

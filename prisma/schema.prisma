@@ -22,6 +22,14 @@ model User {
   experimental  Boolean @default(false)
 }
 
+model UserBYOK {
+  chatId   BigInt   @id
+  key      String
+  datetime DateTime @default(now())
+
+  @@unique([chatId, key])
+}
+
 model KeyValueMemory {
   id       Int      @id @default(autoincrement())
   chatId   BigInt
