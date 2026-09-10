@@ -19,7 +19,7 @@ async function _gemstoneThought(input: GemstoneThoughtInput,
         currentDate: new Date()
     });
 
-    const model = resolveModelProvider("low");
+    const model = await resolveModelProvider(workflowId, "low");
 
     const response = await model.invoke(workflowId, [
         { role: "system", content: systemPrompt, type: "text" },

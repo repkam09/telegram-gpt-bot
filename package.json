@@ -26,7 +26,8 @@
   "author": "Mark Repka",
   "license": "MIT",
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=26.0.0",
+    "npm": ">=11.17.0"
   },
   "dependencies": {
     "@a2a-js/sdk": "^0.3.13",

@@ -17,7 +17,7 @@ export const observation = withActivityHeartbeat(_observation);
 async function _observation(input: ObservationInput
 ): Promise<ObservationResult> {
     const workflowId = Context.current().info.workflowExecution!.workflowId;
-    const model = resolveModelProvider("low");
+    const model = await resolveModelProvider(workflowId, "low");
     const promptTemplate = observationPromptTemplate({
         actionName: input.actionName,
         actionInput: input.actionInput,

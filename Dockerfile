@@ -1,4 +1,4 @@
-FROM node:24-bookworm
+FROM node:26-bookworm
 
 # Set the working directory
 WORKDIR /app/hennos

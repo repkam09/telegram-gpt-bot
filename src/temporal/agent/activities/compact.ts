@@ -12,7 +12,7 @@ export type CompactionResult = {
 export async function compact(input: CompactionInput
 ): Promise<CompactionResult> {
     const workflowId = Context.current().info.workflowExecution!.workflowId;
-    const model = resolveModelProvider("low");
+    const model = await resolveModelProvider(workflowId, "low");
     const compactTemplate = compactPromptTemplate({
         contextHistory: input.context.join("\n"),
     });

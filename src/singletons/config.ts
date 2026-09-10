@@ -223,6 +223,14 @@ export class Config {
         return parseHennosModelString(process.env.LITELLM_LLM, "LITELLM_LLM");
     }
 
+    static get LITELLM_BYOK_ENABLED(): boolean {
+        if (!process.env.LITELLM_BYOK_ENABLED) {
+            return false;
+        }
+
+        return process.env.LITELLM_BYOK_ENABLED === "true";
+    }
+
     static get LITELLM_API_KEY(): string {
         if (!process.env.LITELLM_API_KEY) {
             throw new Error("Missing LITELLM_API_KEY");

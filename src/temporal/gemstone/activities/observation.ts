@@ -16,7 +16,7 @@ export const gemstoneObservation = withActivityHeartbeat(_gemstoneObservation);
 async function _gemstoneObservation(input: GemstoneObservationInput
 ): Promise<GemstoneObservationResult> {
     const workflowId = Context.current().info.workflowExecution!.workflowId;
-    const model = resolveModelProvider("low");
+    const model = await resolveModelProvider(workflowId, "low");
     const promptTemplate = gemstoneObservationPromptTemplate({
         previousSteps: input.context.map(entry => `${entry.role}: ${entry.content}`).join("\n"),
         actionResult: input.actionResult,

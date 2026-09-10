@@ -48,7 +48,7 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
     }
 
     // Use a cheap/fast model with forced tool-call output for structured classification
-    const model = resolveModelProvider("nano");
+    const model = await resolveModelProvider(workflowId, "nano");
     const prompt = classifierPromptTemplate(latestUserMessage);
     const tools = classifierToolDefinitions();
 
