@@ -48,6 +48,16 @@ async function start() {
         Logger.info("Hennos", "Supabase client is disabled. Skipping...");
     }
 
+    if (Config.HENNOS_SUPABASE_ENABLED
+        && Config.SUPABASE_KEEPALIVE_EMAIL
+        && Config.SUPABASE_KEEPALIVE_PASSWORD) {
+        Logger.info("Hennos", "Initializing Supabase Keepalive Schedule...");
+        await createSupabaseKeepaliveSchedule();
+    } else {
+        Logger.info("Hennos", "Supabase Keepalive Schedule is disabled. Skipping...");
+        await deleteSupabaseKeepaliveSchedule();
+    }
+
     if (Config.HENNOS_API_ENABLED) {
         Logger.info("Hennos", "Initializing API client...");
         await WebhookInstance.init();
@@ -61,17 +71,6 @@ async function start() {
     } else {
         Logger.info("Hennos", "Email Schedule Workflow is disabled. Skipping...");
         await deleteEmailScheduleWorkflow();
-    }
-
-    if (Config.HENNOS_SUPABASE_ENABLED
-        && Config.HENNOS_SUPABASE_KEEPALIVE_ENABLED
-        && Config.SUPABASE_KEEPALIVE_EMAIL
-        && Config.SUPABASE_KEEPALIVE_PASSWORD) {
-        Logger.info("Hennos", "Initializing Supabase Keepalive Schedule...");
-        await createSupabaseKeepaliveSchedule();
-    } else {
-        Logger.info("Hennos", "Supabase Keepalive Schedule is disabled. Skipping...");
-        await deleteSupabaseKeepaliveSchedule();
     }
 
     UsageTracker.init();

@@ -190,14 +190,6 @@ export class Config {
         return process.env.HENNOS_SUPABASE_ENABLED === "true";
     }
 
-    static get HENNOS_SUPABASE_KEEPALIVE_ENABLED(): boolean {
-        if (!process.env.HENNOS_SUPABASE_KEEPALIVE_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_SUPABASE_KEEPALIVE_ENABLED === "true";
-    }
-
     static get HENNOS_API_PORT(): number {
         if (!process.env.HENNOS_API_PORT) {
             return 16006;
