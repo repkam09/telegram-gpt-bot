@@ -3,6 +3,9 @@ import { Config } from "./config";
 
 export async function createTemporalClient() {
     const connection = await Connection.connect({ address: `${Config.TEMPORAL_HOST}:${Config.TEMPORAL_PORT}` });
-    const client = new Client({ connection });
+    const client = new Client({
+        connection,
+        namespace: Config.TEMPORAL_NAMESPACE,
+    });
     return client;
 }
