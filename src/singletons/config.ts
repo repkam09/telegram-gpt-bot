@@ -190,6 +190,14 @@ export class Config {
         return process.env.HENNOS_SUPABASE_ENABLED === "true";
     }
 
+    static get HENNOS_SUPABASE_KEEPALIVE_ENABLED(): boolean {
+        if (!process.env.HENNOS_SUPABASE_KEEPALIVE_ENABLED) {
+            return false;
+        }
+
+        return process.env.HENNOS_SUPABASE_KEEPALIVE_ENABLED === "true";
+    }
+
     static get HENNOS_API_PORT(): number {
         if (!process.env.HENNOS_API_PORT) {
             return 16006;
@@ -623,6 +631,22 @@ export class Config {
         }
 
         return process.env.SUPABASE_SERVICE_ROLE_KEY;
+    }
+
+    static get SUPABASE_KEEPALIVE_EMAIL(): string | false {
+        if (!process.env.SUPABASE_KEEPALIVE_EMAIL) {
+            return false;
+        }
+
+        return process.env.SUPABASE_KEEPALIVE_EMAIL;
+    }
+
+    static get SUPABASE_KEEPALIVE_PASSWORD(): string | false {
+        if (!process.env.SUPABASE_KEEPALIVE_PASSWORD) {
+            return false;
+        }
+
+        return process.env.SUPABASE_KEEPALIVE_PASSWORD;
     }
 
     static LOCAL_STORAGE(workflowId: string): string {

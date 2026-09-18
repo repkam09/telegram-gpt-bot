@@ -10,6 +10,7 @@ import { ModelContextProtocolServer } from "./client/mcp";
 import { Agent2AgentProtocolServer } from "./client/a2a";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
 import { UsageTracker } from "./temporal/usage/interface";
+import { createSupabaseKeepaliveSchedule, deleteSupabaseKeepaliveSchedule } from "./temporal/supabase/schedule";
 
 async function start() {
     Logger.info("Hennos", "Starting Hennos...");
@@ -60,6 +61,17 @@ async function start() {
     } else {
         Logger.info("Hennos", "Email Schedule Workflow is disabled. Skipping...");
         await deleteEmailScheduleWorkflow();
+    }
+
+    if (Config.HENNOS_SUPABASE_ENABLED
+        && Config.HENNOS_SUPABASE_KEEPALIVE_ENABLED
+        && Config.SUPABASE_KEEPALIVE_EMAIL
+        && Config.SUPABASE_KEEPALIVE_PASSWORD) {
+        Logger.info("Hennos", "Initializing Supabase Keepalive Schedule...");
+        await createSupabaseKeepaliveSchedule();
+    } else {
+        Logger.info("Hennos", "Supabase Keepalive Schedule is disabled. Skipping...");
+        await deleteSupabaseKeepaliveSchedule();
     }
 
     UsageTracker.init();
