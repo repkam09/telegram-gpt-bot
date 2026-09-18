@@ -8,19 +8,15 @@ export class SupabaseInstance {
     private static client: SupabaseClient | null = null;
 
     public static async init(): Promise<void> {
-        if (!Config.SUPABASE_ANON_KEY) {
-            throw new Error("SUPABASE_ANON_KEY is not set in Config");
-        }
-
         if (!Config.SUPABASE_URL) {
             throw new Error("SUPABASE_URL is not set in Config");
         }
 
-        if (!Config.SUPABASE_ANON_KEY) {
-            throw new Error("SUPABASE_ANON_KEY is not set in Config");
+        if (!Config.SUPABASE_PUBLISHABLE_KEY) {
+            throw new Error("SUPABASE_PUBLISHABLE_KEY is not set in Config");
         }
 
-        SupabaseInstance.client = createClient(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY);
+        SupabaseInstance.client = createClient(Config.SUPABASE_URL, Config.SUPABASE_PUBLISHABLE_KEY);
 
         // Check that the client functions
         try {

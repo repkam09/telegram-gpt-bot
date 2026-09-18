@@ -609,20 +609,12 @@ export class Config {
         return process.env.SUPABASE_URL;
     }
 
-    static get SUPABASE_ANON_KEY(): string | false {
-        if (!process.env.SUPABASE_ANON_KEY) {
+    static get SUPABASE_PUBLISHABLE_KEY(): string | false {
+        if (!process.env.SUPABASE_PUBLISHABLE_KEY) {
             return false;
         }
 
-        return process.env.SUPABASE_ANON_KEY;
-    }
-
-    static get SUPABASE_SERVICE_ROLE_KEY(): string | false {
-        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            return false;
-        }
-
-        return process.env.SUPABASE_SERVICE_ROLE_KEY;
+        return process.env.SUPABASE_PUBLISHABLE_KEY;
     }
 
     static get SUPABASE_KEEPALIVE_EMAIL(): string | false {
