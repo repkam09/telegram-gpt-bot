@@ -9,7 +9,6 @@ import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temp
 import { ModelContextProtocolServer } from "./client/mcp";
 import { Agent2AgentProtocolServer } from "./client/a2a";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
-import { UsageTracker } from "./temporal/usage/interface";
 import { createSupabaseKeepaliveSchedule, deleteSupabaseKeepaliveSchedule } from "./temporal/supabase/schedule";
 
 async function start() {
@@ -72,8 +71,6 @@ async function start() {
         Logger.info("Hennos", "Email Schedule Workflow is disabled. Skipping...");
         await deleteEmailScheduleWorkflow();
     }
-
-    UsageTracker.init();
 
     Logger.info("Hennos", "Starting Temporal worker...");
     return HennosTemporalWorker.init();

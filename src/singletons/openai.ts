@@ -3,7 +3,6 @@ import OpenAI from "openai";
 import { Logger } from "./logger";
 import { ChatCompletion, ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionTool, ChatCompletionUserMessageParam } from "openai/resources";
 import { CompletionContextEntry, CompletionContextImageEntry, CompletionContextTextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
-import { UsageTracker } from "../temporal/usage/interface";
 
 export class HennosOpenAISingleton {
     private static _instance: HennosOpenAIProvider | null = null;
@@ -140,15 +139,6 @@ export class HennosOpenAIProvider {
             tools: tools,
             parallel_tool_calls: tools ? true : undefined
         });
-
-        if (response.usage) {
-            UsageTracker.signalUsage(workflowId, {
-                inputTokens: response.usage.prompt_tokens,
-                outputTokens: response.usage.completion_tokens,
-                reasoningTokens: response.usage.completion_tokens_details ? (response.usage.completion_tokens_details.reasoning_tokens ? response.usage.completion_tokens_details.reasoning_tokens : 0) : 0,
-                totalTokens: response.usage.total_tokens
-            });
-        }
 
         Logger.info(workflowId, `${this.name} Invoke Success, Usage: ${calculateUsage(response.usage)}`);
         if (!response.choices && !response.choices[0]) {

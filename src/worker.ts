@@ -1,18 +1,15 @@
 import { Config } from "./singletons/config";
 import { Logger } from "./singletons/logger";
-import { DefaultLogger, makeTelemetryFilterString, NativeConnection, Runtime, Worker } from "@temporalio/worker";
+import { DefaultLogger, makeTelemetryFilterString, Runtime, Worker } from "@temporalio/worker";
+import { createTemporalNativeConnection } from "./singletons/temporal";
 import * as activities from "./temporal/activities";
 import "./temporal/workflows";
 
 export class HennosTemporalWorker {
     static async init() {
-        const server = `${Config.TEMPORAL_HOST}:${Config.TEMPORAL_PORT}`;
-        Logger.info("HennosTemporalWorker", `Connecting to Temporal server at ${server}...`);
-        const connection = await NativeConnection.connect({
-            address: server,
-        });
 
         Logger.info("HennosTemporalWorker", "Starting Temporal Worker...");
+        const connection = await createTemporalNativeConnection();
         const agentWorker = await Worker.create({
             connection,
             namespace: Config.TEMPORAL_NAMESPACE,

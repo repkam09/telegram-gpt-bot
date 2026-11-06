@@ -601,6 +601,22 @@ export class Config {
         return process.env.TEMPORAL_TASK_QUEUE;
     }
 
+    static get TEMPORAL_API_KEY(): string | undefined {
+        if (!process.env.TEMPORAL_API_KEY) {
+            return undefined;
+        }
+
+        return process.env.TEMPORAL_API_KEY;
+    }
+
+    static get TEMPORAL_USE_TLS(): boolean {
+        if (!process.env.TEMPORAL_USE_TLS) {
+            return false;
+        }
+
+        return process.env.TEMPORAL_USE_TLS.toLowerCase() === "true";
+    }
+
     static get SUPABASE_URL(): string | false {
         if (!process.env.SUPABASE_URL) {
             return false;
