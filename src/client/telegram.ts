@@ -2,15 +2,13 @@ import TelegramBot, { Message, SendMessageParams } from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
 import { createWorkflowId } from "../temporal/legacy/interface";
 import { Logger } from "../singletons/logger";
-import path from "node:path";
 import { createReadStream } from "node:fs";
 import { Database } from "../database";
 import { TelegramLegacyInstance } from "./legacy/legacy";
 
-const TelegramStatusEvents: string[] = ["typing", "upload_photo", "record_video", "upload_video", "record_voice", "upload_voice", "upload_document", "find_location", "record_video_note", "upload_video_note"] as const;
 
 
-type ChatAction = typeof TelegramStatusEvents[number];
+type ChatAction = Parameters<TelegramBot["sendChatAction"]>[1];
 type SendMessageOptions = Omit<SendMessageParams, "chat_id" | "text">;
 
 export class TelegramInstance {
