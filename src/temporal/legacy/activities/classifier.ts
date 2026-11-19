@@ -21,6 +21,8 @@ export type ClassifyPromptInput = {
  * This stays an activity, even though it no longer does any work, so the order and number of activity
  * calls in `legacyWorkflow` is unchanged for workflows that are already running.
  */
+// The input is kept so the activity signature, and the workflow call that passes it, stay unchanged.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function classifyPromptComplexity(_input: ClassifyPromptInput): Promise<PromptComplexityResult> {
     return complexResult();
 }
