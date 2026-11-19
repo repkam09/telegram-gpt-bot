@@ -59,10 +59,12 @@ export async function signalLegacyWorkflowAdminExternalContext(author: string, m
 
     const workflowId = createWorkflowId("legacy", Config.TELEGRAM_BOT_ADMIN);
 
-    return Promise.all([
+    await Promise.all([
         signalLegacyWorkflowExternalContext(workflowId, author, message),
         AgentResponseHandler.handleMessage(workflowId, message)
     ]);
+
+    return Promise.resolve();
 }
 
 export async function signalLegacyWorkflowExternalContext(workflowId: string, author: string, content: string) {
