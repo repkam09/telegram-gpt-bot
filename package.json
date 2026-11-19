@@ -9,6 +9,7 @@
     "validate": "npm-run-all lint tsc:noemit",
     "tsc:emit": "tsc",
     "tsc:noemit": "tsc --noEmit",
+    "tsc:test": "tsc -p tsconfig.test.json",
     "tsc:noemit:watch": "tsc --noEmit --watch",
     "lint": "eslint --fix .",
     "lint:check": "eslint .",
@@ -22,7 +23,8 @@
     "migrate:new": "prisma migrate dev --create-only",
     "prisma:generate": "prisma generate",
     "dev": "npm-run-all build start",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "author": "Mark Repka",
   "license": "MIT",
