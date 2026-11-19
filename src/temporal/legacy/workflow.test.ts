@@ -211,7 +211,9 @@ describe("legacyWorkflow", () => {
         const context = legacyCompletion.mock.calls[1][0].context as { role: string; result?: string }[];
         const response = context.find((entry) => entry.role === "tool_response");
         expect(response?.result).toContain("Error executing tool broken");
-        expect(response?.result).toContain("tool exploded");
+        // Characterization: the workflow catches an ActivityFailure, whose message is generic ("Activity task failed");
+        // the underlying cause ("tool exploded") is not passed along to the model.
+        expect(response?.result).toContain("Activity task failed");
         expect(broadcasts).toEqual(["Sorry, that tool failed"]);
     });
 
