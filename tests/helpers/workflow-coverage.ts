@@ -15,7 +15,7 @@ import { WorkflowCoverage } from "@temporalio/nyc-test-coverage";
  */
 const workflowCoverage = new WorkflowCoverage();
 
-export function createInstrumentedWorker(options: WorkerOptions): Promise<Worker> {
+export function createInstrumentedWorker(options: WorkerOptions & { workflowsPath: string }): Promise<Worker> {
     return Worker.create(workflowCoverage.augmentWorkerOptions(options));
 }
 
