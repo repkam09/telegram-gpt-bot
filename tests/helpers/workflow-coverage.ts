@@ -31,8 +31,13 @@ export function mergeWorkflowCoverage(): void {
 
     workflowCoverage.mergeIntoGlobalCoverage();
 
-    if (scope.__coverage__ !== store) {
-        Object.assign(store, scope.__coverage__);
-        scope.__coverage__ = store;
+    // The merge can leave istanbul FileCoverage instances behind (their data lives under a `data` key), which
+    // Vitest cannot read. Round-trip through JSON (FileCoverage.toJSON) to get plain coverage objects, and put
+    // them back into the store Vitest collects from.
+    const merged = JSON.parse(JSON.stringify(scope.__coverage__ ?? {})) as CoverageStore;
+    for (const key of Object.keys(store)) {
+        delete store[key];
     }
+    Object.assign(store, merged);
+    scope.__coverage__ = store;
 }
