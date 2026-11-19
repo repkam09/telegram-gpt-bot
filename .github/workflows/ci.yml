@@ -60,11 +60,19 @@ jobs:
           HENNOS_TOOL_DEPTH=1
           TEMPORAL_TASK_QUEUE=decoy-queue
           TEMPORAL_PORT=9999
+          DATABASE_URL=file:./decoy-must-not-exist.sqlite
           EOF
           echo "decoy .env has $(wc -l < .env) lines"; cat .env
 
       - name: Test
         run: npm run test:coverage
+
+      # The decoy .env points DATABASE_URL at a file that must never be created: tests use their own temp database.
+      - name: Check tests did not touch the .env database
+        run: |
+          if find . -name 'decoy-must-not-exist.sqlite*' -not -path './node_modules/*' | grep -q .; then
+            echo "Tests used DATABASE_URL from .env"; find . -name 'decoy-must-not-exist.sqlite*' -not -path './node_modules/*'; exit 1
+          fi
 
       # Shown on the workflow run's summary page. Runs even when tests fail so partial coverage is still visible.
       - name: Coverage summary
