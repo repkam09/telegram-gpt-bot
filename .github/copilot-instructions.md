@@ -133,12 +133,15 @@ Key vars:
 
 ## Testing
 
-Vitest (`npm test`) picks up `src/**/*.{test,spec}.ts` and `tests/**`; `tests/setup.ts` is the shared setup. Tests are co-located with the code, e.g. [src/temporal/supabase/workflow.test.ts](../src/temporal/supabase/workflow.test.ts) (workflow test) and [src/tools/memory/MemoryFileStore.test.ts](../src/tools/memory/MemoryFileStore.test.ts). Workflow tests use the Temporal time-skipping environment:
-```typescript
-import { TestWorkflowEnvironment } from "@temporalio/testing";
-const testEnv = await TestWorkflowEnvironment.createTimeSkipping();
-```
-See [.github/instructions/temporal-workflow-test.instructions.md](instructions/temporal-workflow-test.instructions.md).
+Vitest (`npm test`) picks up `src/**/*.{test,spec}.ts` and `tests/**`. Tests are co-located with the code. `npm run tsc:test` type-checks tests (the main `tsconfig.json` excludes them); CI runs both.
+
+- **Shared setup** ([tests/setup.ts](../tests/setup.ts)): mocks `dotenv` and the `Logger`, and scrubs `HENNOS_*`/`TEMPORAL_*`/API-key env vars. Use `vi.stubEnv()` to set config in a test (restored automatically).
+- **Ephemeral database** ([tests/helpers/database.ts](../tests/helpers/database.ts)): `createTestDatabase()` copies a schema template (built once by [tests/global-setup.ts](../tests/global-setup.ts)) into a temp SQLite file, points the `Database` singleton at it, and seeds a whitelisted user with `chatId` 0 (`TEST_CHAT_ID`). Call `testDb.reset()` in `beforeEach` and `testDb.cleanup()` in `afterAll`. Do not mock Prisma. Requires `npm run prisma:generate` first.
+- **Workflow tests** use `TestWorkflowEnvironment.createTimeSkipping()` with a real `Worker`: mock LLM/tool activities with `vi.fn()`, keep the persist/broadcast activities real, and stop long-lived workflows with `handle.terminate()` after `waitFor()` ([tests/helpers/wait.ts](../tests/helpers/wait.ts)). See [src/temporal/legacy/workflow.test.ts](../src/temporal/legacy/workflow.test.ts).
+- **Activity tests** that use `Context.current()` run inside `MockActivityEnvironment` (see [classifier.test.ts](../src/temporal/legacy/activities/classifier.test.ts)).
+
+Temporal workflow test guidance: [.github/instructions/temporal-workflow-test.instructions.md](instructions/temporal-workflow-test.instructions.md).
+
 
 ## Common Pitfalls
 
