@@ -29,6 +29,12 @@ export function mergeWorkflowCoverage(): void {
     const store = (scope.__VITEST_COVERAGE__ ??= {});
     scope.__coverage__ = store;
 
+    // TEMP DEBUG
+    const before = Object.keys(store).length;
+    const wc = workflowCoverage as unknown as { coverageMapData?: { data?: Record<string, unknown>; files?: () => string[] } };
+    const sandboxFiles = wc.coverageMapData?.files ? wc.coverageMapData.files() : Object.keys(wc.coverageMapData ?? {});
+    console.log(`[wfcov] store before=${before}; sandbox files=${JSON.stringify(sandboxFiles)}; wc keys=${Object.keys(workflowCoverage as object)}`);
+
     workflowCoverage.mergeIntoGlobalCoverage();
 
     // The merge can leave istanbul FileCoverage instances behind (their data lives under a `data` key), which
@@ -40,4 +46,5 @@ export function mergeWorkflowCoverage(): void {
     }
     Object.assign(store, merged);
     scope.__coverage__ = store;
+    console.log(`[wfcov] store after=${Object.keys(store).length}; workflow entries=${Object.keys(store).filter((k) => k.endsWith("workflow.ts")).join(",")}`);
 }
