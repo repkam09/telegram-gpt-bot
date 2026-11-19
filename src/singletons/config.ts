@@ -163,6 +163,36 @@ export class Config {
         return parseHennosModelString(process.env.LITELLM_LLM, "LITELLM_LLM");
     }
 
+    /** LiteLLM model for the 'low' tier. Defaults to LITELLM_LLM, so routing is a no-op until configured. */
+    static get LITELLM_MINI_LLM(): HennosModelConfig {
+        if (!process.env.LITELLM_MINI_LLM) {
+            return Config.LITELLM_LLM;
+        }
+
+        return parseHennosModelString(process.env.LITELLM_MINI_LLM, "LITELLM_MINI_LLM");
+    }
+
+    /** LiteLLM model for the 'nano' tier. Defaults to LITELLM_LLM, so routing is a no-op until configured. */
+    static get LITELLM_NANO_LLM(): HennosModelConfig {
+        if (!process.env.LITELLM_NANO_LLM) {
+            return Config.LITELLM_LLM;
+        }
+
+        return parseHennosModelString(process.env.LITELLM_NANO_LLM, "LITELLM_NANO_LLM");
+    }
+
+    /**
+     * Optional LiteLLM decision model (e.g. `jev`) that picks the model tier for each prompt through `/v1/decisions`.
+     * When unset every prompt uses the high tier.
+     */
+    static get HENNOS_CLASSIFIER_DECISION_MODEL(): string | null {
+        if (!process.env.HENNOS_CLASSIFIER_DECISION_MODEL) {
+            return null;
+        }
+
+        return process.env.HENNOS_CLASSIFIER_DECISION_MODEL;
+    }
+
     static get LITELLM_BYOK_ENABLED(): boolean {
         if (!process.env.LITELLM_BYOK_ENABLED) {
             return false;

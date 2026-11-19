@@ -1,4 +1,4 @@
-import { Config } from "./config";
+import { Config, HennosModelConfig } from "./config";
 import { HennosOpenAIProvider } from "./openai";
 import { parseWorkflowId as parseLegacyWorkflowId } from "../temporal/legacy/interface";
 import { Database } from "../database";
@@ -31,12 +31,24 @@ export class HennosLiteLLMSingleton {
         return null;
     }
 
-    public static async dynamic(workflowId: string): Promise<HennosOpenAIProvider> {
+    private static modelForTier(level: "high" | "low" | "nano"): HennosModelConfig {
+        switch (level) {
+            case "low":
+                return Config.LITELLM_MINI_LLM;
+            case "nano":
+                return Config.LITELLM_NANO_LLM;
+            default:
+                return Config.LITELLM_LLM;
+        }
+    }
+
+    public static async dynamic(workflowId: string, level: "high" | "low" | "nano" = "high"): Promise<HennosOpenAIProvider> {
+        const model = this.modelForTier(level);
         const apiKey = await this.resolveBringYourOwnKey(workflowId);
         if (apiKey) {
-            return new HennosOpenAIProvider(Config.LITELLM_LLM, Config.LITELLM_BASE_URL, apiKey, "LiteLLM-BYOK");
+            return new HennosOpenAIProvider(model, Config.LITELLM_BASE_URL, apiKey, "LiteLLM-BYOK");
         }
 
-        return new HennosOpenAIProvider(Config.LITELLM_LLM, Config.LITELLM_BASE_URL, Config.LITELLM_API_KEY, "LiteLLM");
+        return new HennosOpenAIProvider(model, Config.LITELLM_BASE_URL, Config.LITELLM_API_KEY, "LiteLLM");
     }
 }

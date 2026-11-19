@@ -93,7 +93,7 @@ async function internalResolveModelProvider(workflowId: string, level: "high" | 
     Logger.debug("ModelProviderResolution", `Resolving model provider for level '${level}' and provider '${provider}'`);
     switch (provider) {
         case "litellm": {
-            return await HennosLiteLLMSingleton.dynamic(workflowId);
+            return await HennosLiteLLMSingleton.dynamic(workflowId, level);
         }
 
         case "ollama": {

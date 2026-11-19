@@ -79,3 +79,28 @@ describe("Config overrides", () => {
         expect(Config.HENNOS_DOCUMENT_MAX_RAW_LENGTH).toBe(1);
     });
 });
+
+describe("LiteLLM tier models", () => {
+    it("defaults the low and nano tiers to the main LiteLLM model", () => {
+        vi.stubEnv("LITELLM_LLM", "big-model,64000");
+
+        expect(Config.LITELLM_MINI_LLM).toEqual({ MODEL: "big-model", CTX: 64000 });
+        expect(Config.LITELLM_NANO_LLM).toEqual({ MODEL: "big-model", CTX: 64000 });
+    });
+
+    it("reads separate low and nano tier models", () => {
+        vi.stubEnv("LITELLM_LLM", "big-model,64000");
+        vi.stubEnv("LITELLM_MINI_LLM", "mid-model,32000");
+        vi.stubEnv("LITELLM_NANO_LLM", "tiny-model,8000");
+
+        expect(Config.LITELLM_MINI_LLM).toEqual({ MODEL: "mid-model", CTX: 32000 });
+        expect(Config.LITELLM_NANO_LLM).toEqual({ MODEL: "tiny-model", CTX: 8000 });
+    });
+
+    it("has no classifier decision model unless configured", () => {
+        expect(Config.HENNOS_CLASSIFIER_DECISION_MODEL).toBeNull();
+
+        vi.stubEnv("HENNOS_CLASSIFIER_DECISION_MODEL", "jev");
+        expect(Config.HENNOS_CLASSIFIER_DECISION_MODEL).toBe("jev");
+    });
+});
