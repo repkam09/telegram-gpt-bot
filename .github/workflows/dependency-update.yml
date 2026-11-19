@@ -1,0 +1,191 @@
+name: Dependency update
+
+# Updates npm dependencies on a new branch, validates it with the regular CI workflow, and opens a pull request.
+#   mode=in-range  runs `npm update`: newer versions that the ranges in package.json already allow (lockfile only).
+#   mode=major     installs the listed packages at the latest version (or name@version), updated together in one PR.
+#                  Use it for one package family at a time (for example "typescript", or "prisma @prisma/client").
+# If CI fails, the pull request is still opened, as a draft, so the failure can be read and fixed on that branch.
+#
+# One-time repository setting: Settings > Actions > General > Workflow permissions >
+# "Allow GitHub Actions to create and approve pull requests". Without it the branch is pushed but the PR step fails.
+#
+# Run it from the Actions tab (Run workflow) or: gh workflow run dependency-update.yml -f mode=in-range
+# See the weekly report (dependency-report.yml / the deps-report branch) for what is worth updating.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "in-range: npm update within existing ranges. major: install the listed packages at latest."
+        type: choice
+        options:
+          - in-range
+          - major
+        default: in-range
+      packages:
+        description: "mode=major only: space-separated direct dependencies, each name or name@version."
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    # Branches are cut from, and pull requests target, the default branch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Only needed to push the update branch below.
+      contents: write
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+      branch: ${{ steps.commit.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Inputs reach the shell only through env vars and are validated before use. Nothing here can add a new dependency.
+      - name: Validate inputs
+        env:
+          MODE: ${{ inputs.mode }}
+          PACKAGES: ${{ inputs.packages }}
+        run: |
+          set -euo pipefail
+          set -f
+          if [ "$MODE" = "major" ]; then
+            if [ -z "${PACKAGES// /}" ]; then echo "::error::mode=major needs at least one package"; exit 1; fi
+            for p in $PACKAGES; do
+              if ! [[ "$p" =~ ^(@[A-Za-z0-9._-]+/)?[A-Za-z0-9._-]+(@[A-Za-z0-9._-]+)?$ ]]; then
+                echo "::error::Not a valid package spec: $p"; exit 1
+              fi
+              name="${p#@}"; name="${name%%@*}"; [[ "$p" == @* ]] && name="@$name"
+              NAME="$name" node -e '
+                const p = require("./package.json");
+                const all = { ...p.dependencies, ...p.devDependencies, ...p.optionalDependencies };
+                if (!(process.env.NAME in all)) { console.error(`::error::${process.env.NAME} is not a direct dependency`); process.exit(1); }'
+            done
+          elif [ "$MODE" = "in-range" ]; then
+            if [ -n "${PACKAGES// /}" ]; then echo "::warning::packages is ignored in in-range mode"; fi
+          else
+            echo "::error::Unknown mode: $MODE"; exit 1
+          fi
+
+      # .npmrc sets ignore-scripts=true and min-release-age, so no install scripts run and very new releases are skipped.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply updates
+        env:
+          MODE: ${{ inputs.mode }}
+          PACKAGES: ${{ inputs.packages }}
+        run: |
+          set -euo pipefail
+          set -f
+          if [ "$MODE" = "in-range" ]; then
+            npm update --no-audit --no-fund
+          else
+            args=()
+            for p in $PACKAGES; do
+              rest="${p#@}"
+              [[ "$rest" == *@* ]] || p="$p@latest"
+              args+=("$p")
+            done
+            npm install --no-audit --no-fund "${args[@]}"
+          fi
+
+      - name: Commit and push
+        id: commit
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "Nothing to update."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          branch="deps/${MODE}-$(date -u +%Y%m%d)-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit --quiet -m "Update dependencies (${MODE})"
+          git push origin "$branch"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+  # The same lint / type check / build / test sequence as pull requests, run on the pushed branch.
+  ci:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.update.outputs.branch }}
+    permissions:
+      contents: read
+
+  pull-request:
+    needs: [update, ci]
+    # Also when CI failed: the PR is then a draft that links the failing run.
+    if: ${{ always() && needs.update.outputs.changed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.update.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode }}
+          PACKAGES: ${{ inputs.packages }}
+          BRANCH: ${{ needs.update.outputs.branch }}
+          CI_RESULT: ${{ needs.ci.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = "major" ]; then title="Update dependencies: ${PACKAGES}"; else title="Update dependencies within current ranges"; fi
+
+          if [ "$CI_RESULT" = "success" ]; then
+            status="CI passed on this branch (lint, type checks, build, tests)."
+            draft=()
+          else
+            status="**CI did not pass (${CI_RESULT}).** Opened as a draft; see the \`ci\` job in the run below for the failure."
+            draft=(--draft)
+          fi
+
+          {
+            echo "Automated dependency update (\`${MODE}\`${PACKAGES:+: ${PACKAGES}}) from [this workflow run](${RUN_URL})."
+            echo
+            echo "${status}"
+            echo "Pull requests opened by a workflow do not trigger the regular \`pull_request\` CI; the \`ci\` job in that run is the same workflow. Pushing a commit to this branch starts the normal CI."
+            echo
+            node scripts/deps-update-summary.mjs origin/main
+            echo
+            echo "Review the changelogs of any major bump before merging."
+          } > body.md
+
+          if ! gh pr create --base main --head "$BRANCH" --title "$title" --body-file body.md "${draft[@]}"; then
+            echo "::error::Could not open the pull request. Enable Settings > Actions > General > 'Allow GitHub Actions to create and approve pull requests', or open one from branch ${BRANCH} by hand."
+            exit 1
+          fi
+
+      # Keep the run red when CI failed, even though the draft PR was created.
+      - name: Fail if CI failed
+        if: ${{ always() && needs.ci.result != 'success' }}
+        run: exit 1
