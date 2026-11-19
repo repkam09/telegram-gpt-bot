@@ -1,11 +1,9 @@
 import { Tool } from "ollama";
-import { Config, HennosModelProvider } from "./singletons/config";
+import { Config, HENNOS_LLM_PROVIDERS, HennosModelProvider } from "./singletons/config";
 import { HennosOllamaSingleton } from "./singletons/ollama";
-import { HennosOpenAISingleton } from "./singletons/openai";
 import { Logger } from "./singletons/logger";
 import { Database } from "./database";
 import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
-import { HennosAnthropicSingleton } from "./singletons/anthropic";
 import { HennosLiteLLMSingleton } from "./singletons/litellm";
 
 export type HennosTool = Tool;
@@ -85,7 +83,6 @@ type InvokableModelProvider = {
     limit(): number;
     invoke(workflowId: string, messages: HennosMessage[], tools?: HennosTool[]): Promise<HennosInvokeResponse>;
     completion(workflowId: string, messages: CompletionContextEntry[], iterations: number, tools?: HennosTool[]): Promise<CompletionResponse>;
-    moderation(workflowId: string, input: string): Promise<boolean>;
 }
 
 export async function resolveModelProvider(workflowId: string, level: "high" | "low" | "nano"): Promise<InvokableModelProvider> {
@@ -95,37 +92,6 @@ export async function resolveModelProvider(workflowId: string, level: "high" | "
 async function internalResolveModelProvider(workflowId: string, level: "high" | "low" | "nano", provider: HennosModelProvider): Promise<InvokableModelProvider> {
     Logger.debug("ModelProviderResolution", `Resolving model provider for level '${level}' and provider '${provider}'`);
     switch (provider) {
-        case "openai": {
-            if (level === "high") {
-                return HennosOpenAISingleton.high();
-            }
-
-            if (level === "low") {
-                return HennosOpenAISingleton.low();
-            }
-
-            if (level === "nano") {
-                return HennosOpenAISingleton.nano();
-            }
-            throw new Error(`Unsupported model tier for OpenAI provider: ${level}`);
-        }
-
-        case "anthropic": {
-            if (level === "high") {
-                return HennosAnthropicSingleton.high();
-            }
-
-            if (level === "low") {
-                return HennosAnthropicSingleton.low();
-            }
-
-            if (level === "nano") {
-                // For simplicity, just use the OpenAI nano model here as well
-                return HennosOpenAISingleton.nano();
-            }
-            throw new Error(`Unsupported model tier for Anthropic provider: ${level}`);
-        }
-
         case "litellm": {
             return await HennosLiteLLMSingleton.dynamic(workflowId);
         }
@@ -163,6 +129,12 @@ export async function resolveLegacyModelProvider(workflowId: string, level: "hig
             Logger.debug(workflowId, `No user provider found for workflowId '${workflowId}', falling back to default provider '${Config.HENNOS_LLM_PROVIDER}'`);
             return resolveModelProvider(workflowId, level);
         }
+        if (!HENNOS_LLM_PROVIDERS.includes(user.provider)) {
+            // Rows written when the raw openai/anthropic providers still existed
+            Logger.warn(workflowId, `User provider '${user.provider}' is no longer supported, falling back to default provider '${Config.HENNOS_LLM_PROVIDER}'`);
+            return resolveModelProvider(workflowId, level);
+        }
+
         Logger.debug(workflowId, `Resolved legacy model provider for level '${level}' to user provider '${user.provider}'`);
         return internalResolveModelProvider(workflowId, level, user.provider as HennosModelProvider);
     } catch (err) {

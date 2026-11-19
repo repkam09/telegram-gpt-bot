@@ -17,11 +17,9 @@ export type HennosEmbedModelConfig = {
     LENGTH: number
 }
 
-export type HennosModelProvider = "ollama" | "openai" | "anthropic" | "litellm"
-export type HennosEmbedProvider = "ollama" | "openai";
+export type HennosModelProvider = "ollama" | "litellm"
 
-export const HENNOS_LLM_PROVIDERS = ["ollama", "openai", "anthropic", "litellm"];
-export const HENNOS_EMBED_PROVIDERS = ["ollama", "openai"];
+export const HENNOS_LLM_PROVIDERS = ["ollama", "litellm"];
 
 export class Config {
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
@@ -61,14 +59,6 @@ export class Config {
         return 32000;
     }
 
-    static get HENNOS_CLASSIFIER_ENABLED(): boolean {
-        if (!process.env.HENNOS_CLASSIFIER_ENABLED) {
-            return true;
-        }
-
-        return process.env.HENNOS_CLASSIFIER_ENABLED === "true";
-    }
-
     static get HENNOS_LEGACY_LLM_PROVIDER(): HennosModelProvider | null {
         if (!process.env.HENNOS_LEGACY_LLM_PROVIDER) {
             return null;
@@ -82,34 +72,8 @@ export class Config {
         return process.env.HENNOS_LEGACY_LLM_PROVIDER as HennosModelProvider;
     }
 
-    static get HENNOS_DOCUMENT_EMBED_PROVIDER(): HennosEmbedProvider {
-        if (!process.env.HENNOS_DOCUMENT_EMBED_PROVIDER) {
-            return "ollama";
-        }
-
-        // Validate ollama or openai
-        if (HENNOS_EMBED_PROVIDERS.indexOf(process.env.HENNOS_DOCUMENT_EMBED_PROVIDER) === -1) {
-            throw new Error("Invalid HENNOS_DOCUMENT_EMBED_PROVIDER value");
-        }
-
-        return process.env.HENNOS_DOCUMENT_EMBED_PROVIDER as HennosEmbedProvider;
-    }
-
     static get HENNOS_DOCUMENTS_ENABLED(): false {
         return false;
-    }
-
-    static get HENNOS_DOCUMENT_LLM_PROVIDER(): HennosModelProvider {
-        if (!process.env.HENNOS_DOCUMENT_LLM_PROVIDER) {
-            return "ollama";
-        }
-
-        // Validate ollama, openai or anthropic
-        if (HENNOS_LLM_PROVIDERS.indexOf(process.env.HENNOS_DOCUMENT_LLM_PROVIDER) === -1) {
-            throw new Error("Invalid HENNOS_DOCUMENT_LLM_PROVIDER value");
-        }
-
-        return process.env.HENNOS_DOCUMENT_LLM_PROVIDER as HennosModelProvider;
     }
 
     static get HENNOS_TOOL_DEPTH(): number {
@@ -223,72 +187,31 @@ export class Config {
         return process.env.LITELLM_BASE_URL;
     }
 
+    /** LiteLLM model name used for voice and audio message transcription (`/v1/audio/transcriptions`). */
+    static get LITELLM_TRANSCRIPTION_MODEL(): string {
+        if (!process.env.LITELLM_TRANSCRIPTION_MODEL) {
+            return "whisper-1";
+        }
+
+        return process.env.LITELLM_TRANSCRIPTION_MODEL;
+    }
+
+    /** LiteLLM model name used by the image generation tool (`/v1/images/generations`). */
+    static get LITELLM_IMAGE_MODEL(): string {
+        if (!process.env.LITELLM_IMAGE_MODEL) {
+            throw new Error("Missing LITELLM_IMAGE_MODEL");
+        }
+
+        return process.env.LITELLM_IMAGE_MODEL;
+    }
+
+    /** Only used by the OpenAI Realtime SIP voice call handler. Chat, audio and images all go through LiteLLM. */
     static get OPENAI_API_KEY(): string {
         if (!process.env.OPENAI_API_KEY) {
             throw new Error("Missing OPENAI_API_KEY");
         }
 
         return process.env.OPENAI_API_KEY;
-    }
-
-    static get OPENAI_LLM(): HennosModelConfig {
-        if (!process.env.OPENAI_LLM) {
-            return {
-                MODEL: "gpt-5",
-                CTX: 32000,
-            };
-        }
-
-        return parseHennosModelString(process.env.OPENAI_LLM, "OPENAI_LLM");
-    }
-
-    static get OPENAI_TRANSCRIPTION_MODEL(): string {
-        if (!process.env.OPENAI_TRANSCRIPTION_MODEL) {
-            return "whisper-1";
-        }
-
-        return process.env.OPENAI_TRANSCRIPTION_MODEL;
-    }
-
-    static get OPENAI_TEXT_TO_SPEECH_MODEL(): string {
-        if (!process.env.OPENAI_TEXT_TO_SPEECH_MODEL) {
-            return "gpt-4o-mini-tts";
-        }
-
-        return process.env.OPENAI_TEXT_TO_SPEECH_MODEL;
-    }
-
-    static get OPENAI_LLM_EMBED(): HennosEmbedModelConfig {
-        if (!process.env.OPENAI_LLM_EMBED) {
-            return {
-                MODEL: "text-embedding-3-small",
-                LENGTH: 8191,
-            };
-        }
-
-        return parseHennosEmbedModelString(process.env.OPENAI_LLM_EMBED, "OPENAI_LLM_EMBED");
-    }
-
-    static get OPENAI_MINI_LLM(): HennosModelConfig {
-        if (!process.env.OPENAI_MINI_LLM) {
-            return {
-                MODEL: "gpt-5-mini",
-                CTX: 24000,
-            };
-        }
-
-        return parseHennosModelString(process.env.OPENAI_MINI_LLM, "OPENAI_MINI_LLM");
-    }
-
-    static get OPENAI_NANO_LLM(): HennosModelConfig {
-        if (!process.env.OPENAI_NANO_LLM) {
-            return {
-                MODEL: "gpt-5-nano",
-                CTX: 4096,
-            };
-        }
-
-        return parseHennosModelString(process.env.OPENAI_NANO_LLM, "OPENAI_NANO_LLM");
     }
 
     static get OLLAMA_LLM(): HennosModelConfig {
@@ -312,36 +235,6 @@ export class Config {
         return parseHennosEmbedModelString(process.env.OLLAMA_LLM_EMBED, "OLLAMA_LLM_EMBED");
     }
 
-
-    static get ANTHROPIC_API_KEY(): string {
-        if (!process.env.ANTHROPIC_API_KEY) {
-            throw new Error("Missing ANTHROPIC_API_KEY");
-        }
-
-        return process.env.ANTHROPIC_API_KEY;
-    }
-
-    static get ANTHROPIC_LLM(): HennosModelConfig {
-        if (!process.env.ANTHROPIC_LLM) {
-            return {
-                MODEL: "claude-opus-4-6",
-                CTX: 16000
-            };
-        }
-
-        return parseHennosModelString(process.env.ANTHROPIC_LLM, "ANTHROPIC_LLM");
-    }
-
-    static get ANTHROPIC_MINI_LLM(): HennosModelConfig {
-        if (!process.env.ANTHROPIC_MINI_LLM) {
-            return {
-                MODEL: "claude-haiku-4-5",
-                CTX: 16000,
-            };
-        }
-
-        return parseHennosModelString(process.env.ANTHROPIC_MINI_LLM, "ANTHROPIC_MINI_LLM");
-    }
 
     static get OLLAMA_HOST(): string {
         if (!process.env.OLLAMA_HOST) {
@@ -433,22 +326,6 @@ export class Config {
         }
 
         return process.env.GMAIL_REFRESH_TOKEN;
-    }
-
-    static get GOOGLE_IMAGE_MODEL(): string {
-        if (!process.env.GOOGLE_IMAGE_MODEL) {
-            throw new Error("Missing GOOGLE_IMAGE_MODEL");
-        }
-
-        return process.env.GOOGLE_IMAGE_MODEL;
-    }
-
-    static get GOOGLE_API_KEY(): string {
-        if (!process.env.GOOGLE_API_KEY) {
-            throw new Error("Missing GOOGLE_API_KEY");
-        }
-
-        return process.env.GOOGLE_API_KEY;
     }
 
     static get AT_PROTO_SERVICE(): string {

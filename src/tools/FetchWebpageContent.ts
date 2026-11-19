@@ -6,7 +6,6 @@ import { JSDOM } from "jsdom";
 import { isProbablyReaderable, Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
 import { HTMLReader } from "@llamaindex/readers/html";
-import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 import {
     BaseReader,
     getResponseSynthesizer,
@@ -20,38 +19,21 @@ import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Ollama, OllamaEmbedding } from "@llamaindex/ollama";
 
-if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "ollama") {
-    Logger.info("DocumentProcessing", "Initializing Ollama embedding model for document processing");
-    Settings.embedModel = new OllamaEmbedding({
-        model: Config.OLLAMA_LLM_EMBED.MODEL,
-        config: {
-            host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
-        }
-    });
-} else {
-    Logger.info("DocumentProcessing", "Initializing OpenAI embedding model for document processing");
-    Settings.embedModel = new OpenAIEmbedding({
-        model: Config.OPENAI_LLM_EMBED.MODEL,
-        apiKey: Config.OPENAI_API_KEY
-    });
-}
+Logger.info("DocumentProcessing", "Initializing Ollama embedding model for document processing");
+Settings.embedModel = new OllamaEmbedding({
+    model: Config.OLLAMA_LLM_EMBED.MODEL,
+    config: {
+        host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
+    }
+});
 
-if (Config.HENNOS_DOCUMENT_LLM_PROVIDER === "ollama") {
-    Logger.info("DocumentProcessing", "Initializing Ollama LLM model for document processing");
-    Settings.llm = new Ollama({
-        model: Config.OLLAMA_LLM.MODEL,
-        config: {
-            host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
-        }
-    });
-} else {
-    Logger.info("DocumentProcessing", "Initializing OpenAI LLM model for document processing");
-    Settings.llm = new OpenAI({
-        model: Config.OPENAI_NANO_LLM.MODEL,
-        apiKey: Config.OPENAI_API_KEY,
-        temperature: 1
-    });
-}
+Logger.info("DocumentProcessing", "Initializing Ollama LLM model for document processing");
+Settings.llm = new Ollama({
+    model: Config.OLLAMA_LLM.MODEL,
+    config: {
+        host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
+    }
+});
 
 Settings.chunkOverlap = 256;
 Settings.chunkSize = 2048;
@@ -61,23 +43,6 @@ Settings.nodeParser = new SentenceSplitter({
     chunkSize: 2048,
 });
 
-if (Config.HENNOS_DOCUMENT_EMBED_PROVIDER === "openai" || Config.HENNOS_DOCUMENT_LLM_PROVIDER === "openai") {
-    Logger.info("DocumentProcessing", "Setting up callback to log OpenAI token usage for document processing");
-    Settings.callbackManager.on("llm-end", (event) => {
-        try {
-            const raw = event.detail.response.raw as Record<string, unknown> | null;
-            if (raw && typeof raw === "object" && "usage" in raw) {
-                const usage = raw.usage as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
-                Logger.info("DocumentProcessing", `LlamaIndex LLM Usage: input=${usage.prompt_tokens ?? 0}, output=${usage.completion_tokens ?? 0}, total=${usage.total_tokens ?? 0}`);
-            } else {
-                Logger.debug("DocumentProcessing", "LLM response does not contain usage information.");
-            }
-        } catch (err: unknown) {
-            const error = err as Error;
-            Logger.debug("DocumentProcessing", `Failed to retrieve workflow ID from Temporal context: ${error.message}`);
-        }
-    });
-}
 export class FetchWebpageContent extends BaseTool {
     public static isEnabled(): boolean {
         return true;

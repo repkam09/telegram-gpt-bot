@@ -1,7 +1,6 @@
 import { Config } from "./config";
 import { ChatResponse, Message, Ollama } from "ollama";
 import { Logger } from "./logger";
-import { HennosOpenAISingleton } from "./openai";
 import { CompletionContextEntry, CompletionContextTextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 import { randomUUID } from "node:crypto";
 
@@ -100,11 +99,6 @@ export class HennosOllamaProvider {
             __type: "string",
             payload: response.message.content
         };
-    }
-
-    public async moderation(workflowId: string, input: string): Promise<boolean> {
-        Logger.info(workflowId, "Ollama Moderation Start");
-        return HennosOpenAISingleton.high().moderation(workflowId, input);
     }
 }
 

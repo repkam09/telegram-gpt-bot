@@ -4,33 +4,6 @@ import { Logger } from "./logger";
 import { ChatCompletion, ChatCompletionAssistantMessageParam, ChatCompletionSystemMessageParam, ChatCompletionTool, ChatCompletionUserMessageParam } from "openai/resources";
 import { CompletionContextEntry, CompletionContextImageEntry, CompletionContextTextEntry, CompletionResponse, HennosInvokeResponse, HennosMessage, HennosTool } from "../provider";
 
-export class HennosOpenAISingleton {
-    private static _instance: HennosOpenAIProvider | null = null;
-    private static _mini: HennosOpenAIProvider | null = null;
-    private static _nano: HennosOpenAIProvider | null = null;
-
-    public static high(): HennosOpenAIProvider {
-        if (!HennosOpenAISingleton._instance) {
-            HennosOpenAISingleton._instance = new HennosOpenAIProvider(Config.OPENAI_LLM);
-        }
-        return HennosOpenAISingleton._instance;
-    }
-
-    public static low(): HennosOpenAIProvider {
-        if (!HennosOpenAISingleton._mini) {
-            HennosOpenAISingleton._mini = new HennosOpenAIProvider(Config.OPENAI_MINI_LLM);
-        }
-        return HennosOpenAISingleton._mini;
-    }
-
-    public static nano(): HennosOpenAIProvider {
-        if (!HennosOpenAISingleton._nano) {
-            HennosOpenAISingleton._nano = new HennosOpenAIProvider(Config.OPENAI_NANO_LLM);
-        }
-        return HennosOpenAISingleton._nano;
-    }
-}
-
 type OpenAICompletionResponse = OpenAICompletionResponseString | OpenAICompletionResponseTool;
 
 type OpenAICompletionResponseString = {
@@ -47,21 +20,23 @@ type OpenAICompletionResponseTool = {
     }[];
 }
 
+/**
+ * Chat provider for any OpenAI-compatible endpoint. Hennos only uses it against LiteLLM,
+ * which routes the request to whichever upstream model is configured.
+ */
 export class HennosOpenAIProvider {
     public client: OpenAI;
     private model: HennosModelConfig;
-    private moderationModel: string;
     private name: string;
 
-    constructor(model: HennosModelConfig, baseUrl?: string, apiKey?: string, name?: string) {
+    constructor(model: HennosModelConfig, baseUrl: string, apiKey: string, name: string) {
         this.client = new OpenAI({
-            apiKey: apiKey ?? Config.OPENAI_API_KEY,
-            baseURL: baseUrl ?? undefined,
+            apiKey,
+            baseURL: baseUrl,
         });
 
-        this.name = name ?? "OpenAI";
+        this.name = name;
         this.model = model;
-        this.moderationModel = "omni-moderation-latest";
     }
 
     public limit(): number {
@@ -197,32 +172,6 @@ export class HennosOpenAIProvider {
         }
 
         throw new Error(`${this.name} Invoke Failed, Unhandled Finish Reason: ${choice.finish_reason}`);
-    }
-
-    public async moderation(workflowId: string, input: string): Promise<boolean> {
-        Logger.info(workflowId, `${this.name} Moderation Start`);
-        try {
-            const response = await this.client.moderations.create({
-                model: this.moderationModel,
-                input
-            });
-
-            if (!response.results) {
-                return false;
-            }
-
-            if (!response.results[0]) {
-                return false;
-            }
-
-            const flagged = response.results[0].flagged;
-            Logger.info(workflowId, `${this.name} Moderation Success, Result: ${flagged ? "Blocked" : "Allowed"}, Input: ${input}`);
-            return flagged;
-        } catch (err: unknown) {
-            const error = err as Error;
-            Logger.error(workflowId, `${this.name} Moderation Error: `, error);
-            return false;
-        }
     }
 }
 
