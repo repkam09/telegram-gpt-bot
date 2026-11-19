@@ -49,6 +49,19 @@ jobs:
       - name: Build
         run: npm run tsc:emit
 
+      # Developers run tests with a real .env present. Write one with deliberately wrong values to prove the tests ignore it.
+      - name: Write decoy .env
+        run: |
+          cat > .env <<'EOF'
+          HENNOS_DEVELOPMENT_MODE=true
+          HENNOS_MEMORY_ENABLED=true
+          HENNOS_CLASSIFIER_ENABLED=false
+          HENNOS_LLM_PROVIDER=openai
+          HENNOS_TOOL_DEPTH=1
+          TEMPORAL_TASK_QUEUE=decoy-queue
+          TEMPORAL_PORT=9999
+          EOF
+
       - name: Test
         run: npm run test:coverage
 
