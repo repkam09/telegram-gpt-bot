@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
-import { Worker } from "@temporalio/worker";
+import { createInstrumentedWorker, mergeWorkflowCoverage } from "../../../tests/helpers/workflow-coverage";
 import { ApplicationFailure } from "@temporalio/activity";
 import { WorkflowHandle } from "@temporalio/client";
 import { legacyWorkflow, legacyWorkflowMessageSignal } from "./workflow";
@@ -39,6 +39,7 @@ describe("legacyWorkflow", () => {
     });
 
     afterAll(async () => {
+        mergeWorkflowCoverage();
         await testEnvironment?.teardown();
         await testDb?.cleanup();
     });
@@ -60,7 +61,7 @@ describe("legacyWorkflow", () => {
     });
 
     function createWorker() {
-        return Worker.create({
+        return createInstrumentedWorker({
             connection: testEnvironment.nativeConnection,
             taskQueue: `legacy-workflow-test-${++queueCounter}`,
             workflowsPath: require.resolve("./workflow.ts"),

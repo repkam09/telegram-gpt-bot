@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
-import { Worker } from "@temporalio/worker";
+import { createInstrumentedWorker, mergeWorkflowCoverage } from "../../../tests/helpers/workflow-coverage";
 import { searchWorkflow } from "./workflow";
 
 describe("searchWorkflow", () => {
@@ -12,12 +12,13 @@ describe("searchWorkflow", () => {
     });
 
     afterAll(async () => {
+        mergeWorkflowCoverage();
         await testEnvironment?.teardown();
     });
 
     async function run(query: string, activities: { searchResults: (...args: never[]) => Promise<object[]>; summarizeResults: (...args: never[]) => Promise<string | null> }) {
         const taskQueue = `search-workflow-test-${++queueCounter}`;
-        const worker = await Worker.create({
+        const worker = await createInstrumentedWorker({
             connection: testEnvironment.nativeConnection,
             taskQueue,
             workflowsPath: require.resolve("./workflow.ts"),
