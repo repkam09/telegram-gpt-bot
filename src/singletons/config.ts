@@ -229,7 +229,7 @@ export class Config {
     /** LiteLLM model name used by the image generation tool (`/v1/images/generations`). */
     static get LITELLM_IMAGE_MODEL(): string {
         if (!process.env.LITELLM_IMAGE_MODEL) {
-            throw new Error("Missing LITELLM_IMAGE_MODEL");
+            return "gemini/gemini-3.1-flash-image";
         }
 
         return process.env.LITELLM_IMAGE_MODEL;
@@ -357,31 +357,7 @@ export class Config {
 
         return process.env.GMAIL_REFRESH_TOKEN;
     }
-
-    static get AT_PROTO_SERVICE(): string {
-        if (!process.env.AT_PROTO_SERVICE) {
-            return "https://bsky.social";
-        }
-
-        return process.env.AT_PROTO_SERVICE;
-    }
-
-    static get AT_PROTO_USERNAME(): string {
-        if (!process.env.AT_PROTO_USERNAME) {
-            throw new Error("Missing AT_PROTO_USERNAME");
-        }
-
-        return process.env.AT_PROTO_USERNAME;
-    }
-
-    static get AT_PROTO_PASSWORD(): string {
-        if (!process.env.AT_PROTO_PASSWORD) {
-            throw new Error("Missing AT_PROTO_PASSWORD");
-        }
-
-        return process.env.AT_PROTO_PASSWORD;
-    }
-
+    
     static get OPEN_WEATHER_API(): string | false {
         if (!process.env.OPEN_WEATHER_API) {
             return false;

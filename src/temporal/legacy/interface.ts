@@ -1,4 +1,5 @@
 import { Database } from "../../database";
+import { AgentResponseHandler } from "../../response";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
@@ -50,16 +51,6 @@ export async function signalLegacyWorkflowMessage(workflowId: string, author: st
     });
 }
 
-export async function signalLegacyWorkflowAdminMessage(author: string, message: string) {
-    if (!Config.TELEGRAM_BOT_ADMIN) {
-        Logger.info(undefined, `signalLegacyWorkflowAdminMessage: author=${author}, message=${message}`);
-        return;
-    }
-
-    const workflowId = createWorkflowId("legacy", Config.TELEGRAM_BOT_ADMIN);
-    return signalLegacyWorkflowMessage(workflowId, author, message);
-}
-
 export async function signalLegacyWorkflowAdminExternalContext(author: string, message: string) {
     if (!Config.TELEGRAM_BOT_ADMIN) {
         Logger.info(undefined, `signalLegacyWorkflowAdminExternalContext: author=${author}, message=${message}`);
@@ -67,7 +58,13 @@ export async function signalLegacyWorkflowAdminExternalContext(author: string, m
     }
 
     const workflowId = createWorkflowId("legacy", Config.TELEGRAM_BOT_ADMIN);
-    return signalLegacyWorkflowExternalContext(workflowId, author, message);
+
+    await Promise.all([
+        signalLegacyWorkflowExternalContext(workflowId, author, message),
+        AgentResponseHandler.handleMessage(workflowId, message)
+    ]);
+
+    return Promise.resolve();
 }
 
 export async function signalLegacyWorkflowExternalContext(workflowId: string, author: string, content: string) {

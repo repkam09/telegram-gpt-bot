@@ -36,7 +36,7 @@ All live in [src/temporal/](src/temporal/). Workflows are exported from [src/tem
 ### The legacy workflow loop
 
 - Workflow ID is a JSON string: `{"platform": "...", "chatId": "...", "type": "legacy"}`. Build it with `createWorkflowId(platform, chatId)` in [interface.ts](src/temporal/legacy/interface.ts). **`chatId` must be numeric** (it is stored in `Messages.chatId`), and `parseWorkflowId` throws otherwise. `AgentResponseHandler` and tools recover the platform/chat by parsing this ID, so its shape is load-bearing.
-- Clients use the helpers in `interface.ts`: `signalLegacyWorkflowMessage` (signalWithStart, triggers a reply), `signalLegacyWorkflowExternalContext` / `signalLegacyWorkflowImageMessage` (write to the `Messages` table only, no reply), `signalLegacyWorkflowAdminMessage` / `signalLegacyWorkflowAdminExternalContext` (target `TELEGRAM_BOT_ADMIN`).
+- Clients use the helpers in `interface.ts`: `signalLegacyWorkflowMessage` (signalWithStart, triggers a reply), `signalLegacyWorkflowExternalContext` / `signalLegacyWorkflowImageMessage` (write to the `Messages` table only, no reply), `signalLegacyWorkflowAdminExternalContext` (target `TELEGRAM_BOT_ADMIN`).
 - Loop: persist pending user messages → `classifyPromptComplexity` (picks the model tier; see below) → `legacyCompletion` → either broadcast/persist the answer, or run each requested tool with `legacyAction` in parallel and iterate. Conversation history is read from the `Messages` table, not held in workflow state; only tool call/response entries are kept in the workflow.
 - An unrecoverable error in the loop broadcasts a generic error message and rethrows (fails the workflow). The next signalWithStart starts a fresh run.
 
@@ -84,7 +84,7 @@ export class MyTool extends BaseTool {
 
 Register it in `LegacyTools` in [src/temporal/legacy/tools.ts](src/temporal/legacy/tools.ts). `availableTools()` filters by `isEnabled()` on every call, and `processDefinedToolCalls` in [src/tools/tools.ts](src/tools/tools.ts) dispatches by tool name. There is a single list; no second registration is needed. Add a lazy getter to `Config` for any API key.
 
-Tools that need to notify the owner use `signalLegacyWorkflowAdminMessage`. The `memory` tool (`MemoryTool` + `tools/memory/MemoryFileStore.ts`) is a per-chat virtual `/memories` filesystem backed by the `MemoryFile` table, enabled by `HENNOS_MEMORY_ENABLED`.
+Tools that need to notify the owner use `signalLegacyWorkflowAdminExternalContext`. The `memory` tool (`MemoryTool` + `tools/memory/MemoryFileStore.ts`) is a per-chat virtual `/memories` filesystem backed by the `MemoryFile` table, enabled by `HENNOS_MEMORY_ENABLED`.
 
 ## Clients
 
