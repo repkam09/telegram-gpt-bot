@@ -69,6 +69,33 @@ export class Config {
         return process.env.HENNOS_CLASSIFIER_ENABLED === "true";
     }
 
+    /**
+     * Optional LiteLLM decision model (e.g. `jev`) used to classify prompt complexity through `/v1/decisions`.
+     * When unset, the classifier keeps its previous behavior. Requires LITELLM_BASE_URL and LITELLM_API_KEY.
+     */
+    static get HENNOS_CLASSIFIER_DECISION_MODEL(): string | null {
+        if (!process.env.HENNOS_CLASSIFIER_DECISION_MODEL) {
+            return null;
+        }
+
+        return process.env.HENNOS_CLASSIFIER_DECISION_MODEL;
+    }
+
+    /** Decision answers with a confidence below this value fall back to the 'complex' classification. */
+    static get HENNOS_CLASSIFIER_MIN_CONFIDENCE(): number {
+        if (!process.env.HENNOS_CLASSIFIER_MIN_CONFIDENCE) {
+            return 0.6;
+        }
+
+        const value = parseFloat(process.env.HENNOS_CLASSIFIER_MIN_CONFIDENCE);
+
+        if (Number.isNaN(value) || value < 0 || value > 1) {
+            throw new Error("Invalid HENNOS_CLASSIFIER_MIN_CONFIDENCE value");
+        }
+
+        return value;
+    }
+
     static get HENNOS_LEGACY_LLM_PROVIDER(): HennosModelProvider | null {
         if (!process.env.HENNOS_LEGACY_LLM_PROVIDER) {
             return null;

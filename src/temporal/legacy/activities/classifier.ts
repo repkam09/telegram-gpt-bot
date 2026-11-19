@@ -4,6 +4,7 @@ import { Logger } from "../../../singletons/logger";
 import { Database } from "../../../database";
 import { parseWorkflowId } from "../interface";
 import { Config } from "../../../singletons/config";
+import { decideChoice } from "./decision";
 
 export type PromptComplexity = "trivial" | "simple" | "complex";
 
@@ -25,7 +26,9 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
         return complexResult();
     }
 
-    if (Config.HENNOS_LLM_PROVIDER === "ollama" || Config.HENNOS_LLM_PROVIDER === "litellm") {
+    const decisionModel = Config.HENNOS_CLASSIFIER_DECISION_MODEL;
+
+    if (!decisionModel && (Config.HENNOS_LLM_PROVIDER === "ollama" || Config.HENNOS_LLM_PROVIDER === "litellm")) {
         // Ollama is free and litellm has dynamic model routing, so classification is skipped to avoid unnecessary LLM calls
         Logger.debug("PromptClassifier", `LLM provider is ${Config.HENNOS_LLM_PROVIDER}, skipping classification and defaulting to 'complex'`);
         return complexResult();
@@ -45,6 +48,10 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
     if (latestUserMessage.trim().length === 0) {
         Logger.debug(workflowId, "Prompt classified as 'simple' (empty message, skipped LLM classification)");
         return simpleResult();
+    }
+
+    if (decisionModel) {
+        return classifyWithDecisionModel(workflowId, decisionModel);
     }
 
     // Use a cheap/fast model with forced tool-call output for structured classification
@@ -95,6 +102,82 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
     }
 }
 
+
+// ─── Decision Model Classification ──────────────────────────────────────────
+
+const DECISION_TIMEOUT_MS = 3000;
+const DECISION_RECENT_MESSAGES = 4;
+const DECISION_MESSAGE_MAX_CHARS = 500;
+
+/**
+ * Classifies with a LiteLLM decision model: one closed-set question, answered with probabilities and
+ * no generated text. It only picks the complexity tier, exactly like the LLM classifier does, and never
+ * changes the system prompt or tool definitions, so provider prompt caching is unaffected.
+ * Any failure or low-confidence answer falls back to 'complex'.
+ */
+async function classifyWithDecisionModel(workflowId: string, decisionModel: string): Promise<PromptComplexityResult> {
+    try {
+        const input = await decisionInput(workflowId);
+        const answer = await decideChoice<PromptComplexity>(
+            {
+                baseUrl: Config.LITELLM_BASE_URL,
+                apiKey: Config.LITELLM_API_KEY,
+                model: decisionModel,
+                timeoutMs: DECISION_TIMEOUT_MS,
+            },
+            input,
+            decisionQuestion(),
+        );
+
+        const minimum = Config.HENNOS_CLASSIFIER_MIN_CONFIDENCE;
+        if (answer.confidence < minimum) {
+            Logger.info(workflowId, `Decision classifier answered '${answer.choice}' with confidence ${answer.confidence} below ${minimum}, defaulting to 'complex'`);
+            return complexResult();
+        }
+
+        Logger.info(workflowId, `Prompt classified as '${answer.choice}' by decision model ${decisionModel} (confidence ${answer.confidence})`);
+        switch (answer.choice) {
+            case "trivial":
+                return trivialResult();
+            case "simple":
+                return simpleResult();
+            default:
+                return complexResult();
+        }
+    } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        Logger.warn(workflowId, `Decision classification failed, defaulting to 'complex': ${error.message}`);
+        return complexResult();
+    }
+}
+
+export function decisionQuestion() {
+    return {
+        name: "complexity",
+        instructions: "How complex is the latest user message, given the recent conversation? Short follow-ups such as 'yes' or 'do that' inherit the complexity of what they refer to.",
+        choices: [
+            { value: "trivial" as const, description: "greeting, farewell, acknowledgment, reaction, emoji or casual small talk that needs no tools or earlier context" },
+            { value: "simple" as const, description: "basic question or request that needs no advanced reasoning or multiple rounds of tool use" },
+            { value: "complex" as const, description: "advanced reasoning, science, math, engineering, code, multi-sentence instructions, or references to earlier conversation" },
+        ],
+    };
+}
+
+async function decisionInput(workflowId: string): Promise<string> {
+    const flow = parseWorkflowId(workflowId);
+    const entries = await Database.instance().messages.findMany({
+        where: { chatId: Number(flow.chatId), type: "text" },
+        select: { role: true, content: true },
+        orderBy: { id: "desc" },
+        take: DECISION_RECENT_MESSAGES,
+    });
+
+    const clip = (text: string) => text.length > DECISION_MESSAGE_MAX_CHARS ? `${text.slice(0, DECISION_MESSAGE_MAX_CHARS)}...` : text;
+    return entries
+        .reverse()
+        .map((entry) => `${entry.role}: ${clip(entry.content)}`)
+        .join("\n");
+}
 
 function trivialResult(): PromptComplexityResult {
     return {

@@ -1,6 +1,6 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MockActivityEnvironment } from "@temporalio/testing";
-import { classifierPromptTemplate, classifierToolDefinitions, classifyPromptComplexity, PromptComplexityResult } from "./classifier";
+import { classifierPromptTemplate, classifierToolDefinitions, classifyPromptComplexity, decisionQuestion, PromptComplexityResult } from "./classifier";
 import { createWorkflowId } from "../interface";
 import { createTestDatabase, TEST_CHAT_ID, TestDatabase } from "../../../../tests/helpers/database";
 
@@ -156,5 +156,128 @@ describe("classifier definitions", () => {
         expect(prompt.user).toBe("what is 2+2?");
         expect(prompt.system).toContain("classify_trivial");
         expect(prompt.system).toContain("classify_complex");
+    });
+});
+
+describe("classifyPromptComplexity with a decision model", () => {
+    let testDb: TestDatabase;
+    const workflowId = createWorkflowId("test", String(TEST_CHAT_ID));
+    const fetchMock = vi.fn();
+
+    beforeAll(async () => {
+        testDb = await createTestDatabase();
+    });
+
+    afterAll(async () => {
+        await testDb?.cleanup();
+    });
+
+    beforeEach(async () => {
+        await testDb.reset();
+        invoke.mockReset();
+        fetchMock.mockReset();
+        vi.stubGlobal("fetch", fetchMock);
+        vi.stubEnv("HENNOS_LLM_PROVIDER", "litellm");
+        vi.stubEnv("HENNOS_CLASSIFIER_DECISION_MODEL", "jev");
+        vi.stubEnv("LITELLM_BASE_URL", "https://litellm.example.com/v1/");
+        vi.stubEnv("LITELLM_API_KEY", "sk-test");
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    function classify(input = { iterations: 0, hasToolContext: false }): Promise<PromptComplexityResult> {
+        const env = new MockActivityEnvironment({ workflowExecution: { workflowId, runId: "run" } });
+        return env.run(classifyPromptComplexity, input) as Promise<PromptComplexityResult>;
+    }
+
+    async function say(role: "user" | "assistant", content: string) {
+        await testDb.db.messages.create({ data: { chatId: TEST_CHAT_ID, role, content } });
+    }
+
+    function decisionResponse(choice: string, confidence = 0.95) {
+        return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+                answers: [{ type: "choice", name: "complexity", choice, confidence, probabilities: [{ value: choice, probability: confidence }] }],
+            }),
+        };
+    }
+
+    it.each([
+        ["trivial", { complexity: "trivial", contextLimit: 5, modelTier: "nano" }],
+        ["simple", { complexity: "simple", contextLimit: 10, modelTier: "low" }],
+        ["complex", { complexity: "complex", contextLimit: 100, modelTier: "high" }],
+    ])("maps a '%s' decision to the matching tier, even on the litellm provider", async (choice, expected) => {
+        await say("user", "hello");
+        fetchMock.mockResolvedValue(decisionResponse(choice));
+
+        expect(await classify()).toMatchObject({ ...expected, useTools: true });
+        expect(invoke).not.toHaveBeenCalled();
+    });
+
+    it("posts the recent conversation and the complexity question to the normalised decisions endpoint", async () => {
+        await say("user", "what's the capital of France?");
+        await say("assistant", "Paris.");
+        await say("user", "and Germany?");
+        fetchMock.mockResolvedValue(decisionResponse("simple"));
+
+        await classify();
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe("https://litellm.example.com/v1/decisions");
+        expect(init.headers.authorization).toBe("Bearer sk-test");
+
+        const body = JSON.parse(init.body);
+        expect(body.model).toBe("jev");
+        expect(body.input).toBe("user: what's the capital of France?\nassistant: Paris.\nuser: and Germany?");
+        expect(body.questions).toEqual([{ type: "choice", ...decisionQuestion() }]);
+    });
+
+    it("falls back to complex when the confidence is below the minimum", async () => {
+        await say("user", "hello");
+        fetchMock.mockResolvedValue(decisionResponse("trivial", 0.4));
+
+        expect((await classify()).complexity).toBe("complex");
+    });
+
+    it("honours a configured minimum confidence", async () => {
+        vi.stubEnv("HENNOS_CLASSIFIER_MIN_CONFIDENCE", "0.3");
+        await say("user", "hello");
+        fetchMock.mockResolvedValue(decisionResponse("trivial", 0.4));
+
+        expect((await classify()).complexity).toBe("trivial");
+    });
+
+    it.each([
+        ["an HTTP error", () => ({ ok: false, status: 503, json: async () => ({}) })],
+        ["a malformed body", () => ({ ok: true, status: 200, json: async () => ({ nope: true }) })],
+        ["a choice outside the set", () => decisionResponse("bogus")],
+        ["a refusal", () => ({ ok: true, status: 200, json: async () => ({ answers: [{ type: "refusal", name: "complexity" }] }) })],
+    ])("falls back to complex on %s", async (_label, response) => {
+        await say("user", "hello");
+        fetchMock.mockResolvedValue(response());
+
+        expect((await classify()).complexity).toBe("complex");
+    });
+
+    it("falls back to complex when the request throws", async () => {
+        await say("user", "hello");
+        fetchMock.mockRejectedValue(new Error("timeout"));
+
+        expect((await classify()).complexity).toBe("complex");
+    });
+
+    it("does not call the decision model in a tool call loop or when the classifier is disabled", async () => {
+        await say("user", "hello");
+
+        await classify({ iterations: 1, hasToolContext: true });
+        vi.stubEnv("HENNOS_CLASSIFIER_ENABLED", "false");
+        await classify();
+
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });
