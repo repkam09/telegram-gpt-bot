@@ -42,6 +42,10 @@ jobs:
       - name: Type check
         run: npm run tsc:noemit
 
+      # tsconfig.json excludes tests, so they get their own type check.
+      - name: Type check tests
+        run: npm run tsc:test
+
       - name: Build
         run: npm run tsc:emit
 

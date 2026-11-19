@@ -9,6 +9,7 @@
     "validate": "npm-run-all lint tsc:noemit",
     "tsc:emit": "tsc",
     "tsc:noemit": "tsc --noEmit",
+    "tsc:test": "tsc -p tsconfig.test.json",
     "tsc:noemit:watch": "tsc --noEmit --watch",
     "lint": "eslint --fix .",
     "lint:check": "eslint .",

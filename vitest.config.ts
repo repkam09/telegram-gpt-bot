@@ -20,7 +20,11 @@ export default defineConfig({
     },
     testTimeout: 30000,
     hookTimeout: 30000,
+    globalSetup: ["./tests/global-setup.ts"],
     setupFiles: ["./tests/setup.ts"],
+    // Restore anything set with vi.stubEnv() / vi.stubGlobal() after each test.
+    unstubEnvs: true,
+    unstubGlobals: true,
     include: ["tests/**/*.{test,spec}.{js,ts}", "src/**/*.{test,spec}.{js,ts}"],
     exclude: ["node_modules/", "build/", "data/"],
   },
