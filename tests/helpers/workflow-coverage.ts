@@ -13,8 +13,14 @@ import { WorkflowCoverage } from "@temporalio/nyc-test-coverage";
  *   const worker = await createInstrumentedWorker({ connection, taskQueue, workflowsPath, activities });
  *   afterAll(() => mergeWorkflowCoverage());
  */
-// Experiment: nyc/Jest define a host-side `__coverage__` global; Vitest's istanbul provider uses a different one.
-(globalThis as unknown as { __coverage__?: object }).__coverage__ ??= {};
+
+type CoverageStore = Record<string, unknown>;
+const scope = globalThis as unknown as { __coverage__?: CoverageStore; __VITEST_COVERAGE__?: CoverageStore };
+
+// nyc and Jest define a global `__coverage__` on the host, and @temporalio/nyc-test-coverage only instruments
+// the workflow bundle when it exists (without it, no coverage ever comes back from the sandbox). Vitest's
+// istanbul provider keeps its counters in `__VITEST_COVERAGE__` instead, so define the global ourselves.
+scope.__coverage__ ??= {};
 
 const workflowCoverage = new WorkflowCoverage();
 
@@ -22,21 +28,11 @@ export function createInstrumentedWorker(options: WorkerOptions & { workflowsPat
     return Worker.create(workflowCoverage.augmentWorkerOptions(options));
 }
 
-type CoverageStore = Record<string, unknown>;
-
 export function mergeWorkflowCoverage(): void {
-    const scope = globalThis as unknown as { __coverage__?: CoverageStore; __VITEST_COVERAGE__?: CoverageStore };
-
     // mergeIntoGlobalCoverage() writes to the conventional nyc global, `__coverage__`. Vitest's istanbul
     // provider collects from its own global, so point the former at the latter for the merge.
     const store = (scope.__VITEST_COVERAGE__ ??= {});
     scope.__coverage__ = store;
-
-    // TEMP DEBUG
-    const before = Object.keys(store).length;
-    const maps = (workflowCoverage as unknown as { coverageMapsData: unknown }).coverageMapsData;
-    const list = Array.isArray(maps) ? maps : Array.from((maps as Map<unknown, unknown>)?.values?.() ?? []);
-    console.log(`[wfcov] store before=${before}; coverageMapsData type=${Array.isArray(maps) ? "array" : typeof maps} count=${list.length}; first keys=${JSON.stringify(Object.keys((list[0] as object) ?? {}).slice(0, 5))}`);
 
     workflowCoverage.mergeIntoGlobalCoverage();
 
@@ -49,5 +45,4 @@ export function mergeWorkflowCoverage(): void {
     }
     Object.assign(store, merged);
     scope.__coverage__ = store;
-    console.log(`[wfcov] store after=${Object.keys(store).length}; workflow entries=${Object.keys(store).filter((k) => k.endsWith("workflow.ts")).join(",")}`);
 }
