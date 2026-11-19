@@ -54,7 +54,7 @@ jobs:
         run: cp .env.dev .env
 
       - name: Test
-        run: npm run test:coverage
+        run: env -u DATABASE_URL npm run test:coverage
 
       # .env.dev points DATABASE_URL at hennos.sqlite, which must never be created: tests use their own temp database.
       - name: Check tests did not touch the .env database
