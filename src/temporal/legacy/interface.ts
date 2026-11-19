@@ -1,4 +1,5 @@
 import { Database } from "../../database";
+import { AgentResponseHandler } from "../../response";
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { createTemporalClient } from "../../singletons/temporal";
@@ -57,7 +58,11 @@ export async function signalLegacyWorkflowAdminMessage(author: string, message: 
     }
 
     const workflowId = createWorkflowId("legacy", Config.TELEGRAM_BOT_ADMIN);
-    return signalLegacyWorkflowMessage(workflowId, author, message);
+
+    return Promise.all([
+        signalLegacyWorkflowMessage(workflowId, author, message),
+        AgentResponseHandler.handleMessage(workflowId, message)
+    ]);
 }
 
 export async function signalLegacyWorkflowAdminExternalContext(author: string, message: string) {
