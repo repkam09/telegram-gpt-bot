@@ -6,7 +6,6 @@ import { WebhookInstance } from "./client/api";
 import { Config } from "./singletons/config";
 import { SupabaseInstance } from "./singletons/supabase";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
-import { ModelContextProtocolServer } from "./client/mcp";
 import { Agent2AgentProtocolServer } from "./client/a2a";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
 import { createSupabaseKeepaliveSchedule, deleteSupabaseKeepaliveSchedule } from "./temporal/supabase/schedule";
@@ -24,13 +23,6 @@ async function start() {
         await TelegramLegacyInstance.init();
     } else {
         Logger.info("Hennos", "Telegram client is disabled. Skipping...");
-    }
-
-    if (Config.HENNOS_MCP_ENABLED) {
-        Logger.info("Hennos", "Initializing Model Context Protocol Server...");
-        await ModelContextProtocolServer.run();
-    } else {
-        Logger.info("Hennos", "Model Context Protocol Server is disabled. Skipping...");
     }
 
     if (Config.HENNOS_A2A_ENABLED) {

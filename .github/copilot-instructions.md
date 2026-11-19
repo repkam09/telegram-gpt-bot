@@ -2,48 +2,67 @@
 
 ## Architecture Overview
 
-This is a Temporal.io-based agentic chatbot with multi-platform support (Telegram, Discord, CLI, REST API). The core is **workflow orchestration** - clients signal workflows, workflows call activities, activities execute tools and LLM calls.
+Hennos is a Telegram-first chatbot built on **Temporal.io**. Clients never call an LLM directly: they signal a long-lived workflow, the workflow calls activities, and activities call LLM providers and tools.
 
 ### Critical Pattern: Client → Signal → Workflow → Activity → Tool
 
-1. **Clients** ([src/client/](../src/client/)) receive messages and start/signal workflows via Temporal
-2. **Workflows** ([src/temporal/](../src/temporal/)) orchestrate agent logic using signals and queries (durable, resumable)
-3. **Activities** ([src/temporal/agent/activities/](../src/temporal/agent/activities/)) wrap stateful operations (DB, LLM, tools)
+1. **Clients** ([src/client/](../src/client/)) receive messages and `signalWithStart` the legacy workflow
+2. **Workflow** ([src/temporal/legacy/workflow.ts](../src/temporal/legacy/workflow.ts)) is the durable conversation loop: classify → completion → tool calls → answer
+3. **Activities** ([src/temporal/legacy/activities/](../src/temporal/legacy/activities/)) wrap everything with side effects (DB, LLM, tools)
 4. **Tools** ([src/tools/](../src/tools/)) extend `BaseTool` with `isEnabled()`, `definition()`, `callback()`
+5. **Responses** go back out through `AgentResponseHandler` ([src/response.ts](../src/response.ts)) to whichever client listener owns that conversation's platform
 
-## Key Workflows
+Startup lives in [src/hennos.ts](../src/hennos.ts): it initialises the database, starts whichever clients are enabled by `HENNOS_*_ENABLED` flags, creates/removes Temporal schedules, then starts the Temporal worker ([src/worker.ts](../src/worker.ts)) in the same process.
 
-- **agent/** - Main agentic workflow with thought/action/observation loop
-- **gemstone/** - Specialized variant with different behavior
-- **legacy/** - Original implementation (pre-agentic)
+## Workflows
 
-Each workflow dir contains: `workflow.ts`, `activities/`, `interface.ts`, `tools.ts`, `types.ts`
+All live in [src/temporal/](../src/temporal/). Workflows are exported from [src/temporal/workflows.ts](../src/temporal/workflows.ts) and their activities from [src/temporal/activities.ts](../src/temporal/activities.ts). **A new workflow or activity must be added to both barrel files** or the worker will not register it.
+
+| Dir | Workflow | Purpose |
+|---|---|---|
+| `legacy/` | `legacyWorkflow` | The conversation workflow. One per chat, waits for `legacyWorkflowMessage` signals. |
+| `email/` | `reviewEmailWorkflow` | Scheduled (every 4h, `HENNOS_GMAIL_ENABLED`): fetch Gmail, summarize, store the digest as context for the admin chat. |
+| `search/` | `searchWorkflow` | One-shot search + summarize. |
+| `supabase/` | `supabaseKeepaliveWorkflow` | Scheduled (every 24h) Supabase keepalive. |
+
+`legacy/` layout: `workflow.ts`, `activities/` (`action`, `classifier`, `completion`, `persist`), `interface.ts` (client-side helpers), `tools.ts`, `types.ts`.
+
+### The legacy workflow loop
+
+- Workflow ID is a JSON string: `{"platform": "...", "chatId": "...", "type": "legacy"}`. Build it with `createWorkflowId(platform, chatId)` in [interface.ts](../src/temporal/legacy/interface.ts). **`chatId` must be numeric** (it is stored in `Messages.chatId`), and `parseWorkflowId` throws otherwise. `AgentResponseHandler` and tools recover the platform/chat by parsing this ID, so its shape is load-bearing.
+- Clients use the helpers in `interface.ts`: `signalLegacyWorkflowMessage` (signalWithStart, triggers a reply), `signalLegacyWorkflowExternalContext` / `signalLegacyWorkflowImageMessage` (write to the `Messages` table only, no reply), `signalLegacyWorkflowAdminMessage` / `signalLegacyWorkflowAdminExternalContext` (target `TELEGRAM_BOT_ADMIN`).
+- Loop: persist pending user messages → `classifyPromptComplexity` (picks model tier, context limit, whether tools are used; skipped unless `HENNOS_CLASSIFIER_ENABLED` and an OpenAI/Anthropic provider) → `legacyCompletion` → either broadcast/persist the answer, or run each requested tool with `legacyAction` in parallel and iterate. Conversation history is read from the `Messages` table, not held in workflow state; only tool call/response entries are kept in the workflow.
+- An unrecoverable error in the loop broadcasts a generic error message and rethrows (fails the workflow). The next signalWithStart starts a fresh run.
 
 ## Activity Proxy Pattern
 
 Activities use `proxyActivities()` with **different timeout tiers** based on operation:
 ```typescript
 // Quick operations: 15s timeout, 5 retries
-const { persistUserMessage } = proxyActivities<typeof activities>({
+const { persistLegacyAgentMessage } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 seconds",
     retry: { backoffCoefficient: 1, initialInterval: "3 seconds", maximumAttempts: 5 }
 });
 
-// LLM calls: 5 minutes timeout
-const { thought, action } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes", ...
+// LLM calls and tool execution: 15 minutes (local models can be slow)
+const { legacyCompletion, legacyAction } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "15 minutes", ...
 });
 ```
+The classifier uses 1 minute / 3 attempts. Long activities can be wrapped with `withActivityHeartbeat` ([src/temporal/heartbeat.ts](../src/temporal/heartbeat.ts)).
 
 ## LLM Provider Abstraction
 
-[src/provider.ts](../src/provider.ts) abstracts OpenAI, Anthropic, Ollama behind unified interface:
+[src/provider.ts](../src/provider.ts) abstracts providers behind `InvokableModelProvider` (`limit()`, `invoke()`, `completion()`, `moderation()`):
 ```typescript
-const provider = resolveModelProvider("high" | "low");
+const provider = await resolveLegacyModelProvider(workflowId, "high" | "low" | "nano");
 await provider.completion(workflowId, messages, iterations, tools);
 ```
 
-Models selected via `HENNOS_LLM_PROVIDER` env var. High = GPT-4, Low = GPT-4-mini.
+- Providers: `openai | anthropic | ollama | litellm` (implementations in [src/singletons/](../src/singletons/)). Default comes from `HENNOS_LLM_PROVIDER`.
+- `resolveLegacyModelProvider` first honours `HENNOS_LEGACY_LLM_PROVIDER`, otherwise the per-user `User.provider` column, otherwise falls back to the default provider.
+- `litellm` supports per-user BYOK keys (`UserBYOK` table, `LITELLM_BYOK_ENABLED`).
+- Model names/limits come from the `Config.*_LLM` getters, not from hard-coded values.
 
 ## Tool Development
 
@@ -56,65 +75,88 @@ export class MyTool extends BaseTool {
 }
 ```
 
-Register in [src/temporal/agent/tools.ts](../src/temporal/agent/tools.ts) and re-export from [src/tools/tools.ts](../src/tools/tools.ts).
+Register it in `LegacyTools` in [src/temporal/legacy/tools.ts](../src/temporal/legacy/tools.ts). `availableTools()` filters by `isEnabled()` on every call, and `processDefinedToolCalls` in [src/tools/tools.ts](../src/tools/tools.ts) dispatches by tool name. There is a single list; no second registration is needed. Add a lazy getter to `Config` for any API key.
 
-## Database Patterns
+Tools that need to notify the owner use `signalLegacyWorkflowAdminMessage`. The `memory` tool (`MemoryTool` + `tools/memory/MemoryFileStore.ts`) is a per-chat virtual `/memories` filesystem backed by the `MemoryFile` table, enabled by `HENNOS_MEMORY_ENABLED`.
 
-SQLite + Prisma ORM. **BigInt for chat IDs** (Telegram requirement):
+## Clients
+
+All clients live in [src/client/](../src/client/); initialisation is gated by flags in [src/hennos.ts](../src/hennos.ts).
+
+- **Telegram** (`telegram.ts` + `legacy/legacy.ts`): polling by default, webhook mode when `HENNOS_API_ENABLED` and `TELEGRAM_BOT_WEBHOOK_EXTERNAL` are set. `TelegramInstance` handles the whitelist (`User.whitelisted`, skipped in development mode) and delegates every message type to `TelegramLegacyInstance`, which handles **private chats only**. Commands are in `legacy/commands.ts`.
+- **REST/SSE API** (`api.ts`, `endpoints/`): Express on `HENNOS_API_PORT`. Routes: `/healthz`, Telegram webhook, `/legacy/conversation/:sessionId/{message,stream}`, `/hennos/realtime/sip` (OpenAI Realtime SIP voice calls, which do not use Temporal), plus Supabase login/auth when `HENNOS_SUPABASE_ENABLED`. The session ID must be numeric because it becomes the legacy `chatId`.
+- **A2A** (`a2a.ts`, `HENNOS_A2A_ENABLED`): Agent2Agent server. The executor is currently a stub that replies "Hello!".
+- **CLI** (`cli.ts`, `npm run start:cli`): development mode only; uses platform `cli` and a fixed chatId of `0`.
+
+### Response Handling
+
+[src/response.ts](../src/response.ts) uses a listener-per-platform pattern for messages, artifacts and status events:
 ```typescript
-const db = Database.instance();
-await db.user.findUnique({ where: { telegramId: BigInt(chatId) } });
-```
-
-Migrations: task `migrate:deploy` (production) or task `run migrate:new` (dev).
-
-## Response Handling
-
-[src/response.ts](../src/response.ts) uses listener pattern for multi-client responses:
-```typescript
-AgentResponseHandler.registerListener("telegram", async (message, chatId) => {
+AgentResponseHandler.registerMessageListener("legacy", async (message, chatId) => {
     await TelegramInstance.sendMessageWrapper(chatId, message);
 });
 ```
+Workflows call the `broadcastLegacyAgentMessage` activity, which parses the platform out of the workflow ID and calls that platform's listener. Registered platforms: `legacy` (Telegram), `webhook` (SSE streams), `cli`. A missing listener only logs a warning. **A new client must register listeners and use a matching platform string in its workflow IDs.** Listeners are in-memory, so they only work in the process that runs the activity.
 
-Workflows call `sendAgentResponse(workflowId, message)` activity, which routes to all registered listeners.
+## Database Patterns
+
+SQLite + Prisma ORM ([prisma/schema.prisma](../prisma/schema.prisma)). Telegram-era tables use **BigInt** chat IDs (`User`, `Group`, ...), while `Messages` (legacy conversation history) stores the chat ID as a number:
+```typescript
+const db = Database.instance();
+await db.user.findUnique({ where: { chatId: BigInt(chatId) } });
+await db.messages.create({ data: { chatId: Number(chatId), role: "user", content, from: Number(chatId) } });
+```
+
+`WorkflowMessage`, `WorkflowSession`, `WorkflowSessionLink` and `ModelContextProtocolServer` (+ `Headers`) are left over from the removed agent workflow. Nothing reads or writes them any more, but the tables are intentionally kept.
+
+Migrations: `npm run migrate:deploy` (production, runs on `npm start`) or `npm run migrate:new` (dev, create-only).
 
 ## Development Workflow
 
-When needing to execution `npm` scripts, use the vscode `tasks` to execute them. Do not use `npm` or the terminal directly.
+When executing `npm` scripts, use the VS Code tasks in [.vscode/tasks.json](../.vscode/tasks.json) (e.g. `npm: build`, `npm: validate`, `npm: test`) rather than the terminal directly.
 
-**Critical**: Always run `build`, `validate`, and `test` after changing tool definitions or workflow signatures. Temporal workers need compiled code.
+**Critical**: Always run `build`, `validate`, and `test` after changing tool definitions or workflow signatures. Temporal workers run compiled code from `build/`.
+
+When changing `legacyWorkflow` itself, remember that running workflows replay their history on the new code. Changes to the order or number of activity calls can cause non-determinism errors; use `patched()` or finish/terminate in-flight workflows.
 
 ## Configuration
 
-All config in [src/singletons/config.ts](../src/singletons/config.ts). Environment variables validated at startup. Use `.env.dev` as template.
+All config is in [src/singletons/config.ts](../src/singletons/config.ts) as lazy static getters that validate when read. Use `.env.dev` as the template for `.env`.
 
 Key vars:
-- `HENNOS_LLM_PROVIDER` - openai|ollama|anthropic
-- `TEMPORAL_HOST/PORT/NAMESPACE/TASK_QUEUE` - Temporal connection
-- `TELEGRAM_BOT_KEY` - Bot token
+- `HENNOS_LLM_PROVIDER` / `HENNOS_LEGACY_LLM_PROVIDER` - openai|anthropic|ollama|litellm
+- `HENNOS_TOOL_DEPTH` - max tool-call iterations before the model is forced to answer
+- `HENNOS_{TELEGRAM,API,A2A,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags
+- `HENNOS_DEVELOPMENT_MODE` - skips the whitelist, enables CLI and static `public/` files
+- `TEMPORAL_HOST/PORT/NAMESPACE/TASK_QUEUE/API_KEY/USE_TLS` - Temporal connection (Temporal Cloud supported)
+- `TELEGRAM_BOT_KEY`, `TELEGRAM_BOT_ADMIN` - bot token and the admin chat that receives notifications
 - `DATABASE_URL` - SQLite path
 
 ## Testing
 
-Vitest with Temporal testing framework. See [tests/temporal/](../tests/temporal/) for workflow test patterns:
+Vitest (`npm test`) picks up `src/**/*.{test,spec}.ts` and `tests/**`; `tests/setup.ts` is the shared setup. Tests are co-located with the code, e.g. [src/temporal/supabase/workflow.test.ts](../src/temporal/supabase/workflow.test.ts) (workflow test) and [src/tools/memory/MemoryFileStore.test.ts](../src/tools/memory/MemoryFileStore.test.ts). Workflow tests use the Temporal time-skipping environment:
 ```typescript
 import { TestWorkflowEnvironment } from "@temporalio/testing";
 const testEnv = await TestWorkflowEnvironment.createTimeSkipping();
 ```
+See [.github/instructions/temporal-workflow-test.instructions.md](instructions/temporal-workflow-test.instructions.md).
 
 ## Common Pitfalls
 
 1. **Temporal workflows are deterministic** - no direct I/O, use activities for anything stateful
-2. **Chat IDs are BigInt** - convert with `BigInt(chatId)` for DB operations
-3. **Activities need timeout configuration** - default 10s often too short for LLM calls
-4. **Tools must be registered** in both workflow's tool list AND activity processor
-5. **Workflow code runs in isolated V8 context** - can't import node modules directly, use activities
+2. **Legacy workflow IDs need a numeric `chatId`** - `createWorkflowId` throws otherwise
+3. **Activities need timeout configuration** - the default is too short for LLM calls
+4. **Workflow code runs in an isolated V8 context** - it can only import activity *types*, not implementations or Node modules
+5. **New workflows/activities must be exported from both `workflows.ts` and `activities.ts`**
+6. **Client platform strings must match a registered `AgentResponseHandler` listener**
 
 ## Quick Reference
 
 - Entry point: [src/hennos.ts](../src/hennos.ts)
 - Temporal worker: [src/worker.ts](../src/worker.ts)
+- Conversation workflow: [src/temporal/legacy/workflow.ts](../src/temporal/legacy/workflow.ts)
+- Tool list: [src/temporal/legacy/tools.ts](../src/temporal/legacy/tools.ts)
+- Provider resolution: [src/provider.ts](../src/provider.ts)
 - Schema: [prisma/schema.prisma](../prisma/schema.prisma)
 - Deployment: `docker compose up`
-- Logs: Pino logger ([src/singletons/logger.ts](../src/singletons/logger.ts)) with Axiom integration
+- Logs: Pino logger ([src/singletons/logger.ts](../src/singletons/logger.ts)); the first argument is the workflowId or a component label

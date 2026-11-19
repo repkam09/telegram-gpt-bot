@@ -4,12 +4,10 @@ import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { AgentResponseHandler } from "../response";
 import { TelegramWebhookInstance } from "./endpoints/telegram";
-import { HennosWebhookInstance } from "./endpoints/hennos";
-import { MCPWebhookInstance } from "./endpoints/mcp";
 import { A2AWebhookInstance } from "./endpoints/a2a";
-import { GemstoneWebhookInstance } from "./endpoints/gemstone";
 import { SupabaseWebhookInstance } from "./endpoints/supabase";
 import { LegacyWebhookInstance } from "./endpoints/legacy";
+import { HennosRealtime } from "../realtime/sip";
 
 export class WebhookInstance {
     static _instance: Express;
@@ -70,16 +68,8 @@ export class WebhookInstance {
             TelegramWebhookInstance.init(app);
         }
 
-        if (Config.HENNOS_MCP_ENABLED) {
-            MCPWebhookInstance.init(app);
-        }
-
         if (Config.HENNOS_A2A_ENABLED) {
             A2AWebhookInstance.init(app);
-        }
-
-        if (Config.HENNOS_GEMSTONE_ENABLED) {
-            GemstoneWebhookInstance.init(app);
         }
 
         if (Config.HENNOS_SUPABASE_ENABLED) {
@@ -87,7 +77,7 @@ export class WebhookInstance {
         }
 
         // Enable the primary endpoints always
-        HennosWebhookInstance.init(app);
+        app.post("/hennos/realtime/sip", HennosRealtime.middleware());
         LegacyWebhookInstance.init(app);
 
         AgentResponseHandler.registerMessageListener("webhook", async (message: string, sessionId: string) => {

@@ -1,8 +1,6 @@
 import readline from "node:readline/promises";
 import { Config } from "../singletons/config";
-import { createTemporalClient } from "../singletons/temporal";
-import { agentWorkflow, agentWorkflowMessageSignal } from "../temporal/workflows";
-import { createWorkflowId } from "../temporal/agent/interface";
+import { signalLegacyWorkflowMessage, createWorkflowId } from "../temporal/legacy/interface";
 import { AgentResponseHandler } from "../response";
 
 export class CommandLineInstance {
@@ -47,15 +45,11 @@ export class CommandLineInstance {
     }
 }
 
+// The legacy workflow requires a numeric chatId, so the CLI uses a fixed one.
+const CLI_CHAT_ID = "0";
+
 async function signalWithStartAgentWorkflow(input: string): Promise<void> {
-    const client = await createTemporalClient();
-    await client.workflow.signalWithStart(agentWorkflow, {
-        taskQueue: Config.TEMPORAL_TASK_QUEUE,
-        workflowId: await createWorkflowId("cli", "cli"),
-        args: [{}],
-        signal: agentWorkflowMessageSignal,
-        signalArgs: [input, "User", new Date().toISOString()],
-    });
+    await signalLegacyWorkflowMessage(createWorkflowId("cli", CLI_CHAT_ID), "User", input);
 }
 
 CommandLineInstance.run().catch((error) => {

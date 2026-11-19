@@ -1,12 +1,9 @@
-import TelegramBot, { Message, MessageOriginChannel, MessageOriginChat, MessageOriginHiddenUser, MessageOriginUser, SendMessageParams } from "node-telegram-bot-api";
+import TelegramBot, { Message, SendMessageParams } from "node-telegram-bot-api";
 import { Config } from "../singletons/config";
-import { createWorkflowId, queryAgenticWorkflowContext, signalAgenticWorkflowExternalContext, signalAgenticWorkflowMessage } from "../temporal/agent/interface";
+import { createWorkflowId } from "../temporal/legacy/interface";
 import { Logger } from "../singletons/logger";
 import path from "node:path";
-import fs from "fs/promises";
 import { createReadStream } from "node:fs";
-import { generateTranscription } from "../singletons/transcription";
-import { AgentResponseHandler, StatusListenerEventType } from "../response";
 import { Database } from "../database";
 import { TelegramLegacyInstance } from "./legacy/legacy";
 
@@ -42,59 +39,15 @@ export class TelegramInstance {
         TelegramInstance._instance = bot;
 
         Logger.debug("telegram", "Telegram bot initialized and polling started.");
-        AgentResponseHandler.registerMessageListener("telegram", async (message: string, chatId: string) => {
-            try {
-                await TelegramInstance.sendMessageWrapper(chatId, message);
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error("telegram", `Error sending message to chatId ${chatId}: ${error.message}`, error);
-            }
-        });
-
-        AgentResponseHandler.registerArtifactListener("telegram", async (filePath: string, chatId: string, mime_type: string, description?: string | undefined) => {
-            Logger.info("telegram", `Received webhook artifact: ${filePath} for chatId: ${chatId} with mime_type: ${mime_type} and description: ${description}`);
-            if (mime_type.startsWith("image/")) {
-                try {
-                    Logger.debug("telegram", `Sending photo to chatId ${chatId}: ${filePath}`);
-                    await bot.sendPhoto(Number(chatId), filePath, {
-                        caption: description ? description.slice(0, 900) : `Artifact: ${path.basename(filePath)}`
-                    });
-                } catch (err: unknown) {
-                    const error = err as Error;
-                    Logger.error("telegram", `Error sending photo to chatId ${chatId}: ${error.message}`, error);
-                }
-                return;
-            }
-
-            try {
-                Logger.debug("telegram", `Sending document to chatId ${chatId}: ${filePath}`);
-                await bot.sendDocument(Number(chatId), filePath, {
-                    caption: description ? description.slice(0, 900) : `Artifact: ${path.basename(filePath)}`
-                });
-            } catch (err: unknown) {
-                const error = err as Error;
-                Logger.error("telegram", `Error sending document to chatId ${chatId}: ${error.message}`, error);
-            }
-        });
-
-        AgentResponseHandler.registerStatusListener("telegram", async (event: { type: StatusListenerEventType; payload?: unknown }, chatId: string) => {
-            Logger.debug("telegram", `Received status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
-            if (TelegramStatusEvents.includes(event.type as ChatAction)) {
-                TelegramInstance.setTelegramIndicator(Number(chatId), event.type as ChatAction);
-            } else {
-                Logger.debug("telegram", `Received unsupported status update: ${JSON.stringify(event)} for chatId: ${chatId}`);
-            }
-        });
-
         bot.on("text", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleTextMessage));
-        bot.on("location", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleLocationMessage));
-        bot.on("contact", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleContactMessage));
-        bot.on("audio", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleAudioMessage));
-        bot.on("photo", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handlePhotoMessage));
-        bot.on("document", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleDocumentMessage));
-        bot.on("voice", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleVoiceMessage));
-        bot.on("edited_message_caption", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleEditCaptionMessage));
-        bot.on("edited_message_text", (msg) => TelegramInstance.validateWhitelist(msg, TelegramInstance.handleEditTextMessage));
+        bot.on("location", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handleLocationMessage));
+        bot.on("contact", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handleContactMessage));
+        bot.on("audio", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handleAudioMessage));
+        bot.on("photo", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handlePhotoMessage));
+        bot.on("document", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handleDocumentMessage));
+        bot.on("voice", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handleVoiceMessage));
+        bot.on("edited_message_caption", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handleLegacyNoOpMessage));
+        bot.on("edited_message_text", (msg) => TelegramInstance.validateWhitelist(msg, TelegramLegacyInstance.handleLegacyNoOpMessage));
 
         // Special case for stickers, since we want to attempt to re-upload them as photos if they are sent as stickers, no whitelist check
         bot.on("sticker", TelegramInstance.handleTelegramStickerMessage);
@@ -186,14 +139,6 @@ export class TelegramInstance {
         return TelegramInstance._instance;
     }
 
-    private static async workflowSignalArguments(msg: Message): Promise<{ author: string; workflowId: string; }> {
-        const workflowId = await createWorkflowId("telegram", String(msg.chat.id));
-        return {
-            author: msg.from!.last_name ? `${msg.from!.first_name} ${msg.from!.last_name}` : `${msg.from!.first_name}`,
-            workflowId,
-        };
-    }
-
     private static async isUserWhitelisted(userId: number): Promise<boolean> {
         const db = Database.instance();
         const user = await db.user.findUnique({
@@ -201,16 +146,6 @@ export class TelegramInstance {
             select: { whitelisted: true }
         });
         return user?.whitelisted ?? false;
-    }
-
-    private static async isAgenticUser(userId: number): Promise<boolean> {
-        if (Config.TELEGRAM_BOT_ADMIN === String(userId)) {
-            Logger.debug("telegram", `User ${userId} is the Telegram bot admin and will be treated as agentic.`);
-            return true;
-        }
-
-        // Eventually this should check again some DB table        
-        return false;
     }
 
     private static async downloadTelegramFile(workflowId: string, fileId: string, downloadPath: string): Promise<string | null> {
@@ -230,243 +165,16 @@ export class TelegramInstance {
         return null;
     }
 
-    private static async handleDocumentMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.document) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleDocumentMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.document.file_id, Config.LOCAL_STORAGE(workflowId));
-        if (!result) {
-            Logger.error(workflowId, `Failed to download document with file_id: ${msg.document.file_id}`);
-            return;
-        }
-
-        const ext = path.extname(result) ? path.extname(result).substring(1) : ".bin";
-        if (ext === "mp3" || ext === "ogg" || ext === "wav" || ext === "flac" || ext === "oga" || ext === "m4a") {
-            return TelegramInstance.handleAudioMessage({
-                ...msg,
-                audio: { file_id: msg.document.file_id, duration: -1, file_unique_id: msg.document.file_unique_id }
-            });
-        }
-
-        if (ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "gif" || ext === "webp" || ext === "bmp" || ext === "tiff") {
-            return TelegramInstance.handlePhotoMessage({
-                ...msg,
-                photo: [{ file_id: msg.document.file_id, file_unique_id: msg.document.file_unique_id, width: -1, height: -1 }]
-            });
-        }
-
-        Logger.warn(workflowId, `Received document with file_id: ${msg.document.file_id} and extension: ${ext}.`);
-        const payload = `<document><file_id>${msg.document.file_id}</file_id><file_name>${msg.document.file_name || ""}</file_name><mime_type>${msg.document.mime_type || ""}</mime_type><file_size>${msg.document.file_size || ""}</file_size><error>Document support has been removed from the Hennos system for cost reasons</error></document>`;
-        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-
-        if (msg.caption) {
-            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-            return signalAgenticWorkflowMessage(workflowId, author, msg.caption);
-        }
-    }
-
-    private static async handlePhotoMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.photo || msg.photo.length === 0) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handlePhotoMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        const largestPhoto = msg.photo.reduce((prev, current) => (prev.file_size && current.file_size && prev.file_size > current.file_size) ? prev : current);
-
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, largestPhoto.file_id, Config.LOCAL_STORAGE(workflowId));
-        if (result) {
-            const payload = `<photo><file_id>${largestPhoto.file_id}</file_id><width>${largestPhoto.width}</width><height>${largestPhoto.height}</height><file_size>${largestPhoto.file_size || ""}</file_size><caption>${msg.caption || ""}</caption></photo>`;
-            await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-        } else {
-            Logger.error(workflowId, `Failed to download photo with file_id: ${largestPhoto.file_id}`);
-        }
-
-        const summary = "<not_implemented>Unsupported: Telegram Photo Messages</not_implemented>"; // TODO: Implement image support
-        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-        return signalAgenticWorkflowMessage(workflowId, author, summary);
-    }
-
-    private static async handleAudioMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.audio) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleAudioMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.audio.file_id, Config.LOCAL_STORAGE(workflowId));
-        if (!result) {
-            Logger.error(workflowId, `Failed to download audio with file_id: ${msg.audio.file_id}`);
-            return;
-        }
-
-        const transcript = await generateTranscription(workflowId, result);
-        const payload = `<audio><file_id>${msg.audio.file_id}</file_id><duration>${msg.audio.duration}</duration><performer>${msg.audio.performer || ""}</performer><title>${msg.audio.title || ""}</title><mime_type>${msg.audio.mime_type || ""}</mime_type><file_size>${msg.audio.file_size || ""}</file_size><transcript>${transcript}</transcript></audio>`;
-        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-
-        if (msg.caption) {
-            TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-            return signalAgenticWorkflowMessage(workflowId, author, msg.caption);
-        }
-    }
-
-    private static async handleVoiceMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.voice) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleVoiceMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-
-        const result = await TelegramInstance.downloadTelegramFile(workflowId, msg.voice.file_id, Config.LOCAL_STORAGE(workflowId));
-        if (!result) {
-            Logger.error(workflowId, `Failed to download voice message with file_id: ${msg.voice.file_id}`);
-            return;
-        }
-
-        const payload = `<voice><file_id>${msg.voice.file_id}</file_id><duration>${msg.voice.duration}</duration><mime_type>${msg.voice.mime_type || ""}</mime_type><file_size>${msg.voice.file_size || ""}</file_size></voice>`;
-        await signalAgenticWorkflowExternalContext(workflowId, author, payload);
-
-        TelegramInstance.setTelegramIndicator(msg.chat.id, "upload_voice");
-        const transcript = await generateTranscription(workflowId, result);
-
-        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-        return signalAgenticWorkflowMessage(workflowId, author, transcript);
-    }
-
-    private static async handleContactMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.contact) {
-            return;
-        }
-
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleContactMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        const payload = `<contact><first_name>${msg.contact.first_name}</first_name><last_name>${msg.contact.last_name || ""}</last_name><user_id>${msg.contact.user_id || ""}</user_id><vcard>${msg.contact.vcard || ""}</vcard><phone_number>${msg.contact.phone_number}</phone_number></contact>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
-    }
-
-    private static async handleLocationMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.location) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleLocationMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        const payload = `<location><latitude>${msg.location.latitude}</latitude><longitude>${msg.location.longitude}</longitude></location>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
-    }
-
     private static async handleTextMessage(msg: Message): Promise<void> {
         if (!msg.from || !msg.text) {
             return;
         }
 
-        // Check if this is a command
         if (msg.text.startsWith("/")) {
-            return TelegramInstance.handleTextCommandMessage(msg);
+            return TelegramLegacyInstance.handleTextCommandMessage(msg);
         }
 
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleTextMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        if (msg.forward_origin) {
-            const originaldate = new Date(msg.forward_origin.date * 1000).toISOString();
-
-            Logger.info(workflowId, `Received forwarded message of type '${msg.forward_origin.type}' with original date '${originaldate}'`);
-            Logger.debug(workflowId, `Forwarded message content: ${JSON.stringify(msg)}`);
-            if ((msg.forward_origin as MessageOriginUser).sender_user) {
-                const forwardUser = (msg.forward_origin as MessageOriginUser).sender_user;
-                const forwardUserName = forwardUser.last_name ? `${forwardUser.first_name} ${forwardUser.last_name}` : forwardUser.first_name;
-                const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, forwardUserName, payload);
-            }
-
-            if ((msg.forward_origin as MessageOriginHiddenUser).sender_user_name) {
-                const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, (msg.forward_origin as MessageOriginHiddenUser).sender_user_name, payload);
-            }
-
-            if ((msg.forward_origin as MessageOriginChat).sender_chat) {
-                const forwardChat = (msg.forward_origin as MessageOriginChat).sender_chat;
-                const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, forwardChat.title || "Unknown Chat", payload);
-            }
-
-            if ((msg.forward_origin as MessageOriginChannel).chat) {
-                const forwardChannel = (msg.forward_origin as MessageOriginChannel).chat;
-                const payload = `<forwarded><original_date>${originaldate}</original_date><original_text>${msg.text}</original_text></forwarded>`;
-                return signalAgenticWorkflowExternalContext(workflowId, forwardChannel.title || "Unknown Channel", payload);
-            }
-        }
-
-        TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
-        return signalAgenticWorkflowMessage(workflowId, author, msg.text);
-    }
-
-    private static async handleEditTextMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.text) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleLegacyNoOpMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        const payload = `<edited_message><edited_date>${new Date().toISOString()}</edited_date><new_text>${msg.text}</new_text></edited_message>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
-    }
-
-    private static async handleEditCaptionMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.caption) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleLegacyNoOpMessage(msg);
-        }
-
-        const { author, workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-        const payload = `<edited_caption><edited_date>${new Date().toISOString()}</edited_date><new_caption>${msg.caption}</new_caption></edited_caption>`;
-        return signalAgenticWorkflowExternalContext(workflowId, author, payload);
-    }
-
-    private static async handleUnimplemented(event: string, msg: Message): Promise<void> {
-        Logger.debug("telegram", `Received unimplemented message type: ${event} with content: ${JSON.stringify(msg)}`);
+        return TelegramLegacyInstance.handleTextMessage(msg);
     }
 
     private static async handleTelegramStickerMessage(msg: Message) {
@@ -475,7 +183,7 @@ export class TelegramInstance {
             return;
         }
 
-        const { workflowId } = await TelegramInstance.workflowSignalArguments(msg);
+        const workflowId = createWorkflowId("legacy", String(msg.chat.id));
 
         const { set_name, emoji } = msg.sticker;
         if (set_name && emoji) {
@@ -485,7 +193,7 @@ export class TelegramInstance {
         try {
             // This is a silly feature that fixes an issue in Telegram where some images are incorrectly sent as stickers
             // This will download the sticker, and re-upload it as a photo
-            const stickerPath = await TelegramInstance.downloadTelegramFile(workflowId, msg.sticker.file_id, Config.LOCAL_STORAGE(workflowId));
+            const stickerPath = await TelegramInstance.downloadTelegramFile(workflowId, msg.sticker.file_id, Config.LOCAL_STORAGE(String(msg.chat.id)));
             if (!stickerPath) {
                 return;
             }
@@ -494,28 +202,6 @@ export class TelegramInstance {
         } catch (err: unknown) {
             const error = err instanceof Error ? err : new Error(String(err));
             Logger.error(workflowId, `Error handling Telegram sticker message with file_id: ${msg.sticker.file_id}.`, error);
-        }
-    }
-
-    private static async handleTextCommandMessage(msg: Message): Promise<void> {
-        if (!msg.from || !msg.text) {
-            return;
-        }
-
-        const isAgenticUser = await TelegramInstance.isAgenticUser(msg.from.id);
-        if (!isAgenticUser) {
-            return TelegramLegacyInstance.handleTextCommandMessage(msg);
-        }
-
-        const command = msg.text.split(" ")[0].substring(1).toLowerCase().trim();
-        Logger.debug("telegram", `Received Telegram command message: ${msg.text} from ${msg.from?.first_name} ${msg.from?.last_name || ""}`);
-        if (command === "debug") {
-            const { workflowId } = await TelegramInstance.workflowSignalArguments(msg);
-            const context = await queryAgenticWorkflowContext(workflowId);
-
-            const filePath = path.join(Config.LOCAL_STORAGE(workflowId), `debug_context_${Date.now()}.xml`);
-            await fs.writeFile(filePath, context.join("\n"), "utf-8");
-            Logger.debug("telegram", `Workflow context written to ${filePath}`);
         }
     }
 }
