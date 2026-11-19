@@ -1,6 +1,7 @@
 ---
 description: Instructions for writing Temporal Workflow code
-applyTo: "**/src/temporal/**/workflow.ts"
+paths:
+  - "src/temporal/**/workflow.ts"
 ---
 
 # Temporal Workflow Development Guide (TypeScript)

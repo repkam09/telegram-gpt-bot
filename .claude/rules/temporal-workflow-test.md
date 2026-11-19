@@ -1,6 +1,7 @@
 ---
 description: Instructions for writing Temporal Workflow tests
-applyTo: "**/src/temporal/**/workflow.test.ts"
+paths:
+  - "src/temporal/**/workflow.test.ts"
 ---
 
 # Instructions for Writing Temporal Workflow Tests
