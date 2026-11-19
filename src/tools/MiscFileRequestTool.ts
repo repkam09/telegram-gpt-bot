@@ -2,7 +2,7 @@ import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
-import { signalLegacyWorkflowAdminMessage } from "../temporal/legacy/interface";
+import { signalLegacyWorkflowAdminExternalContext } from "../temporal/legacy/interface";
 
 export class EbookRequest extends BaseTool {
     public static isEnabled(): boolean {
@@ -55,7 +55,7 @@ export class EbookRequest extends BaseTool {
 
         try {
             const formattedMessage = `New ebook request:\n\nTitle: ${args.ebookTitle}\nAuthor: ${args.ebookAuthor}\nRequested by: ${workflowId})`;
-            await signalLegacyWorkflowAdminMessage(workflowId, `<ebook_request>\n${formattedMessage}\n</ebook_request>`);
+            await signalLegacyWorkflowAdminExternalContext(workflowId, `<ebook_request>\n${formattedMessage}\n</ebook_request>`);
             return [JSON.stringify({ status: "requested" }), metadata];
         } catch (err: unknown) {
             const error = err as Error;
@@ -117,7 +117,7 @@ export class AudiobookRequest extends BaseTool {
 
         try {
             const formattedMessage = `New audiobook request:\n\nTitle: ${args.audiobookTitle}\nAuthor: ${args.audiobookAuthor}\nRequested by: ${workflowId})`;
-            await signalLegacyWorkflowAdminMessage(workflowId, `<audiobook_request>\n${formattedMessage}\n</audiobook_request>`);
+            await signalLegacyWorkflowAdminExternalContext(workflowId, `<audiobook_request>\n${formattedMessage}\n</audiobook_request>`);
             return [JSON.stringify({ status: "requested" }), metadata];
         } catch (err: unknown) {
             const error = err as Error;

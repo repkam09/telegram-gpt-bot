@@ -2,7 +2,7 @@ import { Logger } from "../singletons/logger";
 import { Tool } from "ollama";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
-import { signalLegacyWorkflowAdminMessage } from "../temporal/legacy/interface";
+import { signalLegacyWorkflowAdminExternalContext } from "../temporal/legacy/interface";
 
 export class MetaBugReport extends BaseTool {
     public static isEnabled(): boolean {
@@ -211,7 +211,7 @@ export class MetaFeedbackTool extends BaseTool {
 
         try {
             const formattedMessage = `📬 Feedback from ${workflowId}:\n\n${args.message}`;
-            await signalLegacyWorkflowAdminMessage(workflowId, `<hennos_feedback>\n${formattedMessage}\n</hennos_feedback>`);
+            await signalLegacyWorkflowAdminExternalContext(workflowId, `<hennos_feedback>\n${formattedMessage}\n</hennos_feedback>`);
 
             return ["Your feedback has been sent to the creator. Thank you for your input!", metadata];
         } catch (err: unknown) {
