@@ -32,11 +32,12 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: npm run prisma:generate
 
       # Deliberately not `npm run lint`, which uses `eslint --fix` and would hide problems in CI.
+      # Use npm scripts (not npx) so only the locked, locally installed tool versions are ever run.
       - name: Lint
-        run: npx eslint .
+        run: npm run lint:check
 
       - name: Type check
         run: npm run tsc:noemit
