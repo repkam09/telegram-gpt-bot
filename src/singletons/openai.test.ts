@@ -95,7 +95,6 @@ describe("convertHennosTools", () => {
 
 describe("HennosOpenAIProvider", () => {
     const create = vi.fn();
-    const moderate = vi.fn();
     let provider: HennosOpenAIProvider;
 
     function reply(choice: Record<string, unknown>) {
@@ -104,11 +103,9 @@ describe("HennosOpenAIProvider", () => {
 
     beforeEach(() => {
         create.mockReset();
-        moderate.mockReset();
-        provider = new HennosOpenAIProvider({ MODEL: "test-model", CTX: 1234 }, undefined, "test-key");
+        provider = new HennosOpenAIProvider({ MODEL: "test-model", CTX: 1234 }, "http://litellm.test/v1", "test-key", "LiteLLM");
         // Replace the network layer only; everything else is the real provider code.
         (provider.client as unknown as { chat: unknown }).chat = { completions: { create } };
-        (provider.client as unknown as { moderations: unknown }).moderations = { create: moderate };
     });
 
     it("exposes the configured context limit", () => {
@@ -209,27 +206,5 @@ describe("HennosOpenAIProvider", () => {
         create.mockResolvedValue(reply({ finish_reason: "mystery", message: { content: "x" } }));
 
         await expect(provider.completion("wf", [{ role: "user", content: "hi" }], 0)).rejects.toThrow(/Unhandled Finish Reason: mystery/);
-    });
-
-    describe("moderation", () => {
-        it("returns whether the input was flagged", async () => {
-            moderate.mockResolvedValue({ results: [{ flagged: true }] });
-            expect(await provider.moderation("wf", "bad")).toBe(true);
-
-            moderate.mockResolvedValue({ results: [{ flagged: false }] });
-            expect(await provider.moderation("wf", "fine")).toBe(false);
-        });
-
-        it("allows the input when the moderation call fails", async () => {
-            moderate.mockRejectedValue(new Error("network"));
-
-            expect(await provider.moderation("wf", "anything")).toBe(false);
-        });
-
-        it("allows the input when no results come back", async () => {
-            moderate.mockResolvedValue({ results: [] });
-
-            expect(await provider.moderation("wf", "anything")).toBe(false);
-        });
     });
 });

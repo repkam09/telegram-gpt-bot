@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { AgentResponseHandler } from "../response";
-import { Candidate, GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 
 
 export class ImageGenerationTool extends BaseTool {
@@ -46,75 +46,73 @@ export class ImageGenerationTool extends BaseTool {
             AgentResponseHandler.handleStatus(workflowId, { type: "upload_photo" });
         }, 3000);
 
-        // write the image to a file
-        const storage = path.join(Config.LOCAL_STORAGE(workflowId), `generated_${randomUUID()}.png`);
         try {
-            const [image, mimeType] = await NanoBananaImageProvider.generateImage(workflowId, args.prompt);
+            const [image, mimeType] = await LiteLLMImageProvider.generateImage(workflowId, args.prompt);
+
+            // write the image to a file, using an extension that matches the returned format
+            const extension = mimeType === "image/jpeg" ? "jpg" : mimeType === "image/webp" ? "webp" : "png";
+            const storage = path.join(Config.LOCAL_STORAGE(workflowId), `generated_${randomUUID()}.${extension}`);
             await fs.writeFile(storage, image, "binary");
 
             clearInterval(interval);
 
-            AgentResponseHandler.handleArtifact(workflowId, storage, mimeType, `Created with NanoBanana Image. Model: ${Config.GOOGLE_IMAGE_MODEL}`);
-            return [`generate_image success. The requested image was generated using NanoBanana Image with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
+            AgentResponseHandler.handleArtifact(workflowId, storage, mimeType, `Created with image model ${Config.LITELLM_IMAGE_MODEL}`);
+            return [`generate_image success. The requested image was generated with the prompt '${args.prompt}'. The image has been sent to the user directly.`, metadata];
         } catch (err: unknown) {
             const error = err as Error;
-            Logger.error(workflowId, `NanoBananaImageProvider error. ${JSON.stringify({ prompt: args.prompt, error: error.message })}`, error);
+            Logger.error(workflowId, `LiteLLMImageProvider error. ${JSON.stringify({ prompt: args.prompt, error: error.message })}`, error);
             clearInterval(interval);
             return ["generate_image failed", metadata];
         }
     }
 }
 
-class NanoBananaImageProvider {
+/** Detects the image format from its magic bytes, since providers differ in what they return. */
+export function detectImageMimeType(buffer: Buffer): string {
+    if (buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) {
+        return "image/jpeg";
+    }
+
+    if (buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") {
+        return "image/webp";
+    }
+
+    return "image/png";
+}
+
+class LiteLLMImageProvider {
     static async generateImage(workflowId: string, prompt: string): Promise<[Buffer, string]> {
-        Logger.info(workflowId, `NanoBananaImageProvider generateImage. Prompt: ${prompt}`);
-        const ai = new GoogleGenAI({
-            apiKey: Config.GOOGLE_API_KEY
-        });
-        const response = await ai.models.generateContent({
-            model: Config.GOOGLE_IMAGE_MODEL,
-            contents: prompt,
+        Logger.info(workflowId, `LiteLLMImageProvider generateImage. Prompt: ${prompt}`);
+        const client = new OpenAI({
+            apiKey: Config.LITELLM_API_KEY,
+            baseURL: Config.LITELLM_BASE_URL,
         });
 
-        let buffer: Buffer | null = null;
-        let mimeType: string | null = null;
-        if (!response.candidates || response.candidates.length === 0) {
-            Logger.error(workflowId, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
+        // No response_format here: OpenAI image models reject it, and Gemini image models always return base64.
+        const response = await client.images.generate({
+            model: Config.LITELLM_IMAGE_MODEL,
+            prompt,
+            n: 1,
+        });
+
+        const image = response.data?.[0];
+        if (!image) {
             throw new Error("Failed to generate image, no data returned");
         }
 
-        const candidate = response.candidates[0] as Candidate;
-        if (!candidate.content) {
-            Logger.error(workflowId, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
-            throw new Error("Failed to generate image, no content returned");
-        }
-
-        if (!candidate.content.parts || candidate.content.parts.length === 0) {
-            Logger.error(workflowId, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
-            throw new Error("Failed to generate image, no parts returned");
-        }
-
-        for (const part of candidate.content.parts!) {
-            if (part.inlineData) {
-                const imageData = part.inlineData.data!;
-                buffer = Buffer.from(imageData, "base64");
-                mimeType = part.inlineData.mimeType!;
-                break;
+        let buffer: Buffer;
+        if (image.b64_json) {
+            buffer = Buffer.from(image.b64_json, "base64");
+        } else if (image.url) {
+            const download = await fetch(image.url);
+            if (!download.ok) {
+                throw new Error(`Failed to download generated image, HTTP ${download.status}`);
             }
+            buffer = Buffer.from(await download.arrayBuffer());
+        } else {
+            throw new Error("Failed to generate image, response had neither b64_json nor url");
         }
 
-        if (!buffer) {
-            Logger.error(workflowId, `NanoBananaImageProvider generateImage error. Prompt: ${prompt}`);
-            throw new Error("Failed to generate image, no inline data returned");
-        }
-
-        if (!mimeType) {
-            Logger.warn(workflowId, `NanoBananaImageProvider generateImage warning, no mime type returned. Prompt: ${prompt}`);
-            mimeType = "image/png";
-        }
-
-
-        // Save the raw image png to a buffer
-        return [buffer, mimeType];
+        return [buffer, detectImageMimeType(buffer)];
     }
 }

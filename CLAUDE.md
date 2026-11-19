@@ -37,7 +37,7 @@ All live in [src/temporal/](src/temporal/). Workflows are exported from [src/tem
 
 - Workflow ID is a JSON string: `{"platform": "...", "chatId": "...", "type": "legacy"}`. Build it with `createWorkflowId(platform, chatId)` in [interface.ts](src/temporal/legacy/interface.ts). **`chatId` must be numeric** (it is stored in `Messages.chatId`), and `parseWorkflowId` throws otherwise. `AgentResponseHandler` and tools recover the platform/chat by parsing this ID, so its shape is load-bearing.
 - Clients use the helpers in `interface.ts`: `signalLegacyWorkflowMessage` (signalWithStart, triggers a reply), `signalLegacyWorkflowExternalContext` / `signalLegacyWorkflowImageMessage` (write to the `Messages` table only, no reply), `signalLegacyWorkflowAdminMessage` / `signalLegacyWorkflowAdminExternalContext` (target `TELEGRAM_BOT_ADMIN`).
-- Loop: persist pending user messages → `classifyPromptComplexity` (picks model tier, context limit, whether tools are used; skipped unless `HENNOS_CLASSIFIER_ENABLED` and an OpenAI/Anthropic provider) → `legacyCompletion` → either broadcast/persist the answer, or run each requested tool with `legacyAction` in parallel and iterate. Conversation history is read from the `Messages` table, not held in workflow state; only tool call/response entries are kept in the workflow.
+- Loop: persist pending user messages → `classifyPromptComplexity` (now a stub that always returns 'complex' with the default context limit, since LiteLLM picks the upstream model) → `legacyCompletion` → either broadcast/persist the answer, or run each requested tool with `legacyAction` in parallel and iterate. Conversation history is read from the `Messages` table, not held in workflow state; only tool call/response entries are kept in the workflow.
 - An unrecoverable error in the loop broadcasts a generic error message and rethrows (fails the workflow). The next signalWithStart starts a fresh run.
 
 ## Activity Proxy Pattern
@@ -59,13 +59,13 @@ The classifier uses 1 minute / 3 attempts. Long activities can be wrapped with `
 
 ## LLM Provider Abstraction
 
-[src/provider.ts](src/provider.ts) abstracts providers behind `InvokableModelProvider` (`limit()`, `invoke()`, `completion()`, `moderation()`):
+[src/provider.ts](src/provider.ts) abstracts providers behind `InvokableModelProvider` (`limit()`, `invoke()`, `completion()`):
 ```typescript
 const provider = await resolveLegacyModelProvider(workflowId, "high" | "low" | "nano");
 await provider.completion(workflowId, messages, iterations, tools);
 ```
 
-- Providers: `openai | anthropic | ollama | litellm` (implementations in [src/singletons/](src/singletons/)). Default comes from `HENNOS_LLM_PROVIDER`.
+- Providers: `ollama | litellm` (implementations in [src/singletons/](src/singletons/)). Default comes from `HENNOS_LLM_PROVIDER`. `HennosOpenAIProvider` in `openai.ts` is the OpenAI-compatible chat client used for LiteLLM. Audio transcription and image generation also go through LiteLLM (`LITELLM_TRANSCRIPTION_MODEL`, `LITELLM_IMAGE_MODEL`). The only direct OpenAI usage left is the Realtime SIP handler (`OPENAI_API_KEY`).
 - `resolveLegacyModelProvider` first honours `HENNOS_LEGACY_LLM_PROVIDER`, otherwise the per-user `User.provider` column, otherwise falls back to the default provider.
 - `litellm` supports per-user BYOK keys (`UserBYOK` table, `LITELLM_BYOK_ENABLED`).
 - Model names/limits come from the `Config.*_LLM` getters, not from hard-coded values.
@@ -133,7 +133,7 @@ A weekly workflow ([.github/workflows/dependency-report.yml](.github/workflows/d
 All config is in [src/singletons/config.ts](src/singletons/config.ts) as lazy static getters that validate when read. Use `.env.dev` as the template for `.env`.
 
 Key vars:
-- `HENNOS_LLM_PROVIDER` / `HENNOS_LEGACY_LLM_PROVIDER` - openai|anthropic|ollama|litellm
+- `HENNOS_LLM_PROVIDER` / `HENNOS_LEGACY_LLM_PROVIDER` - ollama|litellm
 - `HENNOS_TOOL_DEPTH` - max tool-call iterations before the model is forced to answer
 - `HENNOS_{TELEGRAM,API,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags
 - `HENNOS_DEVELOPMENT_MODE` - skips the whitelist, enables CLI and static `public/` files
