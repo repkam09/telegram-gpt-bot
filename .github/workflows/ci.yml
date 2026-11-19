@@ -49,8 +49,19 @@ jobs:
       - name: Build
         run: npm run tsc:emit
 
+      # Developers run tests with a real .env present (they copy .env.dev to .env). Prove the tests ignore it.
+      - name: Use .env.dev as .env
+        run: cp .env.dev .env
+
       - name: Test
-        run: npm run test:coverage
+        run: env -u DATABASE_URL npm run test:coverage
+
+      # .env.dev points DATABASE_URL at hennos.sqlite, which must never be created: tests use their own temp database.
+      - name: Check tests did not touch the .env database
+        run: |
+          if find . -name 'hennos.sqlite*' -not -path './node_modules/*' | grep -q .; then
+            echo "Tests used DATABASE_URL from .env"; find . -name 'hennos.sqlite*' -not -path './node_modules/*'; exit 1
+          fi
 
       # Shown on the workflow run's summary page. Runs even when tests fail so partial coverage is still visible.
       - name: Coverage summary

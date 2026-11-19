@@ -1,5 +1,5 @@
 // Vitest setup file. Runs before every test file.
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 
 // Config calls dotenv.config() on import. Never let a developer's local .env leak into tests.
 vi.mock("dotenv", () => ({
@@ -42,8 +42,23 @@ const SCRUBBED_PREFIXES = [
     "PUPPETEER_",
 ];
 
-for (const key of Object.keys(process.env)) {
-    if (key === "DATABASE_URL" || key === "LOCAL_STORAGE" || SCRUBBED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
-        delete process.env[key];
+function scrubEnvironment(options: { keepDatabaseUrl: boolean }): void {
+    for (const key of Object.keys(process.env)) {
+        if (key === "DATABASE_URL" && options.keepDatabaseUrl) {
+            continue;
+        }
+
+        if (key === "DATABASE_URL" || key === "LOCAL_STORAGE" || SCRUBBED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+            delete process.env[key];
+        }
     }
 }
+
+scrubEnvironment({ keepDatabaseUrl: false });
+
+// Something besides Config can load a developer's .env after this file has run, for example Prisma's client
+// when a test file initialises the database. Scrub again before every test so a local .env can never change
+// what a test sees. (DATABASE_URL is left alone here: tests/helpers/database.ts sets it to the temp database.)
+beforeEach(() => {
+    scrubEnvironment({ keepDatabaseUrl: true });
+});
