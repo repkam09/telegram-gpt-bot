@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MockActivityEnvironment } from "@temporalio/testing";
-import { classifierPromptTemplate, classifierToolDefinitions, classifyPromptComplexity } from "./classifier";
+import { classifierPromptTemplate, classifierToolDefinitions, classifyPromptComplexity, PromptComplexityResult } from "./classifier";
 import { createWorkflowId } from "../interface";
 import { createTestDatabase, TEST_CHAT_ID, TestDatabase } from "../../../../tests/helpers/database";
 
@@ -33,9 +33,9 @@ describe("classifyPromptComplexity", () => {
         vi.stubEnv("HENNOS_LLM_PROVIDER", "openai");
     });
 
-    function classify(input = { iterations: 0, hasToolContext: false }) {
+    function classify(input = { iterations: 0, hasToolContext: false }): Promise<PromptComplexityResult> {
         const env = new MockActivityEnvironment({ workflowExecution: { workflowId, runId: "run" } });
-        return env.run(classifyPromptComplexity, input);
+        return env.run(classifyPromptComplexity, input) as Promise<PromptComplexityResult>;
     }
 
     async function userSays(content: string) {
