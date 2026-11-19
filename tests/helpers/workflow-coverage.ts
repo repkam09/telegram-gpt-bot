@@ -13,6 +13,9 @@ import { WorkflowCoverage } from "@temporalio/nyc-test-coverage";
  *   const worker = await createInstrumentedWorker({ connection, taskQueue, workflowsPath, activities });
  *   afterAll(() => mergeWorkflowCoverage());
  */
+// Experiment: nyc/Jest define a host-side `__coverage__` global; Vitest's istanbul provider uses a different one.
+(globalThis as unknown as { __coverage__?: object }).__coverage__ ??= {};
+
 const workflowCoverage = new WorkflowCoverage();
 
 export function createInstrumentedWorker(options: WorkerOptions & { workflowsPath: string }): Promise<Worker> {
