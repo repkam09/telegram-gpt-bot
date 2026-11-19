@@ -11,6 +11,7 @@
     "tsc:noemit": "tsc --noEmit",
     "tsc:noemit:watch": "tsc --noEmit --watch",
     "lint": "eslint --fix .",
+    "lint:check": "eslint .",
     "start": "npm run migrate:deploy && node build/hennos.js",
     "start:cli": "node build/client/cli.js",
     "script:email": "npm run build && node build/scripts/email.js",
