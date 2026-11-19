@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     coverage: {
-      provider: "v8",
+      provider: "istanbul",
       // json-summary feeds the GitHub job summary (scripts/coverage-summary.mjs).
       reporter: ["text-summary", "json-summary", "html"],
       // Report on every source file, including ones no test imports yet.

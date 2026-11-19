@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
-import { Worker } from "@temporalio/worker";
+import { createInstrumentedWorker, mergeWorkflowCoverage } from "../../../tests/helpers/workflow-coverage";
 import { reviewEmailWorkflow } from "./workflow";
 import type { RawEmail } from "../../singletons/gmail";
 
@@ -17,6 +17,7 @@ describe("reviewEmailWorkflow", () => {
     });
 
     afterAll(async () => {
+        mergeWorkflowCoverage();
         await testEnvironment?.teardown();
     });
 
@@ -27,7 +28,7 @@ describe("reviewEmailWorkflow", () => {
         signalSummary: (summary: string) => Promise<void>;
     }) {
         const taskQueue = `email-workflow-test-${++queueCounter}`;
-        const worker = await Worker.create({
+        const worker = await createInstrumentedWorker({
             connection: testEnvironment.nativeConnection,
             taskQueue,
             workflowsPath: require.resolve("./workflow.ts"),

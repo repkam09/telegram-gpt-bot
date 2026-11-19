@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
-import { Worker } from "@temporalio/worker";
+import { createInstrumentedWorker, mergeWorkflowCoverage } from "../../../tests/helpers/workflow-coverage";
 import { supabaseKeepaliveWorkflow } from "./workflow";
 
 const taskQueue = "supabase-keepalive-test";
@@ -13,12 +13,13 @@ describe("supabaseKeepaliveWorkflow", () => {
     });
 
     afterAll(async () => {
+        mergeWorkflowCoverage();
         await testEnvironment?.teardown();
     });
 
     it("runs the Supabase keepalive activity", async () => {
         let activityCalls = 0;
-        const worker = await Worker.create({
+        const worker = await createInstrumentedWorker({
             connection: testEnvironment.nativeConnection,
             taskQueue,
             workflowsPath: require.resolve("./workflow.ts"),
@@ -40,7 +41,7 @@ describe("supabaseKeepaliveWorkflow", () => {
     it("retries the keepalive activity when it fails transiently", async () => {
         let activityCalls = 0;
         const retryQueue = `${taskQueue}-retry`;
-        const worker = await Worker.create({
+        const worker = await createInstrumentedWorker({
             connection: testEnvironment.nativeConnection,
             taskQueue: retryQueue,
             workflowsPath: require.resolve("./workflow.ts"),
@@ -65,7 +66,7 @@ describe("supabaseKeepaliveWorkflow", () => {
     it("fails the workflow once retries are exhausted", async () => {
         let activityCalls = 0;
         const failQueue = `${taskQueue}-fail`;
-        const worker = await Worker.create({
+        const worker = await createInstrumentedWorker({
             connection: testEnvironment.nativeConnection,
             taskQueue: failQueue,
             workflowsPath: require.resolve("./workflow.ts"),
