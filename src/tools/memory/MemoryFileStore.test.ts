@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { execSync } from "child_process";
-import { mkdtempSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import * as path from "path";
-import { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import { createTestDatabase, TestDatabase } from "../../../tests/helpers/database";
 import { MemoryFileStore, normalizeMemoryPath, humanReadableSize } from "./MemoryFileStore";
 import { runMemoryCommand, memoryScopeFromWorkflowId } from "../MemoryTool";
 
@@ -59,28 +56,21 @@ describe("memoryScopeFromWorkflowId", () => {
 });
 
 describe("MemoryFileStore", () => {
+    let testDb: TestDatabase;
     let prisma: PrismaClient;
     let store: MemoryFileStore;
-    let tempDir: string;
 
-    beforeAll(() => {
-        tempDir = mkdtempSync(path.join(tmpdir(), "hennos-memory-test-"));
-        const url = `file:${path.join(tempDir, "test.sqlite")}`;
-        execSync("npx prisma db push --skip-generate", {
-            cwd: path.join(__dirname, "../../.."),
-            env: { ...process.env, DATABASE_URL: url },
-            stdio: "pipe"
-        });
-        prisma = new PrismaClient({ datasources: { db: { url } } });
+    beforeAll(async () => {
+        testDb = await createTestDatabase();
+        prisma = testDb.db;
     });
 
     afterAll(async () => {
-        await prisma?.$disconnect();
-        rmSync(tempDir, { recursive: true, force: true });
+        await testDb?.cleanup();
     });
 
     beforeEach(async () => {
-        await prisma.memoryFile.deleteMany({});
+        await testDb.reset();
         store = new MemoryFileStore("test-chat", prisma);
     });
 
