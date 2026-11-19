@@ -1,47 +1,12 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
+import { existsSync } from "node:fs";
 import puppeteer from "puppeteer";
 import { JSDOM } from "jsdom";
 import { isProbablyReaderable, Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
-import { HTMLReader } from "@llamaindex/readers/html";
-import {
-    BaseReader,
-    getResponseSynthesizer,
-    SentenceSplitter,
-    Settings,
-    SummaryIndex,
-    SummaryRetrieverMode,
-} from "llamaindex";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
+import { resolveLegacyModelProvider } from "../provider";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
-import { Ollama, OllamaEmbedding } from "@llamaindex/ollama";
-
-Logger.info("DocumentProcessing", "Initializing Ollama embedding model for document processing");
-Settings.embedModel = new OllamaEmbedding({
-    model: Config.OLLAMA_LLM_EMBED.MODEL,
-    config: {
-        host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
-    }
-});
-
-Logger.info("DocumentProcessing", "Initializing Ollama LLM model for document processing");
-Settings.llm = new Ollama({
-    model: Config.OLLAMA_LLM.MODEL,
-    config: {
-        host: `${Config.OLLAMA_HOST}:${Config.OLLAMA_PORT}`
-    }
-});
-
-Settings.chunkOverlap = 256;
-Settings.chunkSize = 2048;
-
-Settings.nodeParser = new SentenceSplitter({
-    chunkOverlap: 256,
-    chunkSize: 2048,
-});
 
 export class FetchWebpageContent extends BaseTool {
     public static isEnabled(): boolean {
@@ -54,9 +19,9 @@ export class FetchWebpageContent extends BaseTool {
             function: {
                 name: "fetch_webpage_content",
                 description: [
-                    "This tool fetches the text content of a webpage from a given URL. If the `query` parameter is provided the tool will return a summary of the content based on the query instead of the full page content.",
-                    "If the `query` is not provided the tool will return the full text content of the page up to a maximum of 32000 tokens (~128k characters).",
-                    "If the content exceeds this limit, the tool will save the content to a temporary file and use document processing to provide a summary of the content before returning it.",
+                    "This tool fetches the text content of a webpage from a given URL.",
+                    "If the `query` parameter is provided the tool will return an answer to the query based on the content of the page instead of the full page content.",
+                    "If the `query` is not provided the tool will return the text content of the page, truncated to a maximum of roughly 32000 characters.",
                 ].join(" "),
                 parameters: {
                     type: "object",
@@ -83,31 +48,46 @@ export class FetchWebpageContent extends BaseTool {
 
         Logger.info(workflowId, `fetch_webpage_content, url=${args.url}, query=${args.query}`);
 
-        if (!Config.HENNOS_DOCUMENTS_ENABLED) {
-            return [JSON.stringify({ error: "Document processing features are disabled by the Hennos system administrator at this time" }), metadata];
-        }
-
         try {
-            const html = await fetchPageContent(workflowId, args.url);
+            const content = await fetchPageContent(workflowId, args.url);
 
-            // If the HTML is smaller than HENNOS_DOCUMENT_MAX_RAW_LENGTH chars we can just return the whole thing
-            if (!args.query && html.length < Config.HENNOS_DOCUMENT_MAX_RAW_LENGTH) {
-                return [html, metadata];
+            if (!args.query) {
+                return [truncateContent(content, Config.HENNOS_WEBPAGE_MAX_LENGTH), metadata];
             }
 
-            const filePath = path.join(Config.LOCAL_STORAGE(workflowId), "/", `${Date.now().toString()}.html`);
+            const answer = await answerFromContent(workflowId, content, args.query);
+            if (answer) {
+                return [JSON.stringify({ answer }), metadata];
+            }
 
-            await fs.writeFile(filePath, html, { encoding: "utf-8" });
-
-            const query = args.query ? args.query : "Provide a summary of this document.";
-            const result = await handleDocument(workflowId, filePath, args.url, new HTMLReader(), query);
-            return [JSON.stringify({ summary: result }), metadata];
+            // The model call failed or returned nothing useful, so hand the (truncated) page back and let the caller work from it.
+            Logger.warn(workflowId, `fetch_webpage_content could not answer the query from the page, returning page content instead. url=${args.url}`);
+            return [truncateContent(content, Config.HENNOS_WEBPAGE_MAX_LENGTH), metadata];
         } catch (err: unknown) {
             const error = err as Error;
             Logger.error(workflowId, `fetch_webpage_content error url=${args.url} error=${error.message}`, error);
             return [JSON.stringify({ error: `unable to fetch content from URL '${args.url}'` }), metadata];
         }
     }
+}
+
+// Puppeteer needs a Chrome download that npm only performs through puppeteer's install script (see "allowScripts" in package.json).
+// Without it fetchPageContent silently degrades to a plain HTTP fetch that cannot render JavaScript, so say so loudly at startup.
+export async function checkBrowserInstalled(): Promise<boolean> {
+    let executable: string | null = null;
+    try {
+        executable = await puppeteer.executablePath();
+    } catch {
+        // Handled below: treated the same as a missing browser.
+    }
+
+    if (executable && existsSync(executable)) {
+        Logger.info("Hennos", `Chrome for web page fetching found at ${executable}`);
+        return true;
+    }
+
+    Logger.warn("Hennos", `Chrome for puppeteer was not found${executable ? ` at ${executable}` : ""}. fetch_webpage_content will fall back to plain HTTP requests, which cannot render JavaScript. Run \`npx puppeteer browsers install chrome\` to install it.`);
+    return false;
 }
 
 export async function fetchPageContent(workflowId: string, url: string): Promise<string> {
@@ -185,33 +165,79 @@ function extractReadable(workflowId: string, html: string, url: string): string 
 }
 
 
-export async function handleDocument(workflowId: string, path: string, uuid: string, reader: BaseReader, prompt?: string): Promise<string> {
-    Logger.info(workflowId, `Processing document at path: ${path} with UUID: ${uuid}.`);
+// Keeps the start of the page and tells the caller when something was cut off.
+export function truncateContent(content: string, limit: number): string {
+    if (content.length <= limit) {
+        return content;
+    }
 
-    const documents = await reader.loadData(path);
-    Logger.debug(workflowId, `Loaded ${documents.length} documents from path: ${path} with UUID: ${uuid}.`);
-    const index = await SummaryIndex.fromDocuments(documents);
+    return `${content.substring(0, limit)}\n\n[Content truncated: showing the first ${limit} of ${content.length} characters]`;
+}
 
-    Logger.debug(workflowId, `Created a summary index from ${documents.length} documents at path: ${path} with UUID: ${uuid}.`);
-    const queryEngine = index.asQueryEngine({
-        responseSynthesizer: getResponseSynthesizer("tree_summarize"),
-        retriever: index.asRetriever({
-            mode: SummaryRetrieverMode.DEFAULT,
-        })
-    });
+// Upper bound on how many chunks of a very long page are read, so one call cannot fan out into an unbounded number of model requests.
+const MAX_ANSWER_CHUNKS = 8;
 
-    Logger.debug(workflowId, `Created a query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
-    const response = await queryEngine.query({
-        query: prompt ? prompt : "Can you provide a summary of this document?"
-    });
+// Answers `query` from the page content with the low tier model. Pages longer than one chunk are handled map-reduce style:
+// each chunk is reduced to the parts relevant to the query, and the notes are then combined into a single answer.
+// Returns null when the model call fails, so the caller can fall back to returning the page text.
+export async function answerFromContent(workflowId: string, content: string, query: string): Promise<string | null> {
+    try {
+        const provider = await resolveLegacyModelProvider(workflowId, "low");
+        const chunkSize = Config.HENNOS_WEBPAGE_MAX_LENGTH;
 
-    Logger.debug(workflowId, `Queried the query engine from the summary index at path: ${path} with UUID: ${uuid}.`);
-    const summary = response.toString();
+        const chunks: string[] = [];
+        for (let offset = 0; offset < content.length && chunks.length < MAX_ANSWER_CHUNKS; offset += chunkSize) {
+            chunks.push(content.substring(offset, offset + chunkSize));
+        }
 
-    Logger.debug(workflowId,
-        `Extracted summary content length: ${summary.length} characters. Contents: ${summary.substring(0, 500)}...`,
-    );
+        if (chunks.length === 1) {
+            return await invokeText(workflowId, provider, answerPrompt(query, chunks[0]));
+        }
 
-    Logger.info(workflowId, `Completed processing document at path: ${path} with UUID: ${uuid}.`);
-    return summary;
+        Logger.debug(workflowId, `Page content of ${content.length} characters split into ${chunks.length} chunks to answer the query.`);
+        const notes: string[] = [];
+        for (let i = 0; i < chunks.length; i++) {
+            const note = await invokeText(workflowId, provider, notesPrompt(query, chunks[i], i + 1, chunks.length));
+            if (note && note.toUpperCase() !== "NONE") {
+                notes.push(note);
+            }
+        }
+
+        if (notes.length === 0) {
+            return null;
+        }
+
+        return await invokeText(workflowId, provider, answerPrompt(query, notes.join("\n\n")));
+    } catch (err: unknown) {
+        const error = err as Error;
+        Logger.error(workflowId, `fetch_webpage_content failed to answer the query from the page content: ${error.message}`, error);
+        return null;
+    }
+}
+
+async function invokeText(workflowId: string, provider: Awaited<ReturnType<typeof resolveLegacyModelProvider>>, prompt: string): Promise<string | null> {
+    const response = await provider.invoke(workflowId, [{ role: "user", content: prompt, type: "text" }]);
+    if (!response || response.__type !== "string" || !response.payload.trim()) {
+        return null;
+    }
+
+    return response.payload.trim();
+}
+
+function answerPrompt(query: string, content: string): string {
+    return [
+        "You are helping answer a question using the text content of a webpage.",
+        "Answer the question using only the content below. If the content does not contain the answer, say so. Return only the answer, without extra commentary.",
+        `<question>${query}</question>`,
+        `<content>\n${content}\n</content>`,
+    ].join("\n\n");
+}
+
+function notesPrompt(query: string, content: string, part: number, total: number): string {
+    return [
+        `You are reading part ${part} of ${total} of a long webpage in order to answer a question later.`,
+        "Extract the facts, figures and quotes from this part that are relevant to the question. If nothing is relevant, reply with the single word NONE. Return only the extracted notes.",
+        `<question>${query}</question>`,
+        `<content>\n${content}\n</content>`,
+    ].join("\n\n");
 }

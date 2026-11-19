@@ -71,13 +71,6 @@ describe("Config overrides", () => {
         expect(() => Config.HENNOS_LLM_PROVIDER).toThrow("Invalid HENNOS_LLM_PROVIDER value");
         expect(() => Config.HENNOS_LEGACY_LLM_PROVIDER).toThrow("Invalid HENNOS_LEGACY_LLM_PROVIDER value");
     });
-
-    it("shrinks the document size limit in development mode", () => {
-        expect(Config.HENNOS_DOCUMENT_MAX_RAW_LENGTH).toBe(32000);
-
-        vi.stubEnv("HENNOS_DEVELOPMENT_MODE", "true");
-        expect(Config.HENNOS_DOCUMENT_MAX_RAW_LENGTH).toBe(1);
-    });
 });
 
 describe("LiteLLM tier models", () => {

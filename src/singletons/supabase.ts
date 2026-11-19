@@ -29,7 +29,7 @@ export class SupabaseInstance {
             Logger.info("Supabase", "Supabase client initialized and connection verified");
         } catch (error) {
             Logger.error("Supabase", `Error verifying Supabase client connection: ${(error as Error).message}`);
-            throw new Error(`Error verifying Supabase client connection: ${(error as Error).message}`);
+            throw new Error(`Error verifying Supabase client connection: ${(error as Error).message}`, { cause: error });
         }
 
         Logger.info("Supabase", "SupabaseInstance initialized successfully");

@@ -37,7 +37,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      # .npmrc sets ignore-scripts=true, so Prisma's generate step must be run explicitly.
+      # .npmrc sets strict-allow-scripts=true and Prisma's install scripts are denied in package.json allowScripts, so Prisma's generate step must be run explicitly.
       - name: Install dependencies
         run: npm ci
 

@@ -3,7 +3,6 @@ import { BraveSearch } from "../../tools/BraveSearch";
 import { Logger } from "../../singletons/logger";
 import { CreateArtifact } from "../../tools/CreateArtifact";
 import { FetchWebpageContent } from "../../tools/FetchWebpageContent";
-import { HennosRetrieveArtifact } from "../../tools/HennosExternalArtifacts";
 import { MetaFeedbackTool, MetaFeatureRequest, MetaBugReport, MetaErrorTool } from "../../tools/HennosMetaTools";
 import { JellyseerMediaRequest, JellyseerMediaSearch } from "../../tools/JellyseerMediaRequest";
 import { AudiobookRequest, EbookRequest } from "../../tools/MiscFileRequestTool";
@@ -28,7 +27,6 @@ export const LegacyTools: HennosBaseTool[] = [
     JellyseerMediaSearch,
     AudiobookRequest,
     EbookRequest,
-    HennosRetrieveArtifact,
     ImageGenerationTool,
     MemoryTool
 ];

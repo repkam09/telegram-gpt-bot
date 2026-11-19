@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+ 
 import { Tool } from "ollama";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";

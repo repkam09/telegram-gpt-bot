@@ -74,7 +74,7 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
 
     await condition(() => pending.length > 0);
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
         try {
             // grab all the pending messages and put them into the database

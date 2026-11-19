@@ -20,6 +20,22 @@ const errors = [];
 const readJson = (file) => JSON.parse(readFileSync(file, "utf8"));
 const pkg = readJson(path.join(root, "package.json"));
 
+// The report is only meaningful under the Node (and so npm) the repo pins: an older npm ignores `.npmrc` settings such as
+// `min-release-age`, which makes "wanted"/"latest" misleading. Refuse to run on a mismatch rather than write a wrong report.
+// `.nvmrc` may hold a partial version ("26", "26.9"), so compare only the components it specifies.
+function checkNodeVersion() {
+    const file = path.join(root, ".nvmrc");
+    if (!existsSync(file)) return;
+    const expected = readFileSync(file, "utf8").trim().replace(/^v/, "");
+    const wanted = expected.split(".");
+    const actual = process.versions.node.split(".");
+    if (!/^\d+(\.\d+){0,2}$/.test(expected)) return; // aliases such as "lts/*" cannot be compared here
+    if (wanted.every((part, i) => part === actual[i])) return;
+    console.error(`deps-report: running on Node ${process.versions.node}, but .nvmrc requires ${expected}. Switch Node (for example \`nvm use\`) and run it again.`);
+    process.exit(1);
+}
+checkNodeVersion();
+
 const manifest = new Map();
 for (const type of ["dependencies", "devDependencies", "optionalDependencies"]) {
     for (const name of Object.keys(pkg[type] ?? {})) {
@@ -28,7 +44,10 @@ for (const type of ["dependencies", "devDependencies", "optionalDependencies"]) 
 }
 
 function run(command, args) {
-    const result = spawnSync(command, args, { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+    // Put the running Node's bin directory first so `npm` (and anything it spawns) belongs to the same install as this process,
+    // not whichever Node happens to come first on the default PATH. This is also what keeps `.npmrc` settings such as `min-release-age` honoured.
+    const env = { ...process.env, PATH: [path.dirname(process.execPath), process.env.PATH].filter(Boolean).join(path.delimiter) };
+    const result = spawnSync(command, args, { cwd: root, env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
     return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "", error: result.error };
 }
 

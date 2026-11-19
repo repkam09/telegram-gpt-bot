@@ -3,7 +3,7 @@
 ## Working Conventions
 
 - Make code changes on a feature branch and open a pull request; never commit directly to `main`.
-- CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs lint, type checks (source and tests), build and tests. Node and npm versions are pinned in `.nvmrc` and `engines`, and `.npmrc` enables `engine-strict`, `ignore-scripts` (so `npm run prisma:generate` must be run explicitly after installing) and `min-release-age`.
+- CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs lint, type checks (source and tests), build and tests. Node and npm versions are pinned in `.nvmrc` and `engines`, and `.npmrc` enables `engine-strict`, `min-release-age` and `strict-allow-scripts` (dependency install scripts are default-deny, so `npm run prisma:generate` must be run explicitly after installing; see [Install scripts](#install-scripts-allowscripts)).
 - Path-scoped guidance for Temporal workflow code and its tests is in [.claude/rules/](.claude/rules/); it loads automatically when those files are in play.
 
 ## Architecture Overview
@@ -128,6 +128,12 @@ When changing `legacyWorkflow` itself, remember that running workflows replay th
 ## Dependency Maintenance
 
 A weekly workflow ([.github/workflows/dependency-report.yml](.github/workflows/dependency-report.yml)) publishes `report.json` and `report.md` (outdated packages, `npm audit`, unused dependencies) to the `deps-report` branch, produced by [scripts/deps-report.mjs](scripts/deps-report.mjs). To act on it, run the manually triggered [Dependency update](.github/workflows/dependency-update.yml) workflow (`in-range` for lockfile-only updates, `major` with a list of packages for major upgrades). It validates with CI and opens the PR. The `update-dependencies` skill ([.claude/skills/update-dependencies/SKILL.md](.claude/skills/update-dependencies/SKILL.md)) describes the full procedure.
+
+Run `scripts/deps-report.mjs` under the Node in `.nvmrc`: it exits with an error on any other Node version, and it runs `npm` from the same Node install as the script itself. An older npm ignores `min-release-age`, which makes the report list releases that cannot be installed yet.
+
+### Install scripts (`allowScripts`)
+
+Dependency install scripts are **default-deny**: `allowScripts` in [package.json](package.json) records the decisions and `strict-allow-scripts=true` in [.npmrc](.npmrc) makes an install fail (`ESTRICTALLOWSCRIPTS`) when a package has an unlisted install script. Only `puppeteer` is allowed (its postinstall downloads the Chrome that `fetch_webpage_content` needs); Prisma and the rest are denied, and the Prisma client is generated explicitly. The entry is pinned, so **updating puppeteer requires `npm install-scripts approve puppeteer`**. The decisions, how enforcement works and how to fix a failing install are in the "Install scripts" section of the `update-dependencies` skill.
 
 ## Configuration
 

@@ -10,8 +10,9 @@ RUN apt install -y build-essential python3 python3-pip libnss3 libnspr4 libatk1.
 # Copy package.json and package-lock.json
 COPY package.json package.json
 COPY package-lock.json package-lock.json
+COPY .npmrc .npmrc
 COPY tsconfig.json tsconfig.json
-COPY .eslintrc.json .eslintrc.json
+COPY eslint.config.mjs eslint.config.mjs
 COPY prisma/schema.prisma prisma/schema.prisma
 COPY prisma/migrations prisma/migrations
 

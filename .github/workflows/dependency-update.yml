@@ -80,7 +80,7 @@ jobs:
             echo "::error::Unknown mode: $MODE"; exit 1
           fi
 
-      # .npmrc sets ignore-scripts=true and min-release-age, so no install scripts run and very new releases are skipped.
+      # .npmrc sets strict-allow-scripts=true and min-release-age, so only the install scripts allowed in package.json allowScripts run and very new releases are skipped.
       - name: Install dependencies
         run: npm ci
 

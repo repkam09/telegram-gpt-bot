@@ -12,11 +12,6 @@ export type HennosModelConfig = {
     CTX: number
 }
 
-export type HennosEmbedModelConfig = {
-    MODEL: any,
-    LENGTH: number
-}
-
 export type HennosModelProvider = "ollama" | "litellm"
 
 export const HENNOS_LLM_PROVIDERS = ["ollama", "litellm"];
@@ -51,11 +46,8 @@ export class Config {
         return process.env.HENNOS_LLM_PROVIDER as HennosModelProvider;
     }
 
-    static get HENNOS_DOCUMENT_MAX_RAW_LENGTH(): number {
-        if (Config.HENNOS_DEVELOPMENT_MODE) {
-            return 1;
-        }
-
+    // Maximum number of characters of a fetched webpage returned to the model (or read per chunk when answering a query).
+    static get HENNOS_WEBPAGE_MAX_LENGTH(): number {
         return 32000;
     }
 
@@ -70,10 +62,6 @@ export class Config {
         }
 
         return process.env.HENNOS_LEGACY_LLM_PROVIDER as HennosModelProvider;
-    }
-
-    static get HENNOS_DOCUMENTS_ENABLED(): false {
-        return false;
     }
 
     static get HENNOS_TOOL_DEPTH(): number {
@@ -253,18 +241,6 @@ export class Config {
         }
         return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
     }
-
-    static get OLLAMA_LLM_EMBED(): HennosEmbedModelConfig {
-        if (!process.env.OLLAMA_LLM_EMBED) {
-            return {
-                MODEL: "nomic-embed-text:latest",
-                LENGTH: 512
-            };
-        }
-
-        return parseHennosEmbedModelString(process.env.OLLAMA_LLM_EMBED, "OLLAMA_LLM_EMBED");
-    }
-
 
     static get OLLAMA_HOST(): string {
         if (!process.env.OLLAMA_HOST) {
@@ -548,24 +524,5 @@ function parseHennosModelString(value: string, env: string): HennosModelConfig {
     return {
         MODEL: parts[0],
         CTX: ctxInLength,
-    };
-}
-
-function parseHennosEmbedModelString(value: string, env: string): HennosEmbedModelConfig {
-    const parts = value.split(",");
-
-    if (parts.length !== 2) {
-        throw new Error(`Invalid value for ${env}`);
-    }
-
-    const length = parseInt(parts[1]);
-
-    if (Number.isNaN(length)) {
-        throw new Error("Invalid length value for " + env);
-    }
-
-    return {
-        MODEL: parts[0],
-        LENGTH: length,
     };
 }

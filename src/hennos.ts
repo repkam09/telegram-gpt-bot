@@ -7,11 +7,13 @@ import { Config } from "./singletons/config";
 import { SupabaseInstance } from "./singletons/supabase";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
+import { checkBrowserInstalled } from "./tools/FetchWebpageContent";
 import { createSupabaseKeepaliveSchedule, deleteSupabaseKeepaliveSchedule } from "./temporal/supabase/schedule";
 
 async function start() {
     Logger.info("Hennos", "Starting Hennos...");
     await Database.init();
+    await checkBrowserInstalled();
 
     Logger.info("Hennos", "Initializing clients...");
 

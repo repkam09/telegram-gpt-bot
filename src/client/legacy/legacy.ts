@@ -114,6 +114,9 @@ export class TelegramLegacyInstance {
             TelegramInstance.setTelegramIndicator(msg.chat.id, "typing");
             return signalLegacyWorkflowMessage(workflowId, author, msg.caption);
         }
+
+        // With no caption there is no message to trigger a reply, so tell the user directly that the upload was not processed.
+        await TelegramInstance.sendMessageWrapper(String(msg.chat.id), "Sorry, I can't read documents anymore. I can still work with text, photos, and voice or audio messages.");
     }
 
     public static async handlePhotoMessage(msg: Message): Promise<void> {

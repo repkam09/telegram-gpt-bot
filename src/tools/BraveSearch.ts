@@ -66,7 +66,7 @@ export class BraveSearch extends BaseTool {
     }
 
     static async searchResults(args: { query: string; resource: string; }): Promise<Array<object>> {
-        let params = new URLSearchParams();
+        let params: URLSearchParams;
 
         switch (args.resource) {
             case "images":
