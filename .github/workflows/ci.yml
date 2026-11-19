@@ -61,6 +61,7 @@ jobs:
           TEMPORAL_TASK_QUEUE=decoy-queue
           TEMPORAL_PORT=9999
           EOF
+          echo "decoy .env has $(wc -l < .env) lines"; cat .env
 
       - name: Test
         run: npm run test:coverage
