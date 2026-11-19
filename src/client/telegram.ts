@@ -6,8 +6,6 @@ import { createReadStream } from "node:fs";
 import { Database } from "../database";
 import { TelegramLegacyInstance } from "./legacy/legacy";
 
-
-
 type ChatAction = Parameters<TelegramBot["sendChatAction"]>[1];
 type SendMessageOptions = Omit<SendMessageParams, "chat_id" | "text">;
 
