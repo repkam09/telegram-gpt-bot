@@ -1,4 +1,5 @@
 import {
+    ActivityFailure,
     allHandlersFinished,
     condition,
     continueAsNew,
@@ -40,6 +41,16 @@ const { legacyCompletion, legacyAction } = proxyActivities<typeof activities>({
         maximumAttempts: 5,
     },
 });
+
+// A failed activity surfaces as an ActivityFailure whose own message is generic ("Activity task failed").
+// The useful message, the one thrown by the activity itself, is on the cause.
+function failureMessage(err: unknown): string {
+    if (err instanceof ActivityFailure && err.cause) {
+        return err.cause.message;
+    }
+
+    return (err instanceof Error) ? err.message : String(err);
+}
 
 export const legacyWorkflowMessageSignal = defineSignal<[string, string, string]>(
     "legacyWorkflowMessage",
@@ -114,7 +125,7 @@ export async function legacyWorkflow(input: LegacyWorkflowInput): Promise<void> 
                         tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                         tools.push({ role: "tool_response", id: payload.id, result: actionResult });
                     } catch (err: unknown) {
-                        const message = (err instanceof Error) ? err.message : String(err);
+                        const message = failureMessage(err);
                         log.error("Error processing tool " + payload.name + ": (id=" + payload.id + ") " + message);
                         tools.push({ role: "tool_call", name: payload.name, input: payload.input, id: payload.id });
                         tools.push({ role: "tool_response", id: payload.id, result: `Error executing tool ${payload.name}: ${message}` });
