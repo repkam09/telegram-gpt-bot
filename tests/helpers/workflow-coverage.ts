@@ -31,9 +31,9 @@ export function mergeWorkflowCoverage(): void {
 
     // TEMP DEBUG
     const before = Object.keys(store).length;
-    const wc = workflowCoverage as unknown as { coverageMapData?: { data?: Record<string, unknown>; files?: () => string[] } };
-    const sandboxFiles = wc.coverageMapData?.files ? wc.coverageMapData.files() : Object.keys(wc.coverageMapData ?? {});
-    console.log(`[wfcov] store before=${before}; sandbox files=${JSON.stringify(sandboxFiles)}; wc keys=${Object.keys(workflowCoverage as object)}`);
+    const maps = (workflowCoverage as unknown as { coverageMapsData: unknown }).coverageMapsData;
+    const list = Array.isArray(maps) ? maps : Array.from((maps as Map<unknown, unknown>)?.values?.() ?? []);
+    console.log(`[wfcov] store before=${before}; coverageMapsData type=${Array.isArray(maps) ? "array" : typeof maps} count=${list.length}; first keys=${JSON.stringify(Object.keys((list[0] as object) ?? {}).slice(0, 5))}`);
 
     workflowCoverage.mergeIntoGlobalCoverage();
 
