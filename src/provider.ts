@@ -1,9 +1,7 @@
 import { Tool } from "ollama";
-import { Config, HENNOS_LLM_PROVIDERS, HennosModelProvider } from "./singletons/config";
+import { Config } from "./singletons/config";
 import { HennosOllamaSingleton } from "./singletons/ollama";
 import { Logger } from "./singletons/logger";
-import { Database } from "./database";
-import { parseWorkflowId as parseLegacyWorkflowId } from "./temporal/legacy/interface";
 import { HennosLiteLLMSingleton } from "./singletons/litellm";
 
 export type HennosTool = Tool;
@@ -86,14 +84,19 @@ type InvokableModelProvider = {
 }
 
 export async function resolveModelProvider(workflowId: string, level: "high" | "low" | "nano"): Promise<InvokableModelProvider> {
-    return internalResolveModelProvider(workflowId, level, Config.HENNOS_LLM_PROVIDER);
-}
-
-async function internalResolveModelProvider(workflowId: string, level: "high" | "low" | "nano", provider: HennosModelProvider): Promise<InvokableModelProvider> {
-    Logger.debug("ModelProviderResolution", `Resolving model provider for level '${level}' and provider '${provider}'`);
-    switch (provider) {
+    Logger.debug("ModelProviderResolution", `Resolving model provider for level '${level}' and provider '${Config.HENNOS_LLM_PROVIDER}'`);
+    switch (Config.HENNOS_LLM_PROVIDER) {
         case "litellm": {
-            return await HennosLiteLLMSingleton.dynamic(workflowId, level);
+            if (level === "high") {
+                return await HennosLiteLLMSingleton.high(workflowId);
+
+            }
+
+            if (level === "low") {
+                return await HennosLiteLLMSingleton.low(workflowId);
+            }
+
+            return await HennosLiteLLMSingleton.nano(workflowId);
         }
 
         case "ollama": {
@@ -103,42 +106,5 @@ async function internalResolveModelProvider(workflowId: string, level: "high" | 
         default: {
             throw new Error(`Unsupported model provider: ${Config.HENNOS_LLM_PROVIDER}`);
         }
-    }
-}
-
-export async function resolveLegacyModelProvider(workflowId: string, level: "high" | "low" | "nano"): Promise<InvokableModelProvider> {
-    if (Config.HENNOS_LEGACY_LLM_PROVIDER) {
-        Logger.debug(workflowId, `Resolving legacy model provider from config for workflowId '${workflowId}' and level '${level}' to provider '${Config.HENNOS_LEGACY_LLM_PROVIDER}'`);
-        return internalResolveModelProvider(workflowId, level, Config.HENNOS_LEGACY_LLM_PROVIDER);
-    }
-
-    Logger.debug(workflowId, `Resolving legacy model provider for workflowId '${workflowId}' and level '${level}'`);
-    try {
-        const parsed = parseLegacyWorkflowId(workflowId);
-        const database = Database.instance();
-        const user = await database.user.findUnique({
-            where: {
-                chatId: Number(parsed.chatId)
-            },
-            select: {
-                provider: true
-            }
-        });
-
-        if (!user || !user.provider) {
-            Logger.debug(workflowId, `No user provider found for workflowId '${workflowId}', falling back to default provider '${Config.HENNOS_LLM_PROVIDER}'`);
-            return resolveModelProvider(workflowId, level);
-        }
-        if (!HENNOS_LLM_PROVIDERS.includes(user.provider)) {
-            // Rows written when the raw openai/anthropic providers still existed
-            Logger.warn(workflowId, `User provider '${user.provider}' is no longer supported, falling back to default provider '${Config.HENNOS_LLM_PROVIDER}'`);
-            return resolveModelProvider(workflowId, level);
-        }
-
-        Logger.debug(workflowId, `Resolved legacy model provider for level '${level}' to user provider '${user.provider}'`);
-        return internalResolveModelProvider(workflowId, level, user.provider as HennosModelProvider);
-    } catch (err) {
-        Logger.error(workflowId, `Failed to resolve legacy model provider for level '${level}': ${err}`);
-        return resolveModelProvider(workflowId, level);
     }
 }

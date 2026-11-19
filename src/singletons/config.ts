@@ -51,19 +51,6 @@ export class Config {
         return 32000;
     }
 
-    static get HENNOS_LEGACY_LLM_PROVIDER(): HennosModelProvider | null {
-        if (!process.env.HENNOS_LEGACY_LLM_PROVIDER) {
-            return null;
-        }
-
-        // Validate provider
-        if (HENNOS_LLM_PROVIDERS.indexOf(process.env.HENNOS_LEGACY_LLM_PROVIDER) === -1) {
-            throw new Error("Invalid HENNOS_LEGACY_LLM_PROVIDER value");
-        }
-
-        return process.env.HENNOS_LEGACY_LLM_PROVIDER as HennosModelProvider;
-    }
-
     static get HENNOS_TOOL_DEPTH(): number {
         if (!process.env.HENNOS_TOOL_DEPTH) {
             return 6;

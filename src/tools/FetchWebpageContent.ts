@@ -5,7 +5,7 @@ import { isProbablyReaderable, Readability } from "@mozilla/readability";
 import { Tool } from "ollama";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
-import { resolveLegacyModelProvider } from "../provider";
+import { resolveModelProvider } from "../provider";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
 export class FetchWebpageContent extends BaseTool {
@@ -182,7 +182,7 @@ const MAX_ANSWER_CHUNKS = 8;
 // Returns null when the model call fails, so the caller can fall back to returning the page text.
 export async function answerFromContent(workflowId: string, content: string, query: string): Promise<string | null> {
     try {
-        const provider = await resolveLegacyModelProvider(workflowId, "low");
+        const provider = await resolveModelProvider(workflowId, "low");
         const chunkSize = Config.HENNOS_WEBPAGE_MAX_LENGTH;
 
         const chunks: string[] = [];
@@ -215,7 +215,7 @@ export async function answerFromContent(workflowId: string, content: string, que
     }
 }
 
-async function invokeText(workflowId: string, provider: Awaited<ReturnType<typeof resolveLegacyModelProvider>>, prompt: string): Promise<string | null> {
+async function invokeText(workflowId: string, provider: Awaited<ReturnType<typeof resolveModelProvider>>, prompt: string): Promise<string | null> {
     const response = await provider.invoke(workflowId, [{ role: "user", content: prompt, type: "text" }]);
     if (!response || response.__type !== "string" || !response.payload.trim()) {
         return null;

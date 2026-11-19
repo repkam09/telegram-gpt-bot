@@ -24,12 +24,12 @@ Startup lives in [src/hennos.ts](src/hennos.ts): it initialises the database, st
 
 All live in [src/temporal/](src/temporal/). Workflows are exported from [src/temporal/workflows.ts](src/temporal/workflows.ts) and their activities from [src/temporal/activities.ts](src/temporal/activities.ts). **A new workflow or activity must be added to both barrel files** or the worker will not register it.
 
-| Dir | Workflow | Purpose |
-|---|---|---|
-| `legacy/` | `legacyWorkflow` | The conversation workflow. One per chat, waits for `legacyWorkflowMessage` signals. |
-| `email/` | `reviewEmailWorkflow` | Scheduled (every 4h, `HENNOS_GMAIL_ENABLED`): fetch Gmail, summarize, store the digest as context for the admin chat. |
-| `search/` | `searchWorkflow` | One-shot search + summarize. |
-| `supabase/` | `supabaseKeepaliveWorkflow` | Scheduled (every 24h) Supabase keepalive. |
+| Dir         | Workflow                    | Purpose                                                                                                               |
+| ----------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `legacy/`   | `legacyWorkflow`            | The conversation workflow. One per chat, waits for `legacyWorkflowMessage` signals.                                   |
+| `email/`    | `reviewEmailWorkflow`       | Scheduled (every 4h, `HENNOS_GMAIL_ENABLED`): fetch Gmail, summarize, store the digest as context for the admin chat. |
+| `search/`   | `searchWorkflow`            | One-shot search + summarize.                                                                                          |
+| `supabase/` | `supabaseKeepaliveWorkflow` | Scheduled (every 24h) Supabase keepalive.                                                                             |
 
 `legacy/` layout: `workflow.ts`, `activities/` (`action`, `classifier`, `completion`, `persist`), `interface.ts` (client-side helpers), `tools.ts`, `types.ts`.
 
@@ -43,6 +43,7 @@ All live in [src/temporal/](src/temporal/). Workflows are exported from [src/tem
 ## Activity Proxy Pattern
 
 Activities use `proxyActivities()` with **different timeout tiers** based on operation:
+
 ```typescript
 // Quick operations: 15s timeout, 5 retries
 const { persistLegacyAgentMessage } = proxyActivities<typeof activities>({
@@ -55,18 +56,22 @@ const { legacyCompletion, legacyAction } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 minutes", ...
 });
 ```
+
 The classifier uses 1 minute / 3 attempts. Long activities can be wrapped with `withActivityHeartbeat` ([src/temporal/heartbeat.ts](src/temporal/heartbeat.ts)).
 
 ## LLM Provider Abstraction
 
 [src/provider.ts](src/provider.ts) abstracts providers behind `InvokableModelProvider` (`limit()`, `invoke()`, `completion()`):
+
 ```typescript
-const provider = await resolveLegacyModelProvider(workflowId, "high" | "low" | "nano");
+const provider = await resolveModelProvider(
+  workflowId,
+  "high" | "low" | "nano",
+);
 await provider.completion(workflowId, messages, iterations, tools);
 ```
 
 - Providers: `ollama | litellm` (implementations in [src/singletons/](src/singletons/)). Default comes from `HENNOS_LLM_PROVIDER`. `HennosOpenAIProvider` in `openai.ts` is the OpenAI-compatible chat client used for LiteLLM. Audio transcription and image generation also go through LiteLLM (`LITELLM_TRANSCRIPTION_MODEL`, `LITELLM_IMAGE_MODEL`). The only direct OpenAI usage left is the Realtime SIP handler (`OPENAI_API_KEY`).
-- `resolveLegacyModelProvider` first honours `HENNOS_LEGACY_LLM_PROVIDER`, otherwise the per-user `User.provider` column, otherwise falls back to the default provider.
 - **Tier routing:** `classifyPromptComplexity` only does work when `HENNOS_CLASSIFIER_DECISION_MODEL` is set (otherwise everything uses the high tier). It asks a LiteLLM decision model four yes/no questions about the recent conversation through `/v1/decisions` ([decision.ts](src/temporal/legacy/activities/decision.ts)) and `chooseTier` combines them. Anything ambiguous goes high, a deep or context-dependent turn keeps the chat on the high tier for the next few turns, long messages skip the call, and any failure falls back to high. Tiers map to `LITELLM_LLM` (high), `LITELLM_MINI_LLM` (low) and `LITELLM_NANO_LLM` (nano), the last two defaulting to the first. The tier only changes the upstream model: context window and tool list are identical across tiers so provider prompt caching is not disturbed. Decisions are logged with their signals.
 - `litellm` supports per-user BYOK keys (`UserBYOK` table, `LITELLM_BYOK_ENABLED`).
 - Model names/limits come from the `Config.*_LLM` getters, not from hard-coded values.
@@ -74,6 +79,7 @@ await provider.completion(workflowId, messages, iterations, tools);
 ## Tool Development
 
 Extend `BaseTool` in [src/tools/](src/tools/):
+
 ```typescript
 export class MyTool extends BaseTool {
     static isEnabled() { return !!Config.MY_TOOL_API_KEY; }
@@ -97,20 +103,28 @@ All clients live in [src/client/](src/client/); initialisation is gated by flags
 ### Response Handling
 
 [src/response.ts](src/response.ts) uses a listener-per-platform pattern for messages, artifacts and status events:
+
 ```typescript
-AgentResponseHandler.registerMessageListener("legacy", async (message, chatId) => {
+AgentResponseHandler.registerMessageListener(
+  "legacy",
+  async (message, chatId) => {
     await TelegramInstance.sendMessageWrapper(chatId, message);
-});
+  },
+);
 ```
+
 Workflows call the `broadcastLegacyAgentMessage` activity, which parses the platform out of the workflow ID and calls that platform's listener. Registered platforms: `legacy` (Telegram), `webhook` (SSE streams), `cli`. A missing listener only logs a warning. **A new client must register listeners and use a matching platform string in its workflow IDs.** Listeners are in-memory, so they only work in the process that runs the activity.
 
 ## Database Patterns
 
 SQLite + Prisma ORM ([prisma/schema.prisma](prisma/schema.prisma)). Telegram-era tables use **BigInt** chat IDs (`User`, `Group`, ...), while `Messages` (legacy conversation history) stores the chat ID as a number:
+
 ```typescript
 const db = Database.instance();
 await db.user.findUnique({ where: { chatId: BigInt(chatId) } });
-await db.messages.create({ data: { chatId: Number(chatId), role: "user", content, from: Number(chatId) } });
+await db.messages.create({
+  data: { chatId: Number(chatId), role: "user", content, from: Number(chatId) },
+});
 ```
 
 `WorkflowMessage`, `WorkflowSession`, `WorkflowSessionLink` and `ModelContextProtocolServer` (+ `Headers`) are left over from the removed agent workflow. Nothing reads or writes them any more, but the tables are intentionally kept.
@@ -140,7 +154,8 @@ Dependency install scripts are **default-deny**: `allowScripts` in [package.json
 All config is in [src/singletons/config.ts](src/singletons/config.ts) as lazy static getters that validate when read. Use `.env.dev` as the template for `.env`.
 
 Key vars:
-- `HENNOS_LLM_PROVIDER` / `HENNOS_LEGACY_LLM_PROVIDER` - ollama|litellm
+
+- `HENNOS_LLM_PROVIDER` - ollama|litellm
 - `HENNOS_TOOL_DEPTH` - max tool-call iterations before the model is forced to answer
 - `HENNOS_{TELEGRAM,API,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags
 - `HENNOS_DEVELOPMENT_MODE` - skips the whitelist, enables CLI and static `public/` files
@@ -159,13 +174,12 @@ Vitest (`npm test`) picks up `src/**/*.{test,spec}.ts` and `tests/**`. Tests are
 
 Temporal workflow test guidance: [.claude/rules/temporal-workflow-test.md](.claude/rules/temporal-workflow-test.md).
 
-
 ## Common Pitfalls
 
 1. **Temporal workflows are deterministic** - no direct I/O, use activities for anything stateful
 2. **Legacy workflow IDs need a numeric `chatId`** - `createWorkflowId` throws otherwise
 3. **Activities need timeout configuration** - the default is too short for LLM calls
-4. **Workflow code runs in an isolated V8 context** - it can only import activity *types*, not implementations or Node modules
+4. **Workflow code runs in an isolated V8 context** - it can only import activity _types_, not implementations or Node modules
 5. **New workflows/activities must be exported from both `workflows.ts` and `activities.ts`**
 6. **Client platform strings must match a registered `AgentResponseHandler` listener**
 

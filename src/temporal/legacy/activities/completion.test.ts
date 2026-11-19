@@ -15,7 +15,7 @@ const modelLimit = vi.fn();
 const availableTools = vi.fn();
 
 vi.mock("../../../provider", () => ({
-    resolveLegacyModelProvider: vi.fn(async () => ({ limit: modelLimit, completion: modelCompletion })),
+    resolveModelProvider: vi.fn(async () => ({ limit: modelLimit, completion: modelCompletion })),
 }));
 
 vi.mock("../tools", () => ({

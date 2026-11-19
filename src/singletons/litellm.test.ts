@@ -9,9 +9,8 @@ describe("HennosLiteLLMSingleton.dynamic", () => {
         vi.stubEnv("LITELLM_MINI_LLM", "mid-model,32000");
         vi.stubEnv("LITELLM_NANO_LLM", "tiny-model,8000");
 
-        expect((await HennosLiteLLMSingleton.dynamic("wf", "high")).limit()).toBe(64000);
-        expect((await HennosLiteLLMSingleton.dynamic("wf", "low")).limit()).toBe(32000);
-        expect((await HennosLiteLLMSingleton.dynamic("wf", "nano")).limit()).toBe(8000);
-        expect((await HennosLiteLLMSingleton.dynamic("wf")).limit()).toBe(64000);
+        expect((await HennosLiteLLMSingleton.high("wf")).limit()).toBe(64000);
+        expect((await HennosLiteLLMSingleton.low("wf")).limit()).toBe(32000);
+        expect((await HennosLiteLLMSingleton.nano("wf")).limit()).toBe(8000);
     });
 });

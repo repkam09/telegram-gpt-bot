@@ -6,11 +6,11 @@
   "scripts": {
     "clean": "rimraf ./build",
     "build": "npm-run-all clean prisma:generate lint tsc:emit",
-    "validate": "npm-run-all lint tsc:noemit",
+    "validate": "npm-run-all lint tsc:noemit tsc:test:noemit",
     "tsc:emit": "tsc",
     "tsc:noemit": "tsc --noEmit",
     "tsc:test": "tsc -p tsconfig.test.json",
-    "tsc:noemit:watch": "tsc --noEmit --watch",
+    "tsc:test:noemit": "tsc -p tsconfig.test.json --noEmit",
     "lint": "eslint --fix .",
     "lint:check": "eslint .",
     "start": "npm run migrate:deploy && node build/hennos.js",
@@ -23,7 +23,7 @@
     "migrate:new": "prisma migrate dev --create-only",
     "prisma:generate": "prisma generate",
     "dev": "npm-run-all build start",
-    "test": "vitest run",
+    "test": "npm-run-all tsc:test test:coverage",
     "test:coverage": "vitest run --coverage"
   },
   "author": "Mark Repka",

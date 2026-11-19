@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import { ApplicationFailure, Context } from "@temporalio/activity";
-import { CompletionContextEncodedImage, CompletionContextEntry, CompletionContextImage, CompletionContextImageEntry, CompletionContextTextEntry, resolveLegacyModelProvider } from "../../../provider";
+import { CompletionContextEncodedImage, CompletionContextEntry, CompletionContextImage, CompletionContextImageEntry, CompletionContextTextEntry, resolveModelProvider } from "../../../provider";
 import { Logger } from "../../../singletons/logger";
 import { LegacyAgenticResponse } from "../types";
 import { availableTools } from "../tools";
@@ -42,7 +42,7 @@ async function _legacyCompletion(input: LegacyCompletionInput,
         memoryDirectory
     });
 
-    const model = await resolveLegacyModelProvider(workflowId, classification.modelTier);
+    const model = await resolveModelProvider(workflowId, classification.modelTier);
 
     // Load context from the database, sized according to complexity
     const complete = await getChatContext(workflowId, classification.contextLimit);

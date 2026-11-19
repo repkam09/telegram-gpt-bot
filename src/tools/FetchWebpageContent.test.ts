@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const invoke = vi.fn();
 
 vi.mock("../provider", () => ({
-    resolveLegacyModelProvider: vi.fn(async () => ({ invoke })),
+    resolveModelProvider: vi.fn(async () => ({ invoke })),
 }));
 
 import { answerFromContent, truncateContent } from "./FetchWebpageContent";

@@ -5,7 +5,7 @@ const existsSync = vi.fn();
 
 vi.mock("puppeteer", () => ({ default: { executablePath: () => executablePath() } }));
 vi.mock("node:fs", async (importOriginal) => ({ ...(await importOriginal<typeof import("node:fs")>()), existsSync: (p: string) => existsSync(p) }));
-vi.mock("../provider", () => ({ resolveLegacyModelProvider: vi.fn() }));
+vi.mock("../provider", () => ({ resolveModelProvider: vi.fn() }));
 
 import { checkBrowserInstalled } from "./FetchWebpageContent";
 import { Logger } from "../singletons/logger";
