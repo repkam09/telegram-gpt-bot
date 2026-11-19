@@ -118,6 +118,18 @@ When executing `npm` scripts, use the VS Code tasks in [.vscode/tasks.json](../.
 
 When changing `legacyWorkflow` itself, remember that running workflows replay their history on the new code. Changes to the order or number of activity calls can cause non-determinism errors; use `patched()` or finish/terminate in-flight workflows.
 
+## Dependency Maintenance
+
+A weekly workflow ([.github/workflows/dependency-report.yml](workflows/dependency-report.yml), also runnable on demand from the Actions tab) runs [scripts/deps-report.mjs](../scripts/deps-report.mjs) and publishes the result to the `deps-report` branch as `report.json` (machine readable) and `report.md`. It lists outdated packages (with `major`/`minor`/`patch` bump size), `npm audit` findings, and dependencies nothing appears to use.
+
+To update dependencies, read the latest report instead of guessing: `git fetch origin deps-report && git show FETCH_HEAD:report.json`. Then, in a feature branch and pull request (never directly on `main`):
+
+1. Remove entries from `unusedDependencies.unused` after confirming nothing loads them dynamically (the list is a heuristic).
+2. Update `outdated` entries in batches (patch/minor together; each `major` on its own so a failure is easy to attribute). `.npmrc` sets `min-release-age`, so very new releases will not install yet.
+3. Regenerate `package-lock.json` with a real `npm install` on Node 26 (see `.nvmrc`), then run `build`, `validate` and `test`. CI must pass before merging.
+
+The report only reports; it never changes dependencies itself.
+
 ## Configuration
 
 All config is in [src/singletons/config.ts](../src/singletons/config.ts) as lazy static getters that validate when read. Use `.env.dev` as the template for `.env`.
