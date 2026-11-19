@@ -49,29 +49,18 @@ jobs:
       - name: Build
         run: npm run tsc:emit
 
-      # Developers run tests with a real .env present. Write one with deliberately wrong values to prove the tests ignore it.
-      - name: Write decoy .env
-        run: |
-          cat > .env <<'EOF'
-          HENNOS_DEVELOPMENT_MODE=true
-          HENNOS_MEMORY_ENABLED=true
-          HENNOS_CLASSIFIER_ENABLED=false
-          HENNOS_LLM_PROVIDER=openai
-          HENNOS_TOOL_DEPTH=1
-          TEMPORAL_TASK_QUEUE=decoy-queue
-          TEMPORAL_PORT=9999
-          DATABASE_URL=file:./decoy-must-not-exist.sqlite
-          EOF
-          echo "decoy .env has $(wc -l < .env) lines"; cat .env
+      # Developers run tests with a real .env present (they copy .env.dev to .env). Prove the tests ignore it.
+      - name: Use .env.dev as .env
+        run: cp .env.dev .env
 
       - name: Test
         run: npm run test:coverage
 
-      # The decoy .env points DATABASE_URL at a file that must never be created: tests use their own temp database.
+      # .env.dev points DATABASE_URL at hennos.sqlite, which must never be created: tests use their own temp database.
       - name: Check tests did not touch the .env database
         run: |
-          if find . -name 'decoy-must-not-exist.sqlite*' -not -path './node_modules/*' | grep -q .; then
-            echo "Tests used DATABASE_URL from .env"; find . -name 'decoy-must-not-exist.sqlite*' -not -path './node_modules/*'; exit 1
+          if find . -name 'hennos.sqlite*' -not -path './node_modules/*' | grep -q .; then
+            echo "Tests used DATABASE_URL from .env"; find . -name 'hennos.sqlite*' -not -path './node_modules/*'; exit 1
           fi
 
       # Shown on the workflow run's summary page. Runs even when tests fail so partial coverage is still visible.
