@@ -50,6 +50,26 @@ export async function signalLegacyWorkflowMessage(workflowId: string, author: st
     });
 }
 
+export async function signalLegacyWorkflowAdminMessage(author: string, message: string) {
+    if (!Config.TELEGRAM_BOT_ADMIN) {
+        Logger.info(undefined, `signalLegacyWorkflowAdminMessage: author=${author}, message=${message}`);
+        return;
+    }
+
+    const workflowId = createWorkflowId("legacy", Config.TELEGRAM_BOT_ADMIN);
+    return signalLegacyWorkflowMessage(workflowId, author, message);
+}
+
+export async function signalLegacyWorkflowAdminExternalContext(author: string, message: string) {
+    if (!Config.TELEGRAM_BOT_ADMIN) {
+        Logger.info(undefined, `signalLegacyWorkflowAdminExternalContext: author=${author}, message=${message}`);
+        return;
+    }
+
+    const workflowId = createWorkflowId("legacy", Config.TELEGRAM_BOT_ADMIN);
+    return signalLegacyWorkflowExternalContext(workflowId, author, message);
+}
+
 export async function signalLegacyWorkflowExternalContext(workflowId: string, author: string, content: string) {
     const flow = parseWorkflowId(workflowId);
     const db = Database.instance();

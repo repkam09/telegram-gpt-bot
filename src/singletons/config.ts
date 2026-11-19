@@ -126,36 +126,12 @@ export class Config {
         return depth;
     }
 
-    static get HENNOS_MCP_ENABLED(): boolean {
-        if (!process.env.HENNOS_MCP_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_MCP_ENABLED === "true";
-    }
-
     static get HENNOS_MEMORY_ENABLED(): boolean {
         if (!process.env.HENNOS_MEMORY_ENABLED) {
             return false;
         }
 
         return process.env.HENNOS_MEMORY_ENABLED === "true";
-    }
-
-    static get HENNOS_GEMSTONE_ENABLED(): boolean {
-        if (!process.env.HENNOS_GEMSTONE_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_GEMSTONE_ENABLED === "true";
-    }
-
-    static get HENNOS_A2A_ENABLED(): boolean {
-        if (!process.env.HENNOS_A2A_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_A2A_ENABLED === "true";
     }
 
     static get HENNOS_GMAIL_ENABLED(): boolean {
