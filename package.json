@@ -23,7 +23,8 @@
     "migrate:new": "prisma migrate dev --create-only",
     "prisma:generate": "prisma generate",
     "dev": "npm-run-all build start",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "author": "Mark Repka",
   "license": "MIT",

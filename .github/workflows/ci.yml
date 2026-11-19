@@ -50,4 +50,9 @@ jobs:
         run: npm run tsc:emit
 
       - name: Test
-        run: npm test
+        run: npm run test:coverage
+
+      # Shown on the workflow run's summary page. Runs even when tests fail so partial coverage is still visible.
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"

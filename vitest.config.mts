@@ -1,5 +1,4 @@
 import { defineConfig } from "vitest/config";
-import path from "path";
 
 export default defineConfig({
   test: {
@@ -7,8 +6,12 @@ export default defineConfig({
     environment: "node",
     coverage: {
       provider: "v8",
-      reporter: ["text", "json", "html"],
+      // json-summary feeds the GitHub job summary (scripts/coverage-summary.mjs).
+      reporter: ["text-summary", "json-summary", "html"],
+      // Report on every source file, including ones no test imports yet.
+      include: ["src/**/*.ts"],
       exclude: [
+        "**/*.test.ts",
         "node_modules/",
         "build/",
         "data/",
@@ -27,10 +30,5 @@ export default defineConfig({
     unstubGlobals: true,
     include: ["tests/**/*.{test,spec}.{js,ts}", "src/**/*.{test,spec}.{js,ts}"],
     exclude: ["node_modules/", "build/", "data/"],
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
   },
 });

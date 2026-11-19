@@ -5,6 +5,6 @@
         "rootDir": ".",
         "target": "es2022"
     },
-    "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
+    "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.mts"],
     "exclude": ["node_modules", "build", "data"]
 }
