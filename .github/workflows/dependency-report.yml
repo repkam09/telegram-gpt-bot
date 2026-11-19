@@ -1,0 +1,68 @@
+name: Dependency report
+
+# Produces a machine-readable report of outdated packages, security advisories and unused dependencies.
+#   - Weekly, and on demand from the Actions tab (Run workflow).
+#   - The report is also published to the `deps-report` branch (report.json + report.md, a single force-pushed commit),
+#     so it can be read with a plain `git fetch origin deps-report` without any API access.
+#   - It is also attached to the run as an artifact and shown on the run's summary page.
+# This workflow only reports. Updating dependencies is done in a normal pull request that goes through CI.
+
+on:
+  schedule:
+    - cron: "23 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # Only needed to push the deps-report branch below.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # .npmrc sets ignore-scripts=true, so no install scripts run. node_modules is needed for the command-line tool check.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate report
+        run: node scripts/deps-report.mjs deps-report
+
+      - name: Job summary
+        run: cat deps-report/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-report
+          path: deps-report/
+          retention-days: 30
+
+      # Only from the default branch, so a manual run on a work-in-progress branch cannot overwrite the real report.
+      - name: Publish report to the deps-report branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          tmp="$(mktemp -d)"
+          cp deps-report/report.json deps-report/report.md "$tmp"/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan deps-report-publish
+          git rm -rf --quiet --cached .
+          cp "$tmp"/report.json "$tmp"/report.md .
+          git add report.json report.md
+          git commit --quiet -m "Dependency report for ${sha}"
+          git push --force origin HEAD:refs/heads/deps-report
