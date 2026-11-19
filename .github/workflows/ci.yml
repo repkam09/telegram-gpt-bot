@@ -4,12 +4,20 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Reused by dependency-update.yml to validate the branch it pushes. (Pull requests opened with the workflow token do
+  # not trigger the `pull_request` event above, so the update workflow calls this one directly instead.)
+  workflow_call:
+    inputs:
+      ref:
+        description: "Branch or commit to check out; empty means the event's default ref."
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ inputs.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,6 +29,8 @@ jobs:
       DATABASE_URL: "file:./ci.sqlite"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/setup-node@v4
         with:

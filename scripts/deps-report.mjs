@@ -38,10 +38,15 @@ function parseVersion(version) {
 }
 
 // How big a jump is it from `current` to `latest`? A 0.x minor bump counts as breaking, per semver convention.
+// "downgrade" means the registry's latest tag is older than what is installed (a stale or moved dist-tag), not an update.
 function bumpKind(current, latest) {
     const a = parseVersion(current);
     const b = parseVersion(latest);
     if (!a || !b) return "unknown";
+    for (let i = 0; i < 3; i++) {
+        if (b[i] < a[i]) return "downgrade";
+        if (b[i] > a[i]) break;
+    }
     if (b[0] !== a[0]) return "major";
     if (a[0] === 0 && b[1] !== a[1]) return "major";
     if (b[1] !== a[1]) return "minor";
@@ -64,7 +69,7 @@ function collectOutdated() {
         errors.push({ section: "outdated", message: JSON.stringify(parsed.error).slice(0, 2000) });
         return null;
     }
-    const order = { major: 0, minor: 1, patch: 2, unknown: 3, none: 4 };
+    const order = { major: 0, minor: 1, patch: 2, unknown: 3, downgrade: 4, none: 5 };
     return Object.entries(parsed)
         .map(([name, info]) => ({
             name,
@@ -215,7 +220,7 @@ md.push("## Outdated", "");
 const direct = (report.outdated ?? []).filter((o) => o.type !== "transitive");
 if (report.outdated === null) md.push("Could not be determined (see errors).");
 else if (direct.length === 0) md.push("All direct dependencies are up to date.");
-else md.push(...table(["Package", "Section", "Current", "Wanted", "Latest", "Bump"], direct.map((o) => [`\`${o.name}\``, o.type, o.current ?? "-", o.wanted ?? "-", o.latest ?? "-", o.bump])));
+else md.push(...table(["Package", "Section", "Current", "Wanted", "Latest", "Bump"], direct.map((o) => [`\`${o.name}\``, o.type, o.current ?? "-", o.wanted ?? "-", o.latest ?? "-", o.bump])), "", "`downgrade` means the registry's latest tag is older than the installed version, so there is nothing to update.");
 md.push("");
 
 md.push("## Security audit", "");
