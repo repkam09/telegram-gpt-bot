@@ -13,7 +13,6 @@ Outside of the core are different clients that can send signals to the Workflow 
 - Telegram
 - Web (via REST API, with Server-Sent Events for responses)
 - CLI (development only)
-- Agent2Agent (A2A) server (experimental, currently a stub)
 - OpenAI Realtime SIP voice calls
 
 ## Running Hennos

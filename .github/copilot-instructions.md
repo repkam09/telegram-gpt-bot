@@ -85,7 +85,6 @@ All clients live in [src/client/](../src/client/); initialisation is gated by fl
 
 - **Telegram** (`telegram.ts` + `legacy/legacy.ts`): polling by default, webhook mode when `HENNOS_API_ENABLED` and `TELEGRAM_BOT_WEBHOOK_EXTERNAL` are set. `TelegramInstance` handles the whitelist (`User.whitelisted`, skipped in development mode) and delegates every message type to `TelegramLegacyInstance`, which handles **private chats only**. Commands are in `legacy/commands.ts`.
 - **REST/SSE API** (`api.ts`, `endpoints/`): Express on `HENNOS_API_PORT`. Routes: `/healthz`, Telegram webhook, `/legacy/conversation/:sessionId/{message,stream}`, `/hennos/realtime/sip` (OpenAI Realtime SIP voice calls, which do not use Temporal), plus Supabase login/auth when `HENNOS_SUPABASE_ENABLED`. The session ID must be numeric because it becomes the legacy `chatId`.
-- **A2A** (`a2a.ts`, `HENNOS_A2A_ENABLED`): Agent2Agent server. The executor is currently a stub that replies "Hello!".
 - **CLI** (`cli.ts`, `npm run start:cli`): development mode only; uses platform `cli` and a fixed chatId of `0`.
 
 ### Response Handling
@@ -126,7 +125,7 @@ All config is in [src/singletons/config.ts](../src/singletons/config.ts) as lazy
 Key vars:
 - `HENNOS_LLM_PROVIDER` / `HENNOS_LEGACY_LLM_PROVIDER` - openai|anthropic|ollama|litellm
 - `HENNOS_TOOL_DEPTH` - max tool-call iterations before the model is forced to answer
-- `HENNOS_{TELEGRAM,API,A2A,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags
+- `HENNOS_{TELEGRAM,API,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags
 - `HENNOS_DEVELOPMENT_MODE` - skips the whitelist, enables CLI and static `public/` files
 - `TEMPORAL_HOST/PORT/NAMESPACE/TASK_QUEUE/API_KEY/USE_TLS` - Temporal connection (Temporal Cloud supported)
 - `TELEGRAM_BOT_KEY`, `TELEGRAM_BOT_ADMIN` - bot token and the admin chat that receives notifications

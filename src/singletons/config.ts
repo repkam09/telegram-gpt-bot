@@ -134,14 +134,6 @@ export class Config {
         return process.env.HENNOS_MEMORY_ENABLED === "true";
     }
 
-    static get HENNOS_A2A_ENABLED(): boolean {
-        if (!process.env.HENNOS_A2A_ENABLED) {
-            return false;
-        }
-
-        return process.env.HENNOS_A2A_ENABLED === "true";
-    }
-
     static get HENNOS_GMAIL_ENABLED(): boolean {
         if (!process.env.HENNOS_GMAIL_ENABLED) {
             return false;

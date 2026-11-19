@@ -4,7 +4,6 @@ import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { AgentResponseHandler } from "../response";
 import { TelegramWebhookInstance } from "./endpoints/telegram";
-import { A2AWebhookInstance } from "./endpoints/a2a";
 import { SupabaseWebhookInstance } from "./endpoints/supabase";
 import { LegacyWebhookInstance } from "./endpoints/legacy";
 import { HennosRealtime } from "../realtime/sip";
@@ -66,10 +65,6 @@ export class WebhookInstance {
 
         if (Config.HENNOS_TELEGRAM_ENABLED) {
             TelegramWebhookInstance.init(app);
-        }
-
-        if (Config.HENNOS_A2A_ENABLED) {
-            A2AWebhookInstance.init(app);
         }
 
         if (Config.HENNOS_SUPABASE_ENABLED) {
