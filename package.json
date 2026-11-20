@@ -17,6 +17,7 @@
     "start:cli": "node build/client/cli.js",
     "script:email": "npm run build && node build/scripts/email.js",
     "script:bsky": "npm run build && node build/scripts/bsky.js",
+    "script:memory": "npm run build && node build/scripts/memory.js",
     "script:token": "npm run build && node build/scripts/token.js",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:reset": "prisma migrate reset",

@@ -6,6 +6,14 @@ describe("Config defaults", () => {
         expect(Config.HENNOS_DEVELOPMENT_MODE).toBe(false);
         expect(Config.HENNOS_VERBOSE_LOGGING).toBe(false);
         expect(Config.HENNOS_MEMORY_ENABLED).toBe(false);
+        expect(Config.HENNOS_MEMORY_EXTRACTION_ENABLED).toBe(true);
+        expect(Config.HENNOS_MEMORY_SCHEDULE_CRON).toBe("0 4 * * *");
+        expect(Config.HENNOS_MEMORY_SCHEDULE_TZ).toBe("America/New_York");
+        expect(Config.HENNOS_MEMORY_DECISION_MODEL).toBeNull();
+        expect(Config.HENNOS_MEMORY_CONCURRENCY).toBe(5);
+        expect(Config.HENNOS_MEMORY_BACKFILL_MESSAGES).toBe(200);
+        expect(Config.HENNOS_MEMORY_CHUNK_MESSAGES).toBe(40);
+        expect(Config.HENNOS_MEMORY_MAX_CHUNKS).toBe(8);
         expect(Config.HENNOS_TOOL_DEPTH).toBe(6);
         expect(Config.TEMPORAL_HOST).toBe("localhost");
         expect(Config.TEMPORAL_PORT).toBe(7233);
@@ -24,6 +32,35 @@ describe("Config overrides", () => {
 
         expect(Config.HENNOS_DEVELOPMENT_MODE).toBe(true);
         expect(Config.HENNOS_MEMORY_ENABLED).toBe(true);
+    });
+
+    it("memory extraction is on unless the variable is exactly 'false' (default-on kill switch)", () => {
+        expect(Config.HENNOS_MEMORY_EXTRACTION_ENABLED).toBe(true);
+
+        vi.stubEnv("HENNOS_MEMORY_EXTRACTION_ENABLED", "false");
+        expect(Config.HENNOS_MEMORY_EXTRACTION_ENABLED).toBe(false);
+
+        vi.stubEnv("HENNOS_MEMORY_EXTRACTION_ENABLED", "no");
+        expect(Config.HENNOS_MEMORY_EXTRACTION_ENABLED).toBe(true);
+
+        vi.stubEnv("HENNOS_MEMORY_EXTRACTION_ENABLED", "true");
+        expect(Config.HENNOS_MEMORY_EXTRACTION_ENABLED).toBe(true);
+    });
+
+    it("memory decision model falls back to the classifier decision model", () => {
+        vi.stubEnv("HENNOS_CLASSIFIER_DECISION_MODEL", "jev");
+        expect(Config.HENNOS_MEMORY_DECISION_MODEL).toBe("jev");
+
+        vi.stubEnv("HENNOS_MEMORY_DECISION_MODEL", "other");
+        expect(Config.HENNOS_MEMORY_DECISION_MODEL).toBe("other");
+    });
+
+    it("rejects invalid memory batch sizes", () => {
+        vi.stubEnv("HENNOS_MEMORY_CHUNK_MESSAGES", "0");
+        expect(() => Config.HENNOS_MEMORY_CHUNK_MESSAGES).toThrow("Invalid HENNOS_MEMORY_CHUNK_MESSAGES value");
+
+        vi.stubEnv("HENNOS_MEMORY_CHUNK_MESSAGES", "25");
+        expect(Config.HENNOS_MEMORY_CHUNK_MESSAGES).toBe(25);
     });
 
     it("treats any other value of a boolean flag as false", () => {

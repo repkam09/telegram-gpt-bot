@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { MockActivityEnvironment } from "@temporalio/testing";
 import { chooseTier, classifyPromptComplexity, DECISION_QUESTIONS, PromptComplexityResult, PromptSignals, resetClassifierState } from "./classifier";
 import { createWorkflowId } from "../interface";
+import { MemoryFileStore } from "../../../tools/memory/MemoryFileStore";
 import { createTestDatabase, TEST_CHAT_ID, TestDatabase } from "../../../../tests/helpers/database";
 
 const signals = (overrides: Partial<PromptSignals> = {}): PromptSignals => ({ deep: 0, context: 0, casual: 0, lookup: 0, ...overrides });
@@ -82,12 +83,122 @@ describe("classifyPromptComplexity", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("uses the same smaller context window for every tier when memory is enabled", async () => {
+    it("keeps contextLimit at 100 when memory exposure is enabled (the extraction-aware window is applied at completion time)", async () => {
         vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
         await say("user", "thanks!");
         fetchMock.mockResolvedValue(answer({ casual: 0.99 }));
 
-        expect(await classify()).toEqual({ complexity: "trivial", contextLimit: 15, useTools: true, modelTier: "nano" });
+        expect(await classify()).toEqual({ complexity: "trivial", contextLimit: 100, useTools: true, modelTier: "nano" });
+    });
+
+    describe("memory file selection", () => {
+        type Question = { name: string; instructions: string };
+        const requests = () => fetchMock.mock.calls.map((call) => (JSON.parse(call[1].body) as { questions: Question[] }).questions.map((question) => question.name));
+        const isMemoryRequest = (names: string[]) => names.some((name) => name.startsWith("memory_file_"));
+
+        async function seedMemory() {
+            const store = new MemoryFileStore(String(TEST_CHAT_ID));
+            await store.create("/memories/profile.md", "---\nname: profile\ndescription: Who\n---\nx");
+            await store.create("/memories/topics/tea.md", "---\nname: tea\ndescription: Tea habits\n---\nx");
+            await store.create("/memories/topics/cars.md", "---\nname: cars\ndescription: Car ownership\n---\nx");
+        }
+
+        /** Answers tier questions with `tier` and memory questions with `memory` (or fails them with `memoryFailure`). */
+        function route(options: { tier?: Partial<PromptSignals>; memory?: Record<string, number>; memoryFailure?: "http" | "refusal" }) {
+            fetchMock.mockImplementation(async (...args: [string, { body: string }]) => {
+                const questions = (JSON.parse(args[1].body) as { questions: Question[] }).questions;
+                const memoryRequest = isMemoryRequest(questions.map((question) => question.name));
+
+                if (memoryRequest && options.memoryFailure === "http") {
+                    return { ok: false, status: 500, json: async () => ({}) };
+                }
+
+                const tier = signals(options.tier ?? {}) as Record<string, number>;
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        answers: questions.map((question) => memoryRequest && options.memoryFailure === "refusal"
+                            ? { type: "refusal", name: question.name }
+                            : { type: "predicate", name: question.name, probability: memoryRequest ? (options.memory?.[question.name] ?? 0) : tier[question.name] }),
+                    }),
+                };
+            });
+        }
+
+        it("asks no memory questions and selects nothing when exposure is off", async () => {
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            route({ tier: { lookup: 0.95 } });
+
+            const result = await classify();
+
+            expect(requests()).toEqual([DECISION_QUESTIONS.map((question) => question.name)]);
+            expect(result.memoryFiles).toBeUndefined();
+        });
+
+        it("asks the memory questions in a separate call and returns the confident files", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            // Newest first: cars (created last) is memory_file_0, tea is memory_file_1
+            route({ tier: { lookup: 0.95 }, memory: { memory_file_0: 0.1, memory_file_1: 0.9 } });
+
+            const result = await classify();
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(requests().filter((names) => !isMemoryRequest(names))).toEqual([DECISION_QUESTIONS.map((question) => question.name)]);
+            expect(requests().filter(isMemoryRequest)).toEqual([["memory_file_0", "memory_file_1"]]);
+            expect(result.memoryFiles).toEqual(["/memories/topics/tea.md"]);
+            expect(result.modelTier).toBe("low");
+        });
+
+        it.each([["http" as const], ["refusal" as const]])("keeps the tier decision when the memory call fails (%s)", async (memoryFailure) => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            route({ tier: { lookup: 0.95 }, memoryFailure });
+
+            const result = await classify();
+
+            expect(result.modelTier).toBe("low");
+            expect(result.memoryFiles).toBeUndefined();
+        });
+
+        it("keeps the selection for the rest of the tool loop without new decision calls", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            route({ tier: { lookup: 0.95 }, memory: { memory_file_1: 0.9 } });
+
+            await classify();
+            const again = await classify({ iterations: 1, hasToolContext: true });
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(again.memoryFiles).toEqual(["/memories/topics/tea.md"]);
+        });
+
+        it("routes high when the tier call fails, and selects nothing", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+
+            const result = await classify();
+
+            expect(result.modelTier).toBe("high");
+            expect(result.memoryFiles).toBeUndefined();
+        });
+
+        it("makes no memory call when there are no candidate files", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await say("user", "what tea should I get?");
+            route({ tier: { lookup: 0.95 } });
+
+            await classify();
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
     });
 
     it.each([

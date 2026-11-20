@@ -11,7 +11,8 @@ import { encoding_for_model } from "tiktoken";
 import { withActivityHeartbeat } from "../../heartbeat";
 import { PromptComplexityResult } from "./classifier";
 import { Config } from "../../../singletons/config";
-import { MemoryFileStore } from "../../../tools/memory/MemoryFileStore";
+import { buildMemoryContext, loadSelectedMemoryFiles } from "../../../tools/memory/memoryContext";
+import { extractionAwareWindow } from "../../memory/window";
 
 export type LegacyCompletionInput = {
     context: CompletionContextEntry[];
@@ -27,25 +28,38 @@ async function _legacyCompletion(input: LegacyCompletionInput,
 
     Logger.debug(workflowId, `Completion using classification '${classification.complexity}': contextLimit=${classification.contextLimit}, useTools=${classification.useTools}, modelTier=${classification.modelTier}`);
 
-    let memoryDirectory: string | undefined;
+    let memoryContext: string | undefined;
+    let contextLimit = classification.contextLimit;
     if (Config.HENNOS_MEMORY_ENABLED) {
         try {
-            const info = parseWorkflowId(workflowId);
-            memoryDirectory = await new MemoryFileStore(info.chatId).directoryListing();
+            const chatId = parseWorkflowId(workflowId).chatId;
+            memoryContext = await buildMemoryContext(chatId);
+            contextLimit = await extractionAwareWindow(chatId, classification.contextLimit);
         } catch (error) {
-            Logger.error(workflowId, `Failed to load memory directory listing: ${error}`);
+            Logger.error(workflowId, `Failed to load memory context: ${error}`);
         }
     }
 
     const systemPrompt = legacyCompletionPromptTemplate({
         currentDate: new Date(),
-        memoryDirectory
+        memoryContext,
     });
 
     const model = await resolveModelProvider(workflowId, classification.modelTier);
 
     // Load context from the database, sized according to complexity
-    const complete = await getChatContext(workflowId, classification.contextLimit);
+    const complete = await getChatContext(workflowId, contextLimit);
+    if (Config.HENNOS_MEMORY_ENABLED && classification.memoryFiles && classification.memoryFiles.length > 0) {
+        try {
+            const selected = await loadSelectedMemoryFiles(parseWorkflowId(workflowId).chatId, classification.memoryFiles);
+            if (selected) {
+                prependToLatestUserMessage(complete, selected);
+            }
+        } catch (error) {
+            Logger.error(workflowId, `Failed to load selected memory files: ${error}`);
+        }
+    }
+
     const conversation = await getSizedChatContext(workflowId, [{ role: "system", content: systemPrompt }], complete, model.limit());
 
     const tools = classification.useTools ? availableTools(workflowId) : undefined;
@@ -94,25 +108,13 @@ async function _legacyCompletion(input: LegacyCompletionInput,
 type LegacyCompletionPromptInput = {
     currentDate: Date,
     lastActiveDate?: Date,
-    memoryDirectory?: string,
+    memoryContext?: string,
 }
 
-export function legacyCompletionPromptTemplate({ currentDate, lastActiveDate, memoryDirectory }: LegacyCompletionPromptInput): string {
+export function legacyCompletionPromptTemplate({ currentDate, lastActiveDate, memoryContext }: LegacyCompletionPromptInput): string {
     const { date, day } = temporalGrounding(currentDate);
     const activity = lastActiveDate ? lastActiveDateString(lastActiveDate) : "";
 
-
-    const memoryProtocol = `You have a persistent memory directory, managed through the 'memory' tool, which survives across conversations and context resets.
-<memory-protocol>
-1. Before working on a task, check whether your memory directory contains relevant context, notes, or user preferences. Use the 'view' command of the 'memory' tool to read any relevant files.
-2. As you work, record durable information in your memory: user preferences, important facts, decisions, and progress on multi-step tasks. Assume your conversation context could be reset at any moment - anything not recorded in memory will be lost.
-3. Keep your memory up-to-date, coherent, and organized. Update or remove files that are stale rather than creating duplicates. Do not create new files unless necessary.
-4. Never store secrets such as passwords, API keys, or tokens in memory files.
-
-Here is the current listing of your memory directory:
-${memoryDirectory}
-</memory-protocol>
-`.trim();
 
     return `You are a conversational assistant named 'Hennos' that is helpful, creative, clever, and friendly.
     
@@ -126,9 +128,26 @@ Your knowledge is based on the data your model was trained on. Be aware that you
 
 In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.
 ${activity}
+${memoryContext ? `\n${memoryContext}\n` : ""}`;
+}
 
-${memoryDirectory ? memoryProtocol : ""}
-`;
+/**
+ * Puts `text` at the start of the latest user message, so selected memory travels in the user turn.
+ * A mid-conversation system message could be merged into the provider's system field by the proxy for some
+ * providers, which would make the system block vary per turn and break prompt caching; the stable system
+ * prompt and the history before this message stay byte-identical. With no text user message it is added as
+ * a user message at the end.
+ */
+export function prependToLatestUserMessage(context: CompletionContextEntry[], text: string): void {
+    for (let index = context.length - 1; index >= 0; index--) {
+        const entry = context[index];
+        if (entry.role === "user" && "content" in entry && typeof entry.content === "string") {
+            context[index] = { ...entry, content: `${text}\n\n${entry.content}` };
+            return;
+        }
+    }
+
+    context.push({ role: "user", content: text });
 }
 
 async function getChatContext(workflowId: string, limit: number = 100): Promise<CompletionContextEntry[]> {
@@ -155,7 +174,7 @@ async function getChatContext(workflowId: string, limit: number = 100): Promise<
 
     const messages: CompletionContextEntry[] = [];
     for (const entry of entries) {
-        if (entry.type === "text") {
+        if (entry.type === "text" || entry.type === "context") {
             messages.push({
                 role: entry.role as "user" | "assistant" | "system",
                 content: entry.content

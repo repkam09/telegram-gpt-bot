@@ -70,6 +70,31 @@ export function humanReadableSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)}M`;
 }
 
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
+
+/** The one-line `description:` from a memory file's frontmatter block, or null when there is none. */
+export function parseMemoryDescription(content: string): string | null {
+    const block = FRONTMATTER.exec(content);
+    if (!block) {
+        return null;
+    }
+
+    const line = block[1].split(/\r?\n/).find((entry) => entry.trim().startsWith("description:"));
+    const description = line ? line.slice(line.indexOf(":") + 1).trim() : "";
+    return description.length > 0 ? description : null;
+}
+
+/** File content without its frontmatter block. */
+export function stripMemoryFrontmatter(content: string): string {
+    return content.replace(FRONTMATTER, "").trim();
+}
+
+export type MemoryFileSummary = {
+    path: string;
+    description: string | null;
+    updatedAt: Date;
+}
+
 export function formatWithLineNumbers(lines: string[], startLine: number): string {
     return lines.map((line, index) => `${String(startLine + index).padStart(6, " ")}\t${line}`).join("\n");
 }
@@ -312,6 +337,28 @@ export class MemoryFileStore {
         }
 
         return `Error: The path ${oldPath} does not exist`;
+    }
+
+    /** Every file with its frontmatter description, most recently updated first. */
+    public async listFiles(): Promise<MemoryFileSummary[]> {
+        const rows = await this.prisma.memoryFile.findMany({
+            where: { chatId: this.chatId },
+            select: { path: true, content: true, updatedAt: true },
+            orderBy: { updatedAt: "desc" }
+        });
+
+        return rows.map((row) => ({ path: row.path, description: parseMemoryDescription(row.content), updatedAt: row.updatedAt }));
+    }
+
+    /** Raw file content (no line numbers), or null when the file does not exist or the path is invalid. */
+    public async readRaw(rawPath: unknown): Promise<string | null> {
+        const path = normalizeMemoryPath(rawPath);
+        if (!path) {
+            return null;
+        }
+
+        const file = await this.getFile(path);
+        return file ? file.content : null;
     }
 
     /**

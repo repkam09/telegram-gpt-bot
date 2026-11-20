@@ -78,6 +78,9 @@ export async function signalLegacyWorkflowExternalContext(workflowId: string, au
             data: {
                 chatId: Number(flow.chatId),
                 role: "user",
+                // Not typed "text": this is injected context (digests, notices, transcripts), not something
+                // the user typed, so the nightly memory extraction must not treat it as the user's own words.
+                type: "context",
                 content,
                 from: Number(flow.chatId)
             }

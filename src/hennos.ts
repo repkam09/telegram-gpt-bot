@@ -8,6 +8,7 @@ import { SupabaseInstance } from "./singletons/supabase";
 import { createEmailScheduleWorkflow, deleteEmailScheduleWorkflow } from "./temporal/email/schedule";
 import { TelegramLegacyInstance } from "./client/legacy/legacy";
 import { checkBrowserInstalled } from "./tools/FetchWebpageContent";
+import { createMemoryBatchSchedule, deleteMemoryBatchSchedule } from "./temporal/memory/schedule";
 import { createSupabaseKeepaliveSchedule, deleteSupabaseKeepaliveSchedule } from "./temporal/supabase/schedule";
 
 async function start() {
@@ -56,6 +57,14 @@ async function start() {
     } else {
         Logger.info("Hennos", "Email Schedule Workflow is disabled. Skipping...");
         await deleteEmailScheduleWorkflow();
+    }
+
+    if (Config.HENNOS_MEMORY_EXTRACTION_ENABLED) {
+        Logger.info("Hennos", "Initializing Memory Batch Schedule...");
+        await createMemoryBatchSchedule();
+    } else {
+        Logger.info("Hennos", "Memory extraction is disabled. Skipping...");
+        await deleteMemoryBatchSchedule();
     }
 
     Logger.info("Hennos", "Starting Temporal worker...");

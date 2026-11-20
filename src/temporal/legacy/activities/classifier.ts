@@ -4,6 +4,7 @@ import { Logger } from "../../../singletons/logger";
 import { parseWorkflowId } from "../interface";
 import { decidePredicates, DecisionPredicate } from "./decision";
 import { Context } from "@temporalio/activity";
+import { memoryCandidates, MemoryCandidate, memoryQuestions, selectMemoryFiles } from "./memorySelection";
 
 export type PromptComplexity = "trivial" | "simple" | "complex";
 
@@ -12,6 +13,8 @@ export type PromptComplexityResult = {
     contextLimit: number;
     useTools: boolean;
     modelTier: "high" | "low" | "nano";
+    /** Memory files the decision model picked for this turn (only when memory exposure is enabled). */
+    memoryFiles?: string[];
 }
 
 export type ClassifyPromptInput = {
@@ -127,16 +130,18 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
             return remember(workflowId, resultFor("complex"), true, remainingSticky);
         }
 
+        // Memory file selection is a separate decision call, started in parallel. It never rejects, so a refusal,
+        // timeout or error there cannot affect the tier decision (and therefore cannot push a turn to the high tier).
+        const memorySelection = selectMemoryForTurn(workflowId, decisionModel, messages);
+
         const probabilities = await decidePredicates(
-            {
-                baseUrl: Config.LITELLM_BASE_URL,
-                apiKey: Config.LITELLM_API_KEY,
-                model: decisionModel,
-                timeoutMs: DECISION_TIMEOUT_MS,
-            },
+            decisionOptions(decisionModel),
             formatInput(messages),
             DECISION_QUESTIONS,
         );
+
+        const selected = await memorySelection;
+        const withMemory = (result: PromptComplexityResult): PromptComplexityResult => selected.length > 0 ? { ...result, memoryFiles: selected } : result;
 
         const signals = probabilities as PromptSignals;
         const { tier, sticky } = chooseTier(signals);
@@ -144,15 +149,44 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
         // While a session is sticky, only ever move up.
         if (state && state.stickyTurns > 0 && tier !== "complex") {
             Logger.info(workflowId, `Prompt would be '${tier}' but the chat is sticky on the high tier (${state.stickyTurns} turns left). Signals: ${JSON.stringify(signals)}`);
-            return remember(workflowId, resultFor("complex"), false, remainingSticky);
+            return remember(workflowId, withMemory(resultFor("complex")), false, remainingSticky);
         }
 
-        Logger.info(workflowId, `Prompt classified as '${tier}' by decision model ${decisionModel}. Signals: ${JSON.stringify(signals)}`);
-        return remember(workflowId, resultFor(tier), sticky, remainingSticky);
+        Logger.info(workflowId, `Prompt classified as '${tier}' by decision model ${decisionModel}. Signals: ${JSON.stringify(signals)}${selected.length > 0 ? ` Memory files: ${JSON.stringify(selected)}` : ""}`);
+        return remember(workflowId, withMemory(resultFor(tier)), sticky, remainingSticky);
     } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error(String(err));
         Logger.warn(workflowId, `Decision classification failed, defaulting to 'complex': ${error.message}`);
         return remember(workflowId, resultFor("complex"), false, remainingSticky);
+    }
+}
+
+function decisionOptions(model: string) {
+    return {
+        baseUrl: Config.LITELLM_BASE_URL,
+        apiKey: Config.LITELLM_API_KEY,
+        model,
+        timeoutMs: DECISION_TIMEOUT_MS,
+    };
+}
+
+/** Which memory files to show for this turn. Returns no files on any failure; never throws. */
+async function selectMemoryForTurn(workflowId: string, decisionModel: string, messages: RecentMessage[]): Promise<string[]> {
+    if (!Config.HENNOS_MEMORY_ENABLED) {
+        return [];
+    }
+
+    try {
+        const candidates: MemoryCandidate[] = await memoryCandidates(parseWorkflowId(workflowId).chatId);
+        if (candidates.length === 0) {
+            return [];
+        }
+
+        const probabilities = await decidePredicates(decisionOptions(decisionModel), formatInput(messages), memoryQuestions(candidates));
+        return selectMemoryFiles(candidates, probabilities);
+    } catch (err: unknown) {
+        Logger.warn(workflowId, `Memory file selection failed, continuing without it: ${err instanceof Error ? err.message : String(err)}`);
+        return [];
     }
 }
 
@@ -193,7 +227,7 @@ type RecentMessage = { role: string, content: string };
 async function recentMessages(workflowId: string): Promise<RecentMessage[]> {
     const flow = parseWorkflowId(workflowId);
     const entries = await Database.instance().messages.findMany({
-        where: { chatId: Number(flow.chatId), type: "text" },
+        where: { chatId: Number(flow.chatId), type: { in: ["text", "context"] } },
         select: { role: true, content: true },
         orderBy: { id: "desc" },
         take: DECISION_RECENT_MESSAGES,
@@ -218,7 +252,7 @@ function formatInput(messages: RecentMessage[]): string {
  * and only the upstream model changes.
  */
 function resultFor(complexity: PromptComplexity): PromptComplexityResult {
-    const contextLimit = Config.HENNOS_MEMORY_ENABLED ? 15 : 100;
+    const contextLimit = 100;
 
     switch (complexity) {
         case "trivial":
