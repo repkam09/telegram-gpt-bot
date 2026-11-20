@@ -33,14 +33,12 @@ export async function extractMemories(workflowId: string, chatId: string, messag
     ];
 
     const changes: MemoryChange[] = [];
-    let summary = "";
 
     for (let iteration = 0; iteration < MAX_EXTRACTION_ITERATIONS; iteration++) {
         const response = await provider.completion(workflowId, context, iteration, tools);
 
         if (response.__type === "string") {
-            summary = response.payload;
-            return { iterations: iteration + 1, changes, summary };
+            return { iterations: iteration + 1, changes, summary: response.payload };
         }
 
         for (const call of response.payload) {
