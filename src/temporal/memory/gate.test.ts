@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { decideGate, formatGateInput, MEMORY_GATE_QUESTIONS, MemoryGateSignals, runGate } from "./gate";
+import { decideGate, SECRET_FLAGGED, formatGateInput, MEMORY_GATE_QUESTIONS, MemoryGateSignals, runGate } from "./gate";
 
 const signals = (overrides: Partial<MemoryGateSignals> = {}): MemoryGateSignals => ({
-    durable_fact: 0, update: 0, explicit: 0, forget: 0, ephemeral: 0, secret: 0, ...overrides,
+    durable_fact: 0, update: 0, explicit: 0, forget: 0, secret: 0, ...overrides,
 });
 
 describe("decideGate", () => {
     it("skips a chunk with nothing durable", () => {
-        expect(decideGate(signals({ ephemeral: 0.95, durable_fact: 0.05 })).extract).toBe(false);
+        expect(decideGate(signals({ durable_fact: 0.05 })).extract).toBe(false);
     });
 
     it("extracts a likely durable fact or update with a generous threshold", () => {
@@ -26,10 +26,15 @@ describe("decideGate", () => {
         expect(decideGate(signals({ forget: 0.1 })).extract).toBe(false);
     });
 
-    it("skips chunks with a likely secret unless they hold a forget request", () => {
-        expect(decideGate(signals({ secret: 0.9, durable_fact: 0.9 }))).toMatchObject({ extract: false, reason: "secret" });
-        expect(decideGate(signals({ secret: 0.9, explicit: 0.9 }))).toMatchObject({ extract: false, reason: "secret" });
-        expect(decideGate(signals({ secret: 0.5, durable_fact: 0.9 })).extract).toBe(true);
+    it("still extracts a chunk with a likely secret, but flags it for review", () => {
+        expect(decideGate(signals({ secret: 0.9, durable_fact: 0.9 }))).toMatchObject({ extract: true, reason: `durable_or_update${SECRET_FLAGGED}` });
+        expect(decideGate(signals({ secret: 0.9, explicit: 0.9 }))).toMatchObject({ extract: true, reason: `explicit${SECRET_FLAGGED}` });
+        expect(decideGate(signals({ secret: 0.9, forget: 0.9 }))).toMatchObject({ extract: true, reason: `forget${SECRET_FLAGGED}` });
+        expect(decideGate(signals({ secret: 0.5, durable_fact: 0.9 }))).toMatchObject({ extract: true, reason: "durable_or_update" });
+    });
+
+    it("does not extract a chunk that only has a secret", () => {
+        expect(decideGate(signals({ secret: 0.99 })).extract).toBe(false);
     });
 });
 

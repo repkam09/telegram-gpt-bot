@@ -9,7 +9,6 @@ export type MemoryGateSignals = {
     update: number;
     explicit: number;
     forget: number;
-    ephemeral: number;
     secret: number;
 }
 
@@ -51,41 +50,39 @@ export const MEMORY_GATE_QUESTIONS: DecisionPredicate[] = [
         instructions: "Does the user ask the assistant to forget, delete or stop remembering something, or say that something the assistant knows about them is wrong or outdated?",
     },
     {
-        name: "ephemeral",
-        instructions: "Is the user only asking one-off questions, making requests that matter just for this conversation, or making small talk?",
-    },
-    {
         name: "secret",
         instructions: "Does the conversation contain credentials or similar secrets such as passwords, API keys, tokens, card numbers or government ID numbers?",
     },
 ];
 
+/** Suffix added to the reason when the chunk was flagged as possibly containing a secret. */
+export const SECRET_FLAGGED = "+secret_flagged";
+
 /**
  * Combines the decision model's signals into an extract / skip decision.
  *
- * - A forget request always wins, even next to a secret: removals must never be dropped. The extraction prompt
- *   still enforces the never-store rules for anything else in the chunk.
- * - Otherwise a chunk with a likely secret is skipped.
+ * - A forget request always wins: removals must never be dropped.
  * - An explicit "remember this" or a likely durable fact / update is extracted.
+ * - A likely secret does not skip the chunk (that would permanently drop every other fact in it, because the
+ *   watermark advances). The extraction prompt enforces the never-store rules, and the reason is flagged
+ *   so the run can be reviewed in the logs.
  */
 export function decideGate(signals: MemoryGateSignals): MemoryGateDecision {
+    let reason: string | null = null;
+
     if (signals.forget >= FORGET_THRESHOLD) {
-        return { extract: true, reason: "forget", signals };
+        reason = "forget";
+    } else if (signals.explicit >= EXPLICIT_THRESHOLD) {
+        reason = "explicit";
+    } else if (signals.durable_fact >= DURABLE_THRESHOLD || signals.update >= UPDATE_THRESHOLD) {
+        reason = "durable_or_update";
     }
 
-    if (signals.secret >= SECRET_THRESHOLD) {
-        return { extract: false, reason: "secret", signals };
+    if (reason === null) {
+        return { extract: false, reason: "nothing_durable", signals };
     }
 
-    if (signals.explicit >= EXPLICIT_THRESHOLD) {
-        return { extract: true, reason: "explicit", signals };
-    }
-
-    if (signals.durable_fact >= DURABLE_THRESHOLD || signals.update >= UPDATE_THRESHOLD) {
-        return { extract: true, reason: "durable_or_update", signals };
-    }
-
-    return { extract: false, reason: "nothing_durable", signals };
+    return { extract: true, reason: signals.secret >= SECRET_THRESHOLD ? `${reason}${SECRET_FLAGGED}` : reason, signals };
 }
 
 export function formatGateInput(messages: MemoryMessage[]): string {

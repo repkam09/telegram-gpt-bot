@@ -21,7 +21,7 @@ const OTHER_CHAT = 7;
 const decision = (extract: boolean): MemoryGateDecision => ({
     extract,
     reason: extract ? "durable_or_update" : "nothing_durable",
-    signals: { durable_fact: extract ? 0.9 : 0, update: 0, explicit: 0, forget: 0, ephemeral: 0, secret: 0 },
+    signals: { durable_fact: extract ? 0.9 : 0, update: 0, explicit: 0, forget: 0, secret: 0 },
 });
 
 describe("memory chat processing", () => {
@@ -38,7 +38,7 @@ describe("memory chat processing", () => {
     beforeEach(async () => {
         await testDb.reset();
         runGate.mockReset().mockResolvedValue(decision(true));
-        extractMemories.mockReset().mockResolvedValue({ iterations: 1, changes: [{ command: "create", path: "/memories/profile.md" }], summary: "ok" });
+        extractMemories.mockReset().mockResolvedValue({ iterations: 1, changes: [{ command: "create", path: "/memories/profile.md" }], summary: "ok", capped: false });
         vi.stubEnv("HENNOS_MEMORY_CHUNK_MESSAGES", "2");
         vi.stubEnv("HENNOS_MEMORY_BACKFILL_MESSAGES", "200");
         vi.stubEnv("HENNOS_MEMORY_MAX_CHUNKS", "8");
@@ -132,6 +132,33 @@ describe("memory chat processing", () => {
 
         const seen = extractMemories.mock.calls.flatMap((call) => (call[2] as { id: number }[]).map((message) => message.id));
         expect(seen).toEqual(ids);
+    });
+
+    it("ignores injected external context (type context) so it is never extracted as the user's words", async () => {
+        const ids = await seed(2);
+        await testDb.db.messages.create({ data: { chatId: TEST_CHAT_ID, role: "user", type: "context", content: "<hennos_feedback>another user's details</hennos_feedback>" } });
+
+        await processChat(chatId);
+
+        const seen = extractMemories.mock.calls.flatMap((call) => (call[2] as { id: number; content: string }[]));
+        expect(seen.map((message) => message.id)).toEqual(ids);
+        expect(JSON.stringify(seen)).not.toContain("hennos_feedback");
+    });
+
+    it("does not list a chat that only has external context", async () => {
+        await testDb.db.messages.create({ data: { chatId: OTHER_CHAT, role: "user", type: "context", content: "digest" } });
+
+        expect(await chatsWithNewMessages()).toEqual([]);
+    });
+
+    it("records when an extraction hit its iteration cap and still advances the watermark", async () => {
+        const ids = await seed(2);
+        extractMemories.mockResolvedValue({ iterations: 12, changes: [], summary: "iteration cap reached", capped: true });
+
+        const result = await processChat(chatId);
+
+        expect(result.chunks[0].capped).toBe(true);
+        expect(await getWatermark(chatId)).toBe(ids[1]);
     });
 
     it("lists only chats with text messages newer than their watermark, plus chats never processed", async () => {

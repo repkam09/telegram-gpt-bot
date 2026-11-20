@@ -5,7 +5,7 @@ import { MemoryFileStore } from "../../tools/memory/MemoryFileStore";
 import { formatExtractionTranscript, memoryExtractionPrompt } from "./prompt";
 import type { MemoryMessage } from "./gate";
 
-export const MAX_EXTRACTION_ITERATIONS = 6;
+export const MAX_EXTRACTION_ITERATIONS = 12;
 
 export type MemoryChange = { command: string; path: string };
 
@@ -13,6 +13,8 @@ export type ExtractionResult = {
     iterations: number;
     changes: MemoryChange[];
     summary: string;
+    /** True when the loop hit the iteration cap, so the extraction may be incomplete. */
+    capped: boolean;
 }
 
 const READ_ONLY_COMMANDS = new Set(["view"]);
@@ -38,7 +40,7 @@ export async function extractMemories(workflowId: string, chatId: string, messag
         const response = await provider.completion(workflowId, context, iteration, tools);
 
         if (response.__type === "string") {
-            return { iterations: iteration + 1, changes, summary: response.payload };
+            return { iterations: iteration + 1, changes, summary: response.payload, capped: false };
         }
 
         for (const call of response.payload) {
@@ -66,5 +68,5 @@ export async function extractMemories(workflowId: string, chatId: string, messag
     }
 
     Logger.warn(workflowId, `Memory extraction hit the iteration cap (${MAX_EXTRACTION_ITERATIONS}) with ${changes.length} changes`);
-    return { iterations: MAX_EXTRACTION_ITERATIONS, changes, summary: "iteration cap reached" };
+    return { iterations: MAX_EXTRACTION_ITERATIONS, changes, summary: "iteration cap reached", capped: true };
 }

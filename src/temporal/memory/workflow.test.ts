@@ -45,7 +45,7 @@ describe("memoryBatchWorkflow", () => {
             listChatsWithNewMessages: async () => ({ chatIds: ["1", "2", "3"], concurrency: 5 }),
             processChatMemory: async (chatId) => {
                 processed.push(chatId);
-                return result(chatId, { chunks: [{ firstMessageId: 1, lastMessageId: 2, messages: 2, gate: { extract: true, reason: "explicit", signals: { durable_fact: 0, update: 0, explicit: 1, forget: 0, ephemeral: 0, secret: 0 } }, changes: [{ command: "create", path: "/memories/profile.md" }] }] });
+                return result(chatId, { chunks: [{ firstMessageId: 1, lastMessageId: 2, messages: 2, gate: { extract: true, reason: "explicit", signals: { durable_fact: 0, update: 0, explicit: 1, forget: 0, secret: 0 } }, changes: [{ command: "create", path: "/memories/profile.md" }], capped: false }] });
             },
         });
 

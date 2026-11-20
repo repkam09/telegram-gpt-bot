@@ -46,7 +46,7 @@ describe("extractMemories", () => {
         expect(tools[0].function.name).toBe("memory");
         expect(context[0].role).toBe("system");
         expect(context[1].content).toContain("My name is Sam");
-        expect(result).toEqual({ iterations: 1, changes: [], summary: "no changes" });
+        expect(result).toEqual({ iterations: 1, changes: [], summary: "no changes", capped: false });
     });
 
     it("writes through the real memory store and reports only successful changes", async () => {
@@ -106,6 +106,7 @@ describe("extractMemories", () => {
 
         expect(completion).toHaveBeenCalledTimes(MAX_EXTRACTION_ITERATIONS);
         expect(result.summary).toBe("iteration cap reached");
+        expect(result.capped).toBe(true);
     });
 
     it("propagates provider errors so the watermark is kept", async () => {

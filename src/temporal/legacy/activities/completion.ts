@@ -53,7 +53,7 @@ async function _legacyCompletion(input: LegacyCompletionInput,
         try {
             const selected = await loadSelectedMemoryFiles(parseWorkflowId(workflowId).chatId, classification.memoryFiles);
             if (selected) {
-                insertBeforeLatestUserMessage(complete, { role: "system", content: selected });
+                prependToLatestUserMessage(complete, selected);
             }
         } catch (error) {
             Logger.error(workflowId, `Failed to load selected memory files: ${error}`);
@@ -132,18 +132,22 @@ ${memoryContext ? `\n${memoryContext}\n` : ""}`;
 }
 
 /**
- * Places `entry` right before the latest user message, after the stable system prompt and history, so the
- * cached prompt prefix is untouched. With no user message it goes at the end.
+ * Puts `text` at the start of the latest user message, so selected memory travels in the user turn.
+ * A mid-conversation system message could be merged into the provider's system field by the proxy for some
+ * providers, which would make the system block vary per turn and break prompt caching; the stable system
+ * prompt and the history before this message stay byte-identical. With no text user message it is added as
+ * a user message at the end.
  */
-export function insertBeforeLatestUserMessage(context: CompletionContextEntry[], entry: CompletionContextEntry): void {
+export function prependToLatestUserMessage(context: CompletionContextEntry[], text: string): void {
     for (let index = context.length - 1; index >= 0; index--) {
-        if (context[index].role === "user") {
-            context.splice(index, 0, entry);
+        const entry = context[index];
+        if (entry.role === "user" && "content" in entry && typeof entry.content === "string") {
+            context[index] = { ...entry, content: `${text}\n\n${entry.content}` };
             return;
         }
     }
 
-    context.push(entry);
+    context.push({ role: "user", content: text });
 }
 
 async function getChatContext(workflowId: string, limit: number = 100): Promise<CompletionContextEntry[]> {
@@ -170,7 +174,7 @@ async function getChatContext(workflowId: string, limit: number = 100): Promise<
 
     const messages: CompletionContextEntry[] = [];
     for (const entry of entries) {
-        if (entry.type === "text") {
+        if (entry.type === "text" || entry.type === "context") {
             messages.push({
                 role: entry.role as "user" | "assistant" | "system",
                 content: entry.content

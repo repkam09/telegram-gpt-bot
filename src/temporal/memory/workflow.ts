@@ -12,6 +12,7 @@ const { listChatsWithNewMessages } = proxyActivities<typeof activities>({
 
 const { processChatMemory } = proxyActivities<typeof activities>({
     startToCloseTimeout: "15 minutes",
+    heartbeatTimeout: "1 minute", // withActivityHeartbeat beats every 5s, so a dead worker is noticed quickly
     retry: {
         backoffCoefficient: 1,
         initialInterval: "10 seconds",

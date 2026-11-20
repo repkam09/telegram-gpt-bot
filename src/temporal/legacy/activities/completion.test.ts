@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { MockActivityEnvironment } from "@temporalio/testing";
-import { insertBeforeLatestUserMessage, legacyCompletion, legacyCompletionPromptTemplate, loadCompletionContextImage } from "./completion";
+import { prependToLatestUserMessage, legacyCompletion, legacyCompletionPromptTemplate, loadCompletionContextImage } from "./completion";
 import { createWorkflowId } from "../interface";
 import { MemoryFileStore } from "../../../tools/memory/MemoryFileStore";
 import { createTestDatabase, TEST_CHAT_ID, TestDatabase } from "../../../../tests/helpers/database";
@@ -256,7 +256,7 @@ describe("legacyCompletion", () => {
             expect(sentPrompt().length - 1).toBe(100);
         });
 
-        it("places selected memory files right before the latest user message", async () => {
+        it("puts selected memory files at the start of the latest user message, leaving the system prompt and history untouched", async () => {
             vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
             await seedMemory();
             await say("user", "first question");
@@ -266,12 +266,24 @@ describe("legacyCompletion", () => {
             await complete({ classification: { ...classification, memoryFiles: ["/memories/topics/tea.md"] } });
 
             const prompt = sentPrompt();
-            const index = prompt.findIndex((entry) => entry.content?.includes("<memory-files>"));
-            expect(index).toBeGreaterThan(0);
-            expect(prompt[index].role).toBe("system");
-            expect(prompt[index].content).toContain("likes oolong");
-            expect(prompt[index + 1]).toEqual({ role: "user", content: "what tea should I get?" });
-            expect(prompt[0].content).not.toContain("likes oolong"); // the stable system prompt prefix is untouched
+            const latest = prompt[prompt.length - 1];
+            expect(latest.role).toBe("user");
+            expect(latest.content).toContain("<memory-files>");
+            expect(latest.content).toContain("likes oolong");
+            expect(latest.content!.endsWith("what tea should I get?")).toBe(true);
+            expect(prompt.filter((entry) => entry.role === "system")).toHaveLength(1); // no extra system message
+            expect(prompt[0].content).not.toContain("likes oolong");
+            expect(prompt[1]).toEqual({ role: "user", content: "first question" });
+            expect(prompt[2]).toEqual({ role: "assistant", content: "an answer" });
+        });
+
+        it("treats stored external context like a normal user message in the chat history", async () => {
+            await testDb.db.messages.create({ data: { chatId: TEST_CHAT_ID, role: "user", type: "context", content: "<voice>...</voice>" } });
+            await say("user", "hello");
+
+            await complete();
+
+            expect(sentPrompt().slice(1)).toEqual([{ role: "user", content: "<voice>...</voice>" }, { role: "user", content: "hello" }]);
         });
 
         it("ignores selected files when exposure is off", async () => {
@@ -294,24 +306,21 @@ describe("legacyCompletion", () => {
     });
 });
 
-describe("insertBeforeLatestUserMessage", () => {
-    const entry = { role: "system" as const, content: "notes" };
-
-    it("inserts before the last user message", () => {
+describe("prependToLatestUserMessage", () => {
+    it("prepends to the last user message only", () => {
         const context = [{ role: "user" as const, content: "a" }, { role: "assistant" as const, content: "b" }, { role: "user" as const, content: "c" }];
 
-        insertBeforeLatestUserMessage(context, entry);
+        prependToLatestUserMessage(context, "notes");
 
-        expect(context.map((item) => (item as { content: string }).content)).toEqual(["a", "b", "notes", "c"]);
+        expect(context.map((item) => (item as { content: string }).content)).toEqual(["a", "b", "notes\n\nc"]);
     });
 
-    it("appends when there is no user message", () => {
+    it("adds a user message when there is no text user message", () => {
         const context = [{ role: "assistant" as const, content: "b" }];
 
-        insertBeforeLatestUserMessage(context, entry);
+        prependToLatestUserMessage(context, "notes");
 
-        expect(context).toHaveLength(2);
-        expect(context[1]).toBe(entry);
+        expect(context).toEqual([{ role: "assistant", content: "b" }, { role: "user", content: "notes" }]);
     });
 });
 

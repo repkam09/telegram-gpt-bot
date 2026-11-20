@@ -339,10 +339,6 @@ export class MemoryFileStore {
         return `Error: The path ${oldPath} does not exist`;
     }
 
-    /**
-     * Directory listing of the memory root, used both by the `view` command and
-     * for system prompt injection so models see their memory without a tool call.
-     */
     /** Every file with its frontmatter description, most recently updated first. */
     public async listFiles(): Promise<MemoryFileSummary[]> {
         const rows = await this.prisma.memoryFile.findMany({
@@ -365,6 +361,10 @@ export class MemoryFileStore {
         return file ? file.content : null;
     }
 
+    /**
+     * Directory listing of the memory root, used both by the `view` command and
+     * for system prompt injection so models see their memory without a tool call.
+     */
     public async directoryListing(): Promise<string> {
         return this.viewDirectory(MEMORY_ROOT);
     }

@@ -130,28 +130,17 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
             return remember(workflowId, resultFor("complex"), true, remainingSticky);
         }
 
-        // Memory file selection piggybacks on the same decision call, so it costs no extra round trip.
-        let candidates: MemoryCandidate[] = [];
-        if (Config.HENNOS_MEMORY_ENABLED) {
-            try {
-                candidates = await memoryCandidates(parseWorkflowId(workflowId).chatId);
-            } catch (err: unknown) {
-                Logger.warn(workflowId, `Failed to load memory candidates, continuing without selection: ${err instanceof Error ? err.message : String(err)}`);
-            }
-        }
+        // Memory file selection is a separate decision call, started in parallel. It never rejects, so a refusal,
+        // timeout or error there cannot affect the tier decision (and therefore cannot push a turn to the high tier).
+        const memorySelection = selectMemoryForTurn(workflowId, decisionModel, messages);
 
         const probabilities = await decidePredicates(
-            {
-                baseUrl: Config.LITELLM_BASE_URL,
-                apiKey: Config.LITELLM_API_KEY,
-                model: decisionModel,
-                timeoutMs: DECISION_TIMEOUT_MS,
-            },
+            decisionOptions(decisionModel),
             formatInput(messages),
-            [...DECISION_QUESTIONS, ...memoryQuestions(candidates)],
+            DECISION_QUESTIONS,
         );
 
-        const selected = selectMemoryFiles(candidates, probabilities);
+        const selected = await memorySelection;
         const withMemory = (result: PromptComplexityResult): PromptComplexityResult => selected.length > 0 ? { ...result, memoryFiles: selected } : result;
 
         const signals = probabilities as PromptSignals;
@@ -169,6 +158,35 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
         const error = err instanceof Error ? err : new Error(String(err));
         Logger.warn(workflowId, `Decision classification failed, defaulting to 'complex': ${error.message}`);
         return remember(workflowId, resultFor("complex"), false, remainingSticky);
+    }
+}
+
+function decisionOptions(model: string) {
+    return {
+        baseUrl: Config.LITELLM_BASE_URL,
+        apiKey: Config.LITELLM_API_KEY,
+        model,
+        timeoutMs: DECISION_TIMEOUT_MS,
+    };
+}
+
+/** Which memory files to show for this turn. Returns no files on any failure; never throws. */
+async function selectMemoryForTurn(workflowId: string, decisionModel: string, messages: RecentMessage[]): Promise<string[]> {
+    if (!Config.HENNOS_MEMORY_ENABLED) {
+        return [];
+    }
+
+    try {
+        const candidates: MemoryCandidate[] = await memoryCandidates(parseWorkflowId(workflowId).chatId);
+        if (candidates.length === 0) {
+            return [];
+        }
+
+        const probabilities = await decidePredicates(decisionOptions(decisionModel), formatInput(messages), memoryQuestions(candidates));
+        return selectMemoryFiles(candidates, probabilities);
+    } catch (err: unknown) {
+        Logger.warn(workflowId, `Memory file selection failed, continuing without it: ${err instanceof Error ? err.message : String(err)}`);
+        return [];
     }
 }
 
@@ -209,7 +227,7 @@ type RecentMessage = { role: string, content: string };
 async function recentMessages(workflowId: string): Promise<RecentMessage[]> {
     const flow = parseWorkflowId(workflowId);
     const entries = await Database.instance().messages.findMany({
-        where: { chatId: Number(flow.chatId), type: "text" },
+        where: { chatId: Number(flow.chatId), type: { in: ["text", "context"] } },
         select: { role: true, content: true },
         orderBy: { id: "desc" },
         take: DECISION_RECENT_MESSAGES,

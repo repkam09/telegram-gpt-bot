@@ -1,7 +1,7 @@
 import { Config } from "../../singletons/config";
 import { Logger } from "../../singletons/logger";
 import { extractMemories } from "./extract";
-import { MemoryGateSignals, runGate } from "./gate";
+import { MemoryGateSignals, runGate, SECRET_FLAGGED } from "./gate";
 import { backfillStart, getWatermark, nextChunk, setWatermark } from "./state";
 
 export type ChunkSummary = {
@@ -10,6 +10,8 @@ export type ChunkSummary = {
     messages: number;
     gate: { extract: boolean; reason: string; signals: MemoryGateSignals };
     changes: { command: string; path: string }[];
+    /** The extraction hit its iteration cap and may be incomplete. The watermark still advances so a chunk cannot block the chat forever. */
+    capped: boolean;
 }
 
 export type ChatMemoryResult = {
@@ -56,18 +58,26 @@ export async function processChat(chatId: string, onProgress: () => void = () =>
 
         try {
             const gate = await runGate(chunk);
+            if (gate.reason.includes(SECRET_FLAGGED)) {
+                Logger.warn(workflowId, `Memory gate flagged a possible secret in messages ${first}-${last}; extracting anyway under the never-store rules`);
+            }
             Logger.info(workflowId, `Memory gate for messages ${first}-${last}: extract=${gate.extract} (${gate.reason}) signals=${JSON.stringify(gate.signals)}`);
 
             let changes: { command: string; path: string }[] = [];
+            let capped = false;
             if (gate.extract) {
                 const extraction = await extractMemories(workflowId, chatId, chunk);
                 changes = extraction.changes;
+                capped = extraction.capped;
+                if (capped) {
+                    Logger.warn(workflowId, `Memory extraction for messages ${first}-${last} hit its iteration cap and may be incomplete`);
+                }
                 Logger.info(workflowId, `Memory extraction for messages ${first}-${last}: ${extraction.changes.length} changes (${JSON.stringify(extraction.changes)}). ${extraction.summary}`);
             }
 
             await setWatermark(chatId, last);
             cursor = last;
-            result.chunks.push({ firstMessageId: first, lastMessageId: last, messages: chunk.length, gate, changes });
+            result.chunks.push({ firstMessageId: first, lastMessageId: last, messages: chunk.length, gate, changes, capped });
         } catch (err: unknown) {
             const error = err instanceof Error ? err : new Error(String(err));
             Logger.warn(workflowId, `Memory processing stopped for messages ${first}-${last}, watermark kept: ${error.message}`);

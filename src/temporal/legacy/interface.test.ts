@@ -51,12 +51,12 @@ describe("database-backed signal helpers", () => {
         await testDb.reset();
     });
 
-    it("stores external context as a user message", async () => {
+    it("stores external context as a user message of type context", async () => {
         await signalLegacyWorkflowExternalContext(workflowId, "Some Author", "extra context");
 
         const rows = await testDb.db.messages.findMany();
         expect(rows).toHaveLength(1);
-        expect(rows[0]).toMatchObject({ chatId: BigInt(TEST_CHAT_ID), role: "user", type: "text", content: "extra context" });
+        expect(rows[0]).toMatchObject({ chatId: BigInt(TEST_CHAT_ID), role: "user", type: "context", content: "extra context" });
     });
 
     it("stores image messages with their local path and mime type", async () => {
