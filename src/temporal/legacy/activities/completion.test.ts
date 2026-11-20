@@ -177,15 +177,92 @@ describe("legacyCompletion", () => {
     });
 
     describe("memory", () => {
-        it("never adds a memory protocol or listing to the prompt, even when the memory flag is set", async () => {
-            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
-            await new MemoryFileStore(String(TEST_CHAT_ID)).create("/memories/preferences.md", "likes tea");
+        const chatId = String(TEST_CHAT_ID);
+
+        async function seedMemory() {
+            const store = new MemoryFileStore(chatId);
+            await store.create("/memories/profile.md", "---\nname: profile\ndescription: Who Sam is\n---\n- [stated] Name is Sam");
+            await store.create("/memories/topics/tea.md", "---\nname: tea\ndescription: Sam's tea habits\n---\n- [stated] likes oolong");
+        }
+
+        async function sayMany(count: number): Promise<number[]> {
+            const ids: number[] = [];
+            for (let i = 0; i < count; i++) {
+                const row = await testDb.db.messages.create({ data: { chatId: TEST_CHAT_ID, role: i % 2 === 0 ? "user" : "assistant", content: `m${i}` } });
+                ids.push(row.id);
+            }
+            return ids;
+        }
+
+        it("adds nothing about memory unless exposure is enabled", async () => {
+            await seedMemory();
 
             await complete();
 
             const system = sentPrompt()[0].content!;
-            expect(system).not.toContain("memory-protocol");
-            expect(system).not.toContain("preferences.md");
+            expect(system).not.toContain("<memory>");
+            expect(system).not.toContain("Name is Sam");
+        });
+
+        it("injects the core files and the index of the other files when enabled, without frontmatter", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+
+            await complete();
+
+            const system = sentPrompt()[0].content!;
+            expect(system).toContain("<memory>");
+            expect(system).toContain("- [stated] Name is Sam");
+            expect(system).not.toContain("description: Who Sam is");
+            expect(system).toContain("- /memories/topics/tea.md: Sam's tea habits");
+            expect(system).not.toContain("likes oolong");
+            expect(system).toContain("it will be updated overnight");
+        });
+
+        it("adds no memory section when nothing is stored", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+
+            await complete();
+
+            expect(sentPrompt()[0].content).not.toContain("<memory>");
+        });
+
+        it("keeps messages newer than the extraction watermark, with at least the last 15", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            const ids = await sayMany(40);
+            await testDb.db.memoryExtractionState.create({ data: { chatId: BigInt(TEST_CHAT_ID), lastMessageId: ids[19] } });
+
+            await complete();
+
+            expect(sentPrompt().length - 1).toBe(20); // ids[20..39] are not extracted yet
+        });
+
+        it("never shrinks below 15 messages once everything is extracted", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            const ids = await sayMany(40);
+            await testDb.db.memoryExtractionState.create({ data: { chatId: BigInt(TEST_CHAT_ID), lastMessageId: ids[39] } });
+
+            await complete();
+
+            expect(sentPrompt().length - 1).toBe(15);
+        });
+
+        it("keeps the full window when no extraction has ever run", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await sayMany(120);
+
+            await complete();
+
+            expect(sentPrompt().length - 1).toBe(100);
+        });
+
+        it("keeps the 100 message window when exposure is off, whatever the watermark", async () => {
+            const ids = await sayMany(40);
+            await testDb.db.memoryExtractionState.create({ data: { chatId: BigInt(TEST_CHAT_ID), lastMessageId: ids[39] } });
+
+            await complete();
+
+            expect(sentPrompt().length - 1).toBe(40);
         });
     });
 });
@@ -198,6 +275,11 @@ describe("legacyCompletionPromptTemplate", () => {
 
         expect(prompt).toContain("The current date is 2026-11-18");
         expect(prompt).toContain("It is a Wednesday today");
+    });
+
+    it("includes the memory section only when one is provided", () => {
+        expect(legacyCompletionPromptTemplate({ currentDate })).not.toContain("<memory>");
+        expect(legacyCompletionPromptTemplate({ currentDate, memoryContext: "<memory>notes</memory>" })).toContain("<memory>notes</memory>");
     });
 
     it("mentions how long it has been since the user was last active only when known", () => {

@@ -82,7 +82,7 @@ describe("classifyPromptComplexity", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("keeps the full context window even when memory exposure is enabled (until the extraction-aware window lands)", async () => {
+    it("keeps contextLimit at 100 when memory exposure is enabled (the extraction-aware window is applied at completion time)", async () => {
         vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
         await say("user", "thanks!");
         fetchMock.mockResolvedValue(answer({ casual: 0.99 }));

@@ -10,6 +10,9 @@ import { Database } from "../../../database";
 import { encoding_for_model } from "tiktoken";
 import { withActivityHeartbeat } from "../../heartbeat";
 import { PromptComplexityResult } from "./classifier";
+import { Config } from "../../../singletons/config";
+import { buildMemoryContext } from "../../../tools/memory/memoryContext";
+import { extractionAwareWindow } from "../../memory/window";
 
 export type LegacyCompletionInput = {
     context: CompletionContextEntry[];
@@ -25,14 +28,27 @@ async function _legacyCompletion(input: LegacyCompletionInput,
 
     Logger.debug(workflowId, `Completion using classification '${classification.complexity}': contextLimit=${classification.contextLimit}, useTools=${classification.useTools}, modelTier=${classification.modelTier}`);
 
+    let memoryContext: string | undefined;
+    let contextLimit = classification.contextLimit;
+    if (Config.HENNOS_MEMORY_ENABLED) {
+        try {
+            const chatId = parseWorkflowId(workflowId).chatId;
+            memoryContext = await buildMemoryContext(chatId);
+            contextLimit = await extractionAwareWindow(chatId, classification.contextLimit);
+        } catch (error) {
+            Logger.error(workflowId, `Failed to load memory context: ${error}`);
+        }
+    }
+
     const systemPrompt = legacyCompletionPromptTemplate({
         currentDate: new Date(),
+        memoryContext,
     });
 
     const model = await resolveModelProvider(workflowId, classification.modelTier);
 
     // Load context from the database, sized according to complexity
-    const complete = await getChatContext(workflowId, classification.contextLimit);
+    const complete = await getChatContext(workflowId, contextLimit);
     const conversation = await getSizedChatContext(workflowId, [{ role: "system", content: systemPrompt }], complete, model.limit());
 
     const tools = classification.useTools ? availableTools(workflowId) : undefined;
@@ -81,9 +97,10 @@ async function _legacyCompletion(input: LegacyCompletionInput,
 type LegacyCompletionPromptInput = {
     currentDate: Date,
     lastActiveDate?: Date,
+    memoryContext?: string,
 }
 
-export function legacyCompletionPromptTemplate({ currentDate, lastActiveDate }: LegacyCompletionPromptInput): string {
+export function legacyCompletionPromptTemplate({ currentDate, lastActiveDate, memoryContext }: LegacyCompletionPromptInput): string {
     const { date, day } = temporalGrounding(currentDate);
     const activity = lastActiveDate ? lastActiveDateString(lastActiveDate) : "";
 
@@ -100,7 +117,7 @@ Your knowledge is based on the data your model was trained on. Be aware that you
 
 In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.
 ${activity}
-`;
+${memoryContext ? `\n${memoryContext}\n` : ""}`;
 }
 
 async function getChatContext(workflowId: string, limit: number = 100): Promise<CompletionContextEntry[]> {

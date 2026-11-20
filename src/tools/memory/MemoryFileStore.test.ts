@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 import { createTestDatabase, TestDatabase } from "../../../tests/helpers/database";
-import { MemoryFileStore, normalizeMemoryPath, humanReadableSize } from "./MemoryFileStore";
+import { MemoryFileStore, normalizeMemoryPath, humanReadableSize, parseMemoryDescription, stripMemoryFrontmatter } from "./MemoryFileStore";
 import { runMemoryCommand, memoryScopeFromWorkflowId } from "../MemoryTool";
 
 describe("normalizeMemoryPath", () => {
@@ -33,6 +33,23 @@ describe("normalizeMemoryPath", () => {
     it("rejects hidden segments", () => {
         expect(normalizeMemoryPath("/memories/.hidden")).toBeNull();
         expect(normalizeMemoryPath("/memories/.config/data.txt")).toBeNull();
+    });
+});
+
+describe("parseMemoryDescription", () => {
+    it("reads the one-line description from the frontmatter", () => {
+        expect(parseMemoryDescription("---\nname: tea\ndescription: Tea habits\n---\n- [stated] likes oolong")).toBe("Tea habits");
+    });
+
+    it("returns null without frontmatter or description", () => {
+        expect(parseMemoryDescription("- [stated] likes oolong")).toBeNull();
+        expect(parseMemoryDescription("---\nname: tea\n---\nbody")).toBeNull();
+        expect(parseMemoryDescription("---\ndescription:\n---\nbody")).toBeNull();
+    });
+
+    it("strips the frontmatter from the body", () => {
+        expect(stripMemoryFrontmatter("---\nname: tea\ndescription: Tea\n---\n- line")).toBe("- line");
+        expect(stripMemoryFrontmatter("- line")).toBe("- line");
     });
 });
 
@@ -143,6 +160,21 @@ describe("MemoryFileStore", () => {
         it("errors for missing paths", async () => {
             const result = await store.view("/memories/missing.txt");
             expect(result).toBe("The path /memories/missing.txt does not exist. Please provide a valid path.");
+        });
+    });
+
+    describe("listFiles and readRaw", () => {
+        it("lists files with their descriptions, newest first, and reads raw content", async () => {
+            await store.create("/memories/a.md", "---\nname: a\ndescription: First\n---\nalpha");
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            await store.create("/memories/b.md", "no frontmatter");
+
+            const files = await store.listFiles();
+
+            expect(files.map((file) => [file.path, file.description])).toEqual([["/memories/b.md", null], ["/memories/a.md", "First"]]);
+            expect(await store.readRaw("/memories/a.md")).toContain("alpha");
+            expect(await store.readRaw("/memories/missing.md")).toBeNull();
+            expect(await store.readRaw("/etc/passwd")).toBeNull();
         });
     });
 
