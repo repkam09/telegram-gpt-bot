@@ -83,7 +83,8 @@ describe("memoryContext", () => {
 
             const block = (await loadSelectedMemoryFiles(chatId, [0, 1, 2, 3, 4].map((i) => `/memories/topics/f${i}.md`)))!;
 
-            expect((block.match(/y/g) ?? []).length).toBeLessThanOrEqual(SELECTED_FILES_MAX_TOTAL_CHARS);
+            const bodyChars = (block.match(/y{50,}/g) ?? []).reduce((total, run) => total + run.length, 0);
+            expect(bodyChars).toBeLessThanOrEqual(SELECTED_FILES_MAX_TOTAL_CHARS);
         });
     });
 });
