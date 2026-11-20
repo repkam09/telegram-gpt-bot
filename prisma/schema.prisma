@@ -50,6 +50,12 @@ model MemoryFile {
   @@id([chatId, path])
 }
 
+model MemoryExtractionState {
+  chatId        BigInt   @id
+  lastMessageId Int
+  updatedAt     DateTime @updatedAt
+}
+
 model FutureTask {
   id      Int      @id @default(autoincrement())
   chatId  BigInt
