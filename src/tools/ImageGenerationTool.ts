@@ -1,5 +1,5 @@
 import { Logger } from "../singletons/logger";
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { randomUUID } from "node:crypto";
@@ -10,7 +10,7 @@ import OpenAI from "openai";
 
 
 export class ImageGenerationTool extends BaseTool {
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

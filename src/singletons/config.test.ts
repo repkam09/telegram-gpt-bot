@@ -5,7 +5,6 @@ describe("Config defaults", () => {
     it("uses safe defaults when nothing is configured", () => {
         expect(Config.HENNOS_DEVELOPMENT_MODE).toBe(false);
         expect(Config.HENNOS_VERBOSE_LOGGING).toBe(false);
-        expect(Config.HENNOS_LLM_PROVIDER).toBe("ollama");
         expect(Config.HENNOS_MEMORY_ENABLED).toBe(false);
         expect(Config.HENNOS_TOOL_DEPTH).toBe(6);
         expect(Config.TEMPORAL_HOST).toBe("localhost");
@@ -53,18 +52,6 @@ describe("Config overrides", () => {
 
         expect(() => Config.TEMPORAL_PORT).toThrow("Invalid TEMPORAL_PORT value");
         expect(() => Config.HENNOS_TOOL_DEPTH).toThrow("Invalid HENNOS_TOOL_DEPTH value");
-    });
-
-    it("accepts known LLM providers", () => {
-        vi.stubEnv("HENNOS_LLM_PROVIDER", "litellm");
-
-        expect(Config.HENNOS_LLM_PROVIDER).toBe("litellm");
-    });
-
-    it.each(["skynet", "openai", "anthropic"])("rejects unknown or removed LLM provider '%s'", (provider) => {
-        vi.stubEnv("HENNOS_LLM_PROVIDER", provider);
-
-        expect(() => Config.HENNOS_LLM_PROVIDER).toThrow("Invalid HENNOS_LLM_PROVIDER value");
     });
 });
 

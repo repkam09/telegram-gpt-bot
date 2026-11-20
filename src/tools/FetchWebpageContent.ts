@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import puppeteer from "puppeteer";
 import { JSDOM } from "jsdom";
 import { isProbablyReaderable, Readability } from "@mozilla/readability";
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { resolveModelProvider } from "../provider";
@@ -13,7 +13,7 @@ export class FetchWebpageContent extends BaseTool {
         return true;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

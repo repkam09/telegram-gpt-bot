@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
@@ -11,7 +11,7 @@ export class CreateArtifact extends BaseTool {
         return true;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

@@ -1,5 +1,5 @@
  
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { Logger } from "../singletons/logger";
 import { Config } from "../singletons/config";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
@@ -13,7 +13,7 @@ export class OpenWeatherMapLookupTool extends BaseTool {
         return false;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

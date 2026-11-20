@@ -1,2 +1,0 @@
-FROM "codegemma:7b-instruct"
-PARAMETER num_ctx 102400

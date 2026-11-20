@@ -1,4 +1,4 @@
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { Logger } from "../singletons/logger";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
@@ -8,14 +8,14 @@ import { MemoryFileStore, MEMORY_ROOT } from "./memory/MemoryFileStore";
  * Provider-agnostic implementation of the Anthropic memory tool
  * (https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool).
  * Exposed as a plain function tool so it works identically across OpenAI,
- * Anthropic, and Ollama. Storage is per-chat, backed by Prisma.
+ * Anthropic, and local models. Storage is per-chat, backed by Prisma.
  */
 export class MemoryTool extends BaseTool {
     public static isEnabled(): boolean {
         return Config.HENNOS_MEMORY_ENABLED;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

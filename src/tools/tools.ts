@@ -1,8 +1,8 @@
-import { ToolCall } from "ollama";
+import type { HennosToolCall } from "../provider";
 import { Logger } from "../singletons/logger";
 import { HennosBaseTool, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 
-export async function processDefinedToolCalls(workflowId: string, defined_tools: HennosBaseTool[], tool_calls: [ToolCall, ToolCallMetadata][]): Promise<ToolCallResponse[]> {
+export async function processDefinedToolCalls(workflowId: string, defined_tools: HennosBaseTool[], tool_calls: [HennosToolCall, ToolCallMetadata][]): Promise<ToolCallResponse[]> {
     try {
         const results = await Promise.all(tool_calls.map(async ([tool_call, metadata]) => {
             Logger.debug(workflowId, `Processing tool call: ${tool_call.function.name} with args: ${JSON.stringify(tool_call.function.arguments)}`);

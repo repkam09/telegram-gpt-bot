@@ -12,10 +12,6 @@ export type HennosModelConfig = {
     CTX: number
 }
 
-export type HennosModelProvider = "ollama" | "litellm"
-
-export const HENNOS_LLM_PROVIDERS = ["ollama", "litellm"];
-
 export class Config {
     static get HENNOS_DEVELOPMENT_MODE(): boolean {
         if (!process.env.HENNOS_DEVELOPMENT_MODE) {
@@ -31,19 +27,6 @@ export class Config {
         }
 
         return process.env.HENNOS_VERBOSE_LOGGING === "true";
-    }
-
-    static get HENNOS_LLM_PROVIDER(): HennosModelProvider {
-        if (!process.env.HENNOS_LLM_PROVIDER) {
-            return "ollama";
-        }
-
-        // Validate provider
-        if (HENNOS_LLM_PROVIDERS.indexOf(process.env.HENNOS_LLM_PROVIDER) === -1) {
-            throw new Error("Invalid HENNOS_LLM_PROVIDER value");
-        }
-
-        return process.env.HENNOS_LLM_PROVIDER as HennosModelProvider;
     }
 
     // Maximum number of characters of a fetched webpage returned to the model (or read per chunk when answering a query).
@@ -217,38 +200,6 @@ export class Config {
         }
 
         return process.env.OPENAI_API_KEY;
-    }
-
-    static get OLLAMA_LLM(): HennosModelConfig {
-        if (!process.env.OLLAMA_LLM) {
-            return {
-                MODEL: "repkam09/hennos-qwen3.5:latest",
-                CTX: 102400,
-            };
-        }
-        return parseHennosModelString(process.env.OLLAMA_LLM, "OLLAMA_LLM");
-    }
-
-    static get OLLAMA_HOST(): string {
-        if (!process.env.OLLAMA_HOST) {
-            return "localhost";
-        }
-
-        return process.env.OLLAMA_HOST;
-    }
-
-    static get OLLAMA_PORT(): number {
-        if (!process.env.OLLAMA_PORT) {
-            return 11434;
-        }
-
-        const port = parseInt(process.env.OLLAMA_PORT);
-
-        if (Number.isNaN(port)) {
-            throw new Error("Invalid OLLAMA_PORT value");
-        }
-
-        return port;
     }
 
     static get TERRARIUM_ENABLED(): boolean {

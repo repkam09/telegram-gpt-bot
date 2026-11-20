@@ -1,2 +1,0 @@
-FROM "qwen3.5:2b"
-PARAMETER num_ctx 102400
