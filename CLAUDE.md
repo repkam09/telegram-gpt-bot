@@ -83,7 +83,7 @@ Extend `BaseTool` in [src/tools/](src/tools/):
 ```typescript
 export class MyTool extends BaseTool {
     static isEnabled() { return !!Config.MY_TOOL_API_KEY; }
-    static definition(): Tool { return { type: "function", function: {...} }; }
+    static definition(): HennosTool { return { type: "function", function: {...} }; }
     static async callback(workflowId, args, metadata): Promise<[string, any]> { ... }
 }
 ```
