@@ -177,21 +177,15 @@ describe("legacyCompletion", () => {
     });
 
     describe("memory", () => {
-        it("does not mention memory unless it is enabled", async () => {
-            await complete();
-
-            expect(sentPrompt()[0].content).not.toContain("memory-protocol");
-        });
-
-        it("adds the memory protocol and the stored file listing when enabled", async () => {
+        it("never adds a memory protocol or listing to the prompt, even when the memory flag is set", async () => {
             vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
             await new MemoryFileStore(String(TEST_CHAT_ID)).create("/memories/preferences.md", "likes tea");
 
             await complete();
 
             const system = sentPrompt()[0].content!;
-            expect(system).toContain("memory-protocol");
-            expect(system).toContain("preferences.md");
+            expect(system).not.toContain("memory-protocol");
+            expect(system).not.toContain("preferences.md");
         });
     });
 });
@@ -209,11 +203,6 @@ describe("legacyCompletionPromptTemplate", () => {
     it("mentions how long it has been since the user was last active only when known", () => {
         expect(legacyCompletionPromptTemplate({ currentDate })).not.toContain("since the last message");
         expect(legacyCompletionPromptTemplate({ currentDate, lastActiveDate: new Date(currentDate.getTime() - 10 * 60 * 1000) })).toContain("since the last message from the user");
-    });
-
-    it("includes the memory protocol only when a directory listing is provided", () => {
-        expect(legacyCompletionPromptTemplate({ currentDate })).not.toContain("memory-protocol");
-        expect(legacyCompletionPromptTemplate({ currentDate, memoryDirectory: "4.0K\t/memories/notes.md" })).toContain("/memories/notes.md");
     });
 });
 

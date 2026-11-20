@@ -11,7 +11,6 @@ import { PythonSandbox } from "../../tools/PythonSandbox";
 import { WolframAlpha } from "../../tools/WolframAlpha";
 import { ImageGenerationTool } from "../../tools/ImageGenerationTool";
 import { Config } from "../../singletons/config";
-import { MemoryTool } from "../../tools/MemoryTool";
 
 export const LegacyTools: HennosBaseTool[] = [
     MetaFeedbackTool,
@@ -27,8 +26,7 @@ export const LegacyTools: HennosBaseTool[] = [
     JellyseerMediaSearch,
     AudiobookRequest,
     EbookRequest,
-    ImageGenerationTool,
-    MemoryTool
+    ImageGenerationTool
 ];
 
 export function availableTools(workflowId: string): HennosBaseTool[] | undefined {

@@ -218,7 +218,7 @@ function formatInput(messages: RecentMessage[]): string {
  * and only the upstream model changes.
  */
 function resultFor(complexity: PromptComplexity): PromptComplexityResult {
-    const contextLimit = Config.HENNOS_MEMORY_ENABLED ? 15 : 100;
+    const contextLimit = 100;
 
     switch (complexity) {
         case "trivial":

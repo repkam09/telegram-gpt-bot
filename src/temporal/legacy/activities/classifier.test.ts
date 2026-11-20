@@ -82,12 +82,12 @@ describe("classifyPromptComplexity", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("uses the same smaller context window for every tier when memory is enabled", async () => {
+    it("keeps the full context window even when memory exposure is enabled (until the extraction-aware window lands)", async () => {
         vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
         await say("user", "thanks!");
         fetchMock.mockResolvedValue(answer({ casual: 0.99 }));
 
-        expect(await classify()).toEqual({ complexity: "trivial", contextLimit: 15, useTools: true, modelTier: "nano" });
+        expect(await classify()).toEqual({ complexity: "trivial", contextLimit: 100, useTools: true, modelTier: "nano" });
     });
 
     it.each([

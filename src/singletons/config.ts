@@ -56,6 +56,47 @@ export class Config {
         return process.env.HENNOS_MEMORY_ENABLED === "true";
     }
 
+    /**
+     * Kill switch for the nightly memory extraction. Unlike the other feature flags this one is default-on:
+     * it is true unless the variable is exactly the string "false".
+     */
+    static get HENNOS_MEMORY_EXTRACTION_ENABLED(): boolean {
+        return process.env.HENNOS_MEMORY_EXTRACTION_ENABLED !== "false";
+    }
+
+    static get HENNOS_MEMORY_SCHEDULE_CRON(): string {
+        return process.env.HENNOS_MEMORY_SCHEDULE_CRON || "0 4 * * *";
+    }
+
+    static get HENNOS_MEMORY_SCHEDULE_TZ(): string {
+        return process.env.HENNOS_MEMORY_SCHEDULE_TZ || "America/New_York";
+    }
+
+    /** Decision model for the memory gate. Defaults to the classifier decision model; when neither is set the gate cannot run. */
+    static get HENNOS_MEMORY_DECISION_MODEL(): string | null {
+        return process.env.HENNOS_MEMORY_DECISION_MODEL || Config.HENNOS_CLASSIFIER_DECISION_MODEL;
+    }
+
+    /** Max chats processed in parallel by the nightly memory run. */
+    static get HENNOS_MEMORY_CONCURRENCY(): number {
+        return positiveIntEnv("HENNOS_MEMORY_CONCURRENCY", 5);
+    }
+
+    /** Text messages read per chat on its first run (no watermark yet). */
+    static get HENNOS_MEMORY_BACKFILL_MESSAGES(): number {
+        return positiveIntEnv("HENNOS_MEMORY_BACKFILL_MESSAGES", 200);
+    }
+
+    /** Messages per gate/extraction chunk. */
+    static get HENNOS_MEMORY_CHUNK_MESSAGES(): number {
+        return positiveIntEnv("HENNOS_MEMORY_CHUNK_MESSAGES", 40);
+    }
+
+    /** Max chunks processed per chat per run; the rest continues the next night. */
+    static get HENNOS_MEMORY_MAX_CHUNKS(): number {
+        return positiveIntEnv("HENNOS_MEMORY_MAX_CHUNKS", 8);
+    }
+
     static get HENNOS_GMAIL_ENABLED(): boolean {
         if (!process.env.HENNOS_GMAIL_ENABLED) {
             return false;
@@ -463,4 +504,19 @@ function parseHennosModelString(value: string, env: string): HennosModelConfig {
         MODEL: parts[0],
         CTX: ctxInLength,
     };
+}
+
+
+function positiveIntEnv(name: string, fallback: number): number {
+    const raw = process.env[name];
+    if (!raw) {
+        return fallback;
+    }
+
+    const value = parseInt(raw);
+    if (Number.isNaN(value) || value < 1) {
+        throw new Error(`Invalid ${name} value`);
+    }
+
+    return value;
 }

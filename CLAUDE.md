@@ -30,6 +30,7 @@ All live in [src/temporal/](src/temporal/). Workflows are exported from [src/tem
 | `email/`    | `reviewEmailWorkflow`       | Scheduled (every 4h, `HENNOS_GMAIL_ENABLED`): fetch Gmail, summarize, store the digest as context for the admin chat. |
 | `search/`   | `searchWorkflow`            | One-shot search + summarize.                                                                                          |
 | `supabase/` | `supabaseKeepaliveWorkflow` | Scheduled (every 24h) Supabase keepalive.                                                                             |
+| `memory/`   | `memoryBatchWorkflow`       | Scheduled (daily 04:00 `America/New_York`, kill switch `HENNOS_MEMORY_EXTRACTION_ENABLED`, default on): nightly memory extraction. |
 
 `legacy/` layout: `workflow.ts`, `activities/` (`action`, `classifier`, `completion`, `persist`), `interface.ts` (client-side helpers), `tools.ts`, `types.ts`.
 
@@ -90,7 +91,18 @@ export class MyTool extends BaseTool {
 
 Register it in `LegacyTools` in [src/temporal/legacy/tools.ts](src/temporal/legacy/tools.ts). `availableTools()` filters by `isEnabled()` on every call, and `processDefinedToolCalls` in [src/tools/tools.ts](src/tools/tools.ts) dispatches by tool name. There is a single list; no second registration is needed. Add a lazy getter to `Config` for any API key.
 
-Tools that need to notify the owner use `signalLegacyWorkflowAdminExternalContext`. The `memory` tool (`MemoryTool` + `tools/memory/MemoryFileStore.ts`) is a per-chat virtual `/memories` filesystem backed by the `MemoryFile` table, enabled by `HENNOS_MEMORY_ENABLED`.
+Tools that need to notify the owner use `signalLegacyWorkflowAdminExternalContext`. The `memory` tool (`MemoryTool` + `tools/memory/MemoryFileStore.ts`) is a per-chat virtual `/memories` filesystem backed by the `MemoryFile` table. It is **not** registered for the chat model: memory is written only by the nightly extraction (see [Memory extraction](#memory-extraction)).
+
+## Memory extraction
+
+Memory writes happen only in a nightly batch, never in the live chat. Design and phases: the Hennos project doc `hennos-gated-memory-extraction-plan`.
+
+- `memoryBatchWorkflow` ([src/temporal/memory/](src/temporal/memory/)) runs from the `memory-batch` Temporal Schedule (created/deleted at startup in [hennos.ts](src/hennos.ts) by `HENNOS_MEMORY_EXTRACTION_ENABLED`). One activity lists chats with new messages, then one `processChatMemory` activity per chat (bounded concurrency) runs the gate, the extraction and the watermark update.
+- `MemoryExtractionState` stores a per-chat watermark (`lastMessageId`). A chat with no row is backfilled from its last `HENNOS_MEMORY_BACKFILL_MESSAGES` messages. Messages are processed oldest first in chunks of `HENNOS_MEMORY_CHUNK_MESSAGES`, at most `HENNOS_MEMORY_MAX_CHUNKS` per chat per run.
+- The gate ([gate.ts](src/temporal/memory/gate.ts)) asks the decision model (`HENNOS_MEMORY_DECISION_MODEL`, default `HENNOS_CLASSIFIER_DECISION_MODEL`) whether a chunk holds anything durable, a correction or a forget request; a gate error stops that chat for the night and keeps its watermark. Extraction ([extract.ts](src/temporal/memory/extract.ts)) runs a bounded tool loop on the low tier with the `memory` tool; the prompt holds the filing rules and the never-store list.
+- Kill switch: `HENNOS_MEMORY_EXTRACTION_ENABLED` is **default-on** (only the string `"false"` disables it; `.env.dev` disables it). Disabling deletes the schedule on next startup and leaves files and watermarks untouched.
+- `HENNOS_MEMORY_ENABLED` is reserved for exposing memory to the chat (plan phase 2) and currently has no effect.
+- Schedule tuning: `HENNOS_MEMORY_SCHEDULE_CRON`, `HENNOS_MEMORY_SCHEDULE_TZ`, `HENNOS_MEMORY_CONCURRENCY`.
 
 ## Clients
 
@@ -157,7 +169,7 @@ Key vars:
 
 - `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `LITELLM_LLM` - LiteLLM proxy and the model (with context size) used for the high tier
 - `HENNOS_TOOL_DEPTH` - max tool-call iterations before the model is forced to answer
-- `HENNOS_{TELEGRAM,API,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags
+- `HENNOS_{TELEGRAM,API,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags; `HENNOS_MEMORY_EXTRACTION_ENABLED` is the exception and defaults to on
 - `HENNOS_DEVELOPMENT_MODE` - skips the whitelist, enables CLI and static `public/` files
 - `TEMPORAL_HOST/PORT/NAMESPACE/TASK_QUEUE/API_KEY/USE_TLS` - Temporal connection (Temporal Cloud supported)
 - `TELEGRAM_BOT_KEY`, `TELEGRAM_BOT_ADMIN` - bot token and the admin chat that receives notifications
