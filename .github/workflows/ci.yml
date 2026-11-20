@@ -28,11 +28,11 @@ jobs:
       # Tests that touch Prisma create their own temp databases; this is only a default for Config.
       DATABASE_URL: "file:./ci.sqlite"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
