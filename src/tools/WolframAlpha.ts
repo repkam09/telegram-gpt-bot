@@ -1,5 +1,5 @@
 import { Logger } from "../singletons/logger";
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 
@@ -12,7 +12,7 @@ export class WolframAlpha extends BaseTool {
         return false;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

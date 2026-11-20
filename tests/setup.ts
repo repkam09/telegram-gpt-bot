@@ -26,7 +26,6 @@ const SCRUBBED_PREFIXES = [
     "TELEGRAM_",
     "OPENAI_",
     "ANTHROPIC_",
-    "OLLAMA_",
     "LITELLM_",
     "SUPABASE_",
     "BRAVE_",

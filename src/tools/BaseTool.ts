@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Tool, ToolCall } from "ollama";
+import type { HennosTool, HennosToolCall } from "../provider";
 import { exec } from "child_process";
 import { Logger } from "../singletons/logger";
 
-export type ToolCallFunctionArgs = ToolCall["function"]["arguments"];
+export type ToolCallFunctionArgs = HennosToolCall["function"]["arguments"];
 export type ToolCallMetadata = any;
 export type ToolCallResponse = [string, ToolCallMetadata];
 
@@ -13,7 +13,7 @@ const HENNOS_USER_AGENT = "HennosBot/1.0";
 
 export type HennosBaseTool = {
     isEnabled: () => boolean;
-    definition: () => Tool;
+    definition: () => HennosTool;
     callback: (workflowId: string, args: ToolCallFunctionArgs, metadata: ToolCallMetadata) => Promise<ToolCallResponse>;
 }
 
@@ -22,7 +22,7 @@ export abstract class BaseTool {
         return true;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         throw new Error("Implemented by Subclass");
     }
 

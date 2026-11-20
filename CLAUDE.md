@@ -71,7 +71,7 @@ const provider = await resolveModelProvider(
 await provider.completion(workflowId, messages, iterations, tools);
 ```
 
-- Providers: `ollama | litellm` (implementations in [src/singletons/](src/singletons/)). Default comes from `HENNOS_LLM_PROVIDER`. `HennosOpenAIProvider` in `openai.ts` is the OpenAI-compatible chat client used for LiteLLM. Audio transcription and image generation also go through LiteLLM (`LITELLM_TRANSCRIPTION_MODEL`, `LITELLM_IMAGE_MODEL`). The only direct OpenAI usage left is the Realtime SIP handler (`OPENAI_API_KEY`).
+- LiteLLM is the only provider ([litellm.ts](src/singletons/litellm.ts)); local models such as Ollama are reached by pointing the LiteLLM proxy at them. `HennosOpenAIProvider` in `openai.ts` is the OpenAI-compatible chat client used for LiteLLM. Audio transcription and image generation also go through LiteLLM (`LITELLM_TRANSCRIPTION_MODEL`, `LITELLM_IMAGE_MODEL`). The only direct OpenAI usage left is the Realtime SIP handler (`OPENAI_API_KEY`).
 - **Tier routing:** `classifyPromptComplexity` only does work when `HENNOS_CLASSIFIER_DECISION_MODEL` is set (otherwise everything uses the high tier). It asks a LiteLLM decision model four yes/no questions about the recent conversation through `/v1/decisions` ([decision.ts](src/temporal/legacy/activities/decision.ts)) and `chooseTier` combines them. Anything ambiguous goes high, a deep or context-dependent turn keeps the chat on the high tier for the next few turns, long messages skip the call, and any failure falls back to high. Tiers map to `LITELLM_LLM` (high), `LITELLM_MINI_LLM` (low) and `LITELLM_NANO_LLM` (nano), the last two defaulting to the first. The tier only changes the upstream model: context window and tool list are identical across tiers so provider prompt caching is not disturbed. Decisions are logged with their signals.
 - `litellm` supports per-user BYOK keys (`UserBYOK` table, `LITELLM_BYOK_ENABLED`).
 - Model names/limits come from the `Config.*_LLM` getters, not from hard-coded values.
@@ -155,7 +155,7 @@ All config is in [src/singletons/config.ts](src/singletons/config.ts) as lazy st
 
 Key vars:
 
-- `HENNOS_LLM_PROVIDER` - ollama|litellm
+- `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `LITELLM_LLM` - LiteLLM proxy and the model (with context size) used for the high tier
 - `HENNOS_TOOL_DEPTH` - max tool-call iterations before the model is forced to answer
 - `HENNOS_{TELEGRAM,API,GMAIL,SUPABASE,MEMORY}_ENABLED` - feature flags
 - `HENNOS_DEVELOPMENT_MODE` - skips the whitelist, enables CLI and static `public/` files

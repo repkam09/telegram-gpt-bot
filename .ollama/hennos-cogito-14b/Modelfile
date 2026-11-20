@@ -1,2 +1,0 @@
-FROM "cogito:14b"
-PARAMETER num_ctx 32000

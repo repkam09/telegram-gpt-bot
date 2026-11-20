@@ -1,4 +1,4 @@
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { Logger } from "../singletons/logger";
@@ -13,7 +13,7 @@ export class EbookRequest extends BaseTool {
         return true;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {
@@ -75,7 +75,7 @@ export class AudiobookRequest extends BaseTool {
         return true;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

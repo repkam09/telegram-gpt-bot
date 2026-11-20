@@ -1,5 +1,5 @@
 import { Logger } from "../singletons/logger";
-import { Tool } from "ollama";
+import type { HennosTool } from "../provider";
 import { BaseTool, ToolCallFunctionArgs, ToolCallMetadata, ToolCallResponse } from "./BaseTool";
 import { Config } from "../singletons/config";
 import { signalLegacyWorkflowAdminExternalContext } from "../temporal/legacy/interface";
@@ -13,7 +13,7 @@ export class MetaBugReport extends BaseTool {
         return false;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {
@@ -97,7 +97,7 @@ export class MetaFeatureRequest extends BaseTool {
         return false;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {
@@ -177,7 +177,7 @@ export class MetaFeedbackTool extends BaseTool {
         return true;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {
@@ -228,7 +228,7 @@ export class MetaErrorTool extends BaseTool {
         return true;
     }
 
-    public static definition(): Tool {
+    public static definition(): HennosTool {
         return {
             type: "function",
             function: {

@@ -1,10 +1,38 @@
-import { Tool } from "ollama";
-import { Config } from "./singletons/config";
-import { HennosOllamaSingleton } from "./singletons/ollama";
 import { Logger } from "./singletons/logger";
 import { HennosLiteLLMSingleton } from "./singletons/litellm";
 
-export type HennosTool = Tool;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Tool definitions use the OpenAI/LiteLLM function-calling JSON schema shape.
+export type HennosToolProperty = {
+    type?: string | string[];
+    items?: any;
+    description?: string;
+    enum?: any[];
+}
+
+export type HennosTool = {
+    type?: string;
+    function: {
+        name?: string;
+        description?: string;
+        type?: string;
+        parameters?: {
+            type?: string;
+            $defs?: any;
+            items?: any;
+            required?: string[];
+            properties?: { [key: string]: HennosToolProperty };
+        };
+    };
+}
+
+export type HennosToolCall = {
+    function: {
+        name: string;
+        arguments: { [key: string]: any };
+    };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 export type HennosInvokeResponse = HennosInvokeStringResponse | HennosInvokeToolResponse;
 
 export type HennosInvokeToolResponse = {
@@ -84,27 +112,15 @@ type InvokableModelProvider = {
 }
 
 export async function resolveModelProvider(workflowId: string, level: "high" | "low" | "nano"): Promise<InvokableModelProvider> {
-    Logger.debug("ModelProviderResolution", `Resolving model provider for level '${level}' and provider '${Config.HENNOS_LLM_PROVIDER}'`);
-    switch (Config.HENNOS_LLM_PROVIDER) {
-        case "litellm": {
-            if (level === "high") {
-                return await HennosLiteLLMSingleton.high(workflowId);
+    Logger.debug("ModelProviderResolution", `Resolving LiteLLM model provider for level '${level}'`);
 
-            }
-
-            if (level === "low") {
-                return await HennosLiteLLMSingleton.low(workflowId);
-            }
-
-            return await HennosLiteLLMSingleton.nano(workflowId);
-        }
-
-        case "ollama": {
-            return HennosOllamaSingleton.high();
-        }
-
-        default: {
-            throw new Error(`Unsupported model provider: ${Config.HENNOS_LLM_PROVIDER}`);
-        }
+    if (level === "high") {
+        return await HennosLiteLLMSingleton.high(workflowId);
     }
+
+    if (level === "low") {
+        return await HennosLiteLLMSingleton.low(workflowId);
+    }
+
+    return await HennosLiteLLMSingleton.nano(workflowId);
 }
