@@ -7,7 +7,8 @@ import type { MemoryGateDecision } from "./gate";
 const runGate = vi.fn();
 const extractMemories = vi.fn();
 
-vi.mock("./gate", () => ({
+vi.mock("./gate", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("./gate")>()),
     runGate: (...args: unknown[]) => runGate(...args),
 }));
 

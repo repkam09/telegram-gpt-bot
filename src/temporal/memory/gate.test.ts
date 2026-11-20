@@ -22,7 +22,7 @@ describe("decideGate", () => {
 
     it("never drops a forget request, even at a very low probability or next to a secret", () => {
         expect(decideGate(signals({ forget: 0.25 }))).toMatchObject({ extract: true, reason: "forget" });
-        expect(decideGate(signals({ forget: 0.25, secret: 0.99 }))).toMatchObject({ extract: true, reason: "forget" });
+        expect(decideGate(signals({ forget: 0.25, secret: 0.99 }))).toMatchObject({ extract: true, reason: `forget${SECRET_FLAGGED}` });
         expect(decideGate(signals({ forget: 0.1 })).extract).toBe(false);
     });
 
