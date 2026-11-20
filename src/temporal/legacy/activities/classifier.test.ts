@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { MockActivityEnvironment } from "@temporalio/testing";
 import { chooseTier, classifyPromptComplexity, DECISION_QUESTIONS, PromptComplexityResult, PromptSignals, resetClassifierState } from "./classifier";
 import { createWorkflowId } from "../interface";
+import { MemoryFileStore } from "../../../tools/memory/MemoryFileStore";
 import { createTestDatabase, TEST_CHAT_ID, TestDatabase } from "../../../../tests/helpers/database";
 
 const signals = (overrides: Partial<PromptSignals> = {}): PromptSignals => ({ deep: 0, context: 0, casual: 0, lookup: 0, ...overrides });
@@ -88,6 +89,77 @@ describe("classifyPromptComplexity", () => {
         fetchMock.mockResolvedValue(answer({ casual: 0.99 }));
 
         expect(await classify()).toEqual({ complexity: "trivial", contextLimit: 100, useTools: true, modelTier: "nano" });
+    });
+
+    describe("memory file selection", () => {
+        const body = () => JSON.parse(fetchMock.mock.calls[0][1].body) as { questions: { name: string; instructions: string }[] };
+
+        async function seedMemory() {
+            const store = new MemoryFileStore(String(TEST_CHAT_ID));
+            await store.create("/memories/profile.md", "---\nname: profile\ndescription: Who\n---\nx");
+            await store.create("/memories/topics/tea.md", "---\nname: tea\ndescription: Tea habits\n---\nx");
+            await store.create("/memories/topics/cars.md", "---\nname: cars\ndescription: Car ownership\n---\nx");
+        }
+
+        function answerWith(extra: Record<string, number>) {
+            const all = { ...signals(), ...extra };
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({ answers: Object.entries(all).map(([name, probability]) => ({ type: "predicate", name, probability })) }),
+            };
+        }
+
+        it("asks no memory questions and selects nothing when exposure is off", async () => {
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            fetchMock.mockResolvedValue(answer({ lookup: 0.95 }));
+
+            const result = await classify();
+
+            expect(body().questions.map((question) => question.name)).toEqual(DECISION_QUESTIONS.map((question) => question.name));
+            expect(result.memoryFiles).toBeUndefined();
+        });
+
+        it("adds one question per candidate to the same decision call and returns the confident files", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            // Newest first: cars (created last) is memory_file_0, tea is memory_file_1
+            fetchMock.mockResolvedValue(answerWith({ memory_file_0: 0.1, memory_file_1: 0.9, lookup: 0.95 }));
+
+            const result = await classify();
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(body().questions.map((question) => question.name)).toEqual([...DECISION_QUESTIONS.map((question) => question.name), "memory_file_0", "memory_file_1"]);
+            expect(result.memoryFiles).toEqual(["/memories/topics/tea.md"]);
+            expect(result.modelTier).toBe("low");
+        });
+
+        it("keeps the selection for the rest of the tool loop without a new decision call", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            fetchMock.mockResolvedValue(answerWith({ memory_file_0: 0.1, memory_file_1: 0.9, lookup: 0.95 }));
+
+            await classify();
+            const again = await classify({ iterations: 1, hasToolContext: true });
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(again.memoryFiles).toEqual(["/memories/topics/tea.md"]);
+        });
+
+        it("selects nothing and routes high when the decision call fails", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "what tea should I get?");
+            fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+
+            const result = await classify();
+
+            expect(result.modelTier).toBe("high");
+            expect(result.memoryFiles).toBeUndefined();
+        });
     });
 
     it.each([

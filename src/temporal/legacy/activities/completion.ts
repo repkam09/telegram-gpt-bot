@@ -11,7 +11,7 @@ import { encoding_for_model } from "tiktoken";
 import { withActivityHeartbeat } from "../../heartbeat";
 import { PromptComplexityResult } from "./classifier";
 import { Config } from "../../../singletons/config";
-import { buildMemoryContext } from "../../../tools/memory/memoryContext";
+import { buildMemoryContext, loadSelectedMemoryFiles } from "../../../tools/memory/memoryContext";
 import { extractionAwareWindow } from "../../memory/window";
 
 export type LegacyCompletionInput = {
@@ -49,6 +49,17 @@ async function _legacyCompletion(input: LegacyCompletionInput,
 
     // Load context from the database, sized according to complexity
     const complete = await getChatContext(workflowId, contextLimit);
+    if (Config.HENNOS_MEMORY_ENABLED && classification.memoryFiles && classification.memoryFiles.length > 0) {
+        try {
+            const selected = await loadSelectedMemoryFiles(parseWorkflowId(workflowId).chatId, classification.memoryFiles);
+            if (selected) {
+                insertBeforeLatestUserMessage(complete, { role: "system", content: selected });
+            }
+        } catch (error) {
+            Logger.error(workflowId, `Failed to load selected memory files: ${error}`);
+        }
+    }
+
     const conversation = await getSizedChatContext(workflowId, [{ role: "system", content: systemPrompt }], complete, model.limit());
 
     const tools = classification.useTools ? availableTools(workflowId) : undefined;
@@ -118,6 +129,21 @@ Your knowledge is based on the data your model was trained on. Be aware that you
 In order to provide the best possible assistance you should make use of various tool calls to gather additional information, to verify information you have in your training data, and to make sure you provide the most accurate and up-to-date information.
 ${activity}
 ${memoryContext ? `\n${memoryContext}\n` : ""}`;
+}
+
+/**
+ * Places `entry` right before the latest user message, after the stable system prompt and history, so the
+ * cached prompt prefix is untouched. With no user message it goes at the end.
+ */
+export function insertBeforeLatestUserMessage(context: CompletionContextEntry[], entry: CompletionContextEntry): void {
+    for (let index = context.length - 1; index >= 0; index--) {
+        if (context[index].role === "user") {
+            context.splice(index, 0, entry);
+            return;
+        }
+    }
+
+    context.push(entry);
 }
 
 async function getChatContext(workflowId: string, limit: number = 100): Promise<CompletionContextEntry[]> {

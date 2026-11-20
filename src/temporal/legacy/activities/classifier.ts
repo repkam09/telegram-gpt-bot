@@ -4,6 +4,7 @@ import { Logger } from "../../../singletons/logger";
 import { parseWorkflowId } from "../interface";
 import { decidePredicates, DecisionPredicate } from "./decision";
 import { Context } from "@temporalio/activity";
+import { memoryCandidates, MemoryCandidate, memoryQuestions, selectMemoryFiles } from "./memorySelection";
 
 export type PromptComplexity = "trivial" | "simple" | "complex";
 
@@ -12,6 +13,8 @@ export type PromptComplexityResult = {
     contextLimit: number;
     useTools: boolean;
     modelTier: "high" | "low" | "nano";
+    /** Memory files the decision model picked for this turn (only when memory exposure is enabled). */
+    memoryFiles?: string[];
 }
 
 export type ClassifyPromptInput = {
@@ -127,6 +130,16 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
             return remember(workflowId, resultFor("complex"), true, remainingSticky);
         }
 
+        // Memory file selection piggybacks on the same decision call, so it costs no extra round trip.
+        let candidates: MemoryCandidate[] = [];
+        if (Config.HENNOS_MEMORY_ENABLED) {
+            try {
+                candidates = await memoryCandidates(parseWorkflowId(workflowId).chatId);
+            } catch (err: unknown) {
+                Logger.warn(workflowId, `Failed to load memory candidates, continuing without selection: ${err instanceof Error ? err.message : String(err)}`);
+            }
+        }
+
         const probabilities = await decidePredicates(
             {
                 baseUrl: Config.LITELLM_BASE_URL,
@@ -135,8 +148,11 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
                 timeoutMs: DECISION_TIMEOUT_MS,
             },
             formatInput(messages),
-            DECISION_QUESTIONS,
+            [...DECISION_QUESTIONS, ...memoryQuestions(candidates)],
         );
+
+        const selected = selectMemoryFiles(candidates, probabilities);
+        const withMemory = (result: PromptComplexityResult): PromptComplexityResult => selected.length > 0 ? { ...result, memoryFiles: selected } : result;
 
         const signals = probabilities as PromptSignals;
         const { tier, sticky } = chooseTier(signals);
@@ -144,11 +160,11 @@ export async function classifyPromptComplexity(input: ClassifyPromptInput): Prom
         // While a session is sticky, only ever move up.
         if (state && state.stickyTurns > 0 && tier !== "complex") {
             Logger.info(workflowId, `Prompt would be '${tier}' but the chat is sticky on the high tier (${state.stickyTurns} turns left). Signals: ${JSON.stringify(signals)}`);
-            return remember(workflowId, resultFor("complex"), false, remainingSticky);
+            return remember(workflowId, withMemory(resultFor("complex")), false, remainingSticky);
         }
 
-        Logger.info(workflowId, `Prompt classified as '${tier}' by decision model ${decisionModel}. Signals: ${JSON.stringify(signals)}`);
-        return remember(workflowId, resultFor(tier), sticky, remainingSticky);
+        Logger.info(workflowId, `Prompt classified as '${tier}' by decision model ${decisionModel}. Signals: ${JSON.stringify(signals)}${selected.length > 0 ? ` Memory files: ${JSON.stringify(selected)}` : ""}`);
+        return remember(workflowId, withMemory(resultFor(tier)), sticky, remainingSticky);
     } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error(String(err));
         Logger.warn(workflowId, `Decision classification failed, defaulting to 'complex': ${error.message}`);

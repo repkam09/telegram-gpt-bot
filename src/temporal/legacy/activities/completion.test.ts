@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { MockActivityEnvironment } from "@temporalio/testing";
-import { legacyCompletion, legacyCompletionPromptTemplate, loadCompletionContextImage } from "./completion";
+import { insertBeforeLatestUserMessage, legacyCompletion, legacyCompletionPromptTemplate, loadCompletionContextImage } from "./completion";
 import { createWorkflowId } from "../interface";
 import { MemoryFileStore } from "../../../tools/memory/MemoryFileStore";
 import { createTestDatabase, TEST_CHAT_ID, TestDatabase } from "../../../../tests/helpers/database";
@@ -256,6 +256,33 @@ describe("legacyCompletion", () => {
             expect(sentPrompt().length - 1).toBe(100);
         });
 
+        it("places selected memory files right before the latest user message", async () => {
+            vi.stubEnv("HENNOS_MEMORY_ENABLED", "true");
+            await seedMemory();
+            await say("user", "first question");
+            await say("assistant", "an answer");
+            await say("user", "what tea should I get?");
+
+            await complete({ classification: { ...classification, memoryFiles: ["/memories/topics/tea.md"] } });
+
+            const prompt = sentPrompt();
+            const index = prompt.findIndex((entry) => entry.content?.includes("<memory-files>"));
+            expect(index).toBeGreaterThan(0);
+            expect(prompt[index].role).toBe("system");
+            expect(prompt[index].content).toContain("likes oolong");
+            expect(prompt[index + 1]).toEqual({ role: "user", content: "what tea should I get?" });
+            expect(prompt[0].content).not.toContain("likes oolong"); // the stable system prompt prefix is untouched
+        });
+
+        it("ignores selected files when exposure is off", async () => {
+            await seedMemory();
+            await say("user", "what tea should I get?");
+
+            await complete({ classification: { ...classification, memoryFiles: ["/memories/topics/tea.md"] } });
+
+            expect(JSON.stringify(sentPrompt())).not.toContain("memory-files");
+        });
+
         it("keeps the 100 message window when exposure is off, whatever the watermark", async () => {
             const ids = await sayMany(40);
             await testDb.db.memoryExtractionState.create({ data: { chatId: BigInt(TEST_CHAT_ID), lastMessageId: ids[39] } });
@@ -264,6 +291,27 @@ describe("legacyCompletion", () => {
 
             expect(sentPrompt().length - 1).toBe(40);
         });
+    });
+});
+
+describe("insertBeforeLatestUserMessage", () => {
+    const entry = { role: "system" as const, content: "notes" };
+
+    it("inserts before the last user message", () => {
+        const context = [{ role: "user" as const, content: "a" }, { role: "assistant" as const, content: "b" }, { role: "user" as const, content: "c" }];
+
+        insertBeforeLatestUserMessage(context, entry);
+
+        expect(context.map((item) => (item as { content: string }).content)).toEqual(["a", "b", "notes", "c"]);
+    });
+
+    it("appends when there is no user message", () => {
+        const context = [{ role: "assistant" as const, content: "b" }];
+
+        insertBeforeLatestUserMessage(context, entry);
+
+        expect(context).toHaveLength(2);
+        expect(context[1]).toBe(entry);
     });
 });
 
